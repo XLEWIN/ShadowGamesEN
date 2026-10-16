@@ -41,7 +41,7 @@ class Config:
     inactivity_timeout: int = 300
     log_level: str = "INFO"
     owner_id: int = 0
-    log_group_id: int = -1003845687680
+    log_group_id: int = -1003884436085
 
     # ── Deployment ─────────────────────────────
     #: Directory for the SQLite db. Set DATABASE_DIR to a mounted
@@ -84,7 +84,7 @@ class Config:
             inactivity_timeout=_parse_int(os.getenv("INACTIVITY_TIMEOUT", "300"), 300),
             log_level=os.getenv("LOG_LEVEL", "INFO"),
             owner_id=owner,
-            log_group_id=_parse_int(os.getenv("LOG_GROUP_ID", "-1003845687680"), -1003845687680),
+            log_group_id=_parse_int(os.getenv("LOG_GROUP_ID", "-1003884436085"), -1003884436085),
             database_dir=os.getenv("DATABASE_DIR", "").strip(),
             data_dir=os.getenv("DATA_DIR", "").strip(),
             time_zone=os.getenv("TIME_ZONE", "Asia/Calcutta").strip() or "Asia/Calcutta",
