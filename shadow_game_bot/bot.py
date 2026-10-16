@@ -391,15 +391,17 @@ async def _uno_update_observer(handler, event: Update, data: dict):
     ``handler`` / ``data`` are required outer-middleware args in aiogram 3
     but are unused here — we only observe.
     """
-    kind = event.update_type
-    if kind == "inline_query":
-        iq = event.inline_query
+    # Guard on concrete attributes — Update.event_type raises
+    # UpdateTypeLookupError when it can't resolve a field.
+    ch = getattr(event, "chosen_inline_result", None)
+    iq = getattr(event, "inline_query", None)
+
+    if iq is not None:
         logger.info(
             "[uno-diag] Inline query ARRIVED from %s (id=%s)",
             iq.from_user.username or iq.from_user.id, iq.id,
         )
-    elif kind == "chosen_inline_result":
-        ch = event.chosen_inline_result
+    elif ch is not None:
         logger.info(
             "[uno-diag] Chosen result ARRIVED from %s result_id=%r",
             ch.from_user.username or ch.from_user.id, ch.result_id,
@@ -424,12 +426,6 @@ def build_dispatcher() -> Dispatcher:
 
     # Errors (leave on missing rights, expired-topic recreation)
     dp.errors.register(error_handler)
-
-    # Diagnostic observer: log UNO-relevant updates the INSTANT they arrive
-    # from Telegram (before any handler/filters).  If "Chosen result arrived"
-    # is missing while "Inline query" appears, Telegram is not delivering
-    # the selection — a second consumer on the same token is eating it.
-    dp.update.outer_middleware(_uno_update_observer)
 
     # ── Group 10 — commands (registered first) ─────────────────────
     commands = Router(name="commands")
@@ -532,6 +528,12 @@ def build_dispatcher() -> Dispatcher:
 
     # ── Group 11b — UNO inline gameplay (inline queries) ────────────
     inline = Router(name="uno_inline")
+    # Diagnostic observer scoped to UNO traffic only: logs the instant an
+    # update reaches the router.  Missing "Chosen result ARRIVED" while
+    # "Inline query ARRIVED" appears => Telegram is not delivering the
+    # selection (a second consumer on the same token is eating it).
+    inline.inline_query.outer_middleware(_uno_update_observer)
+    inline.chosen_inline_result.outer_middleware(_uno_update_observer)
     inline.inline_query.register(reply_to_query)
     inline.chosen_inline_result.register(process_result)
     dp.include_router(inline)
