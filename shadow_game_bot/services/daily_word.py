@@ -28,7 +28,7 @@ from shadow_game_bot.utils.gemini_keys import is_api_key_error, key_manager
 
 logger = logging.getLogger(__name__)
 
-_DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
+_DATA_DIR = config.data_path
 
 FREE_MODELS = [
     "gemini-3-flash-preview",

@@ -43,6 +43,13 @@ class Config:
     owner_id: int = 0
     log_group_id: int = -1003845687680
 
+    # ── Deployment ─────────────────────────────
+    #: Directory for the SQLite db. Set DATABASE_DIR to a mounted
+    #: volume on Railway so game/wordseek state survives redeploys.
+    database_dir: str = ""
+    #: Directory for the bundled word-list JSONs (data/).
+    data_dir: str = ""
+
     # ── WordSeek env (optional) ────────────────
     time_zone: str = "Asia/Calcutta"
     daily_wordle_secret: str = "shadow-wordseek-default-secret"
@@ -78,6 +85,8 @@ class Config:
             log_level=os.getenv("LOG_LEVEL", "INFO"),
             owner_id=owner,
             log_group_id=_parse_int(os.getenv("LOG_GROUP_ID", "-1003845687680"), -1003845687680),
+            database_dir=os.getenv("DATABASE_DIR", "").strip(),
+            data_dir=os.getenv("DATA_DIR", "").strip(),
             time_zone=os.getenv("TIME_ZONE", "Asia/Calcutta").strip() or "Asia/Calcutta",
             daily_wordle_secret=os.getenv("DAILY_WORDLE_SECRET", "shadow-wordseek-default-secret").strip()
             or "shadow-wordseek-default-secret",
@@ -88,6 +97,21 @@ class Config:
         )
 
     # ── Helpers ────────────────────────────────
+
+    @property
+    def db_path(self) -> Path:
+        """Absolute path to the SQLite database file.
+
+        Honours DATABASE_DIR (e.g. a Railway volume mount) so state
+        survives redeploys; otherwise falls back to the project root.
+        """
+        directory = Path(self.database_dir) if self.database_dir else _ROOT_DIR
+        return directory / f"{self.database_name}.db"
+
+    @property
+    def data_path(self) -> Path:
+        """Directory holding the bundled word-list JSONs (data/)."""
+        return Path(self.data_dir) if self.data_dir else _ROOT_DIR / "data"
 
     @property
     def alert_targets(self) -> List[int]:

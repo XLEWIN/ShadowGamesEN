@@ -1,0 +1,14 @@
+# Railway service configuration.
+# https://railway.app/docs/configuration-file
+[build]
+builder = "NIXPACKS"
+# Nixpacks auto-detects Python via requirements.txt.
+
+[deploy]
+# Telegram long-polling bot: no HTTP port to expose, so run as a worker.
+startCommand = "python run.py"
+# Railway restarts the service if the process exits; polling bots should
+# stay up indefinitely, so restart always.
+restartPolicy = "ALWAYS"
+# Give the bot 60s to finish in-flight Telegram calls on redeploy.
+healthcheckPath = ""

@@ -11,11 +11,12 @@ import random
 from pathlib import Path
 from typing import Dict, List
 
+from shadow_game_bot.config import config
 from shadow_game_bot.db.wordseek import WordSeekCollection
 
 logger = logging.getLogger(__name__)
 
-_DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
+_DATA_DIR = config.data_path
 
 _WORD_LISTS: Dict[int, List[str]] = {}
 

@@ -31,6 +31,93 @@ python run.py
 - The database file (`shadow_game.db` by default) is created next to `run.py`.
 - Word lists, share grid and the banner live in `data/`.
 
+## Deploy to Railway
+
+The bot is a long-polling Telegram worker (no inbound HTTP port), so it runs
+as a `worker` service. `Procfile` and `railway.toml` are already in the repo.
+
+### 1. Push the repo to GitHub
+
+From the project folder:
+
+```bash
+git init
+git add .
+git commit -m "Initial commit: merged Shadow + WordSeek + UNO bot"
+git branch -M main
+git remote add origin https://github.com/<your-username>/<repo-name>.git
+git push -u origin main
+```
+
+### 2. Create the Railway service
+
+1. Go to <https://railway.app> → **New Project** → **Deploy from GitHub repo**
+   and pick the repo.
+2. Railway auto-detects Python via `requirements.txt` (Nixpacks). No build
+   command needed.
+
+### 3. Attach a Persistent Volume (required for the database)
+
+Railway's container filesystem is wiped on every redeploy, so SQLite state
+would be lost. Attach a volume so the db survives:
+
+1. In the service → **Volumes** → **Add Volume** → mount at `/data`.
+2. In **Variables**, set:
+
+   | Variable | Value |
+   |---|---|
+   | `DATABASE_DIR` | `/data` |
+
+The SQLite file will then live at `/data/shadow_game.db` on the volume.
+
+### 4. Set the environment variables
+
+In the service → **Variables**, add the required ones (same names as `.env`):
+
+| Variable | Required | Purpose |
+|---|---|---|
+| `BOT_TOKEN` | ✅ | Telegram bot token |
+| `OWNER_ID` | ✅ | Owner user id |
+| `LOG_GROUP_ID` | ✅ | Log group for events + anti-cheat alerts |
+| `DATABASE_DIR` | ✅ (with volume) | `/data` — where the SQLite db lives on the volume |
+| `LOG_LEVEL` | | `INFO` (default) |
+| `TIME_ZONE` | | `Asia/Calcutta` (default) |
+
+Optional: `GEMINI_API_KEYS`, `LOGS_CHANNEL`, `ADMIN_USERS`, `DATABASE_NAME`,
+`DATA_DIR`, `INACTIVITY_TIMEOUT`, `DAILY_WORDLE_SECRET`,
+`DAILY_WORDLE_START_DATE`.
+
+Do **not** commit `.env` — Railway injects these at runtime.
+
+### 5. Deploy
+
+Railway deploys automatically on every push to `main`. Watch the **Deploy Logs**
+until you see:
+
+```
+Merged Shadow + WordSeek Bot initialized.
+```
+
+That confirms the bot authenticated with Telegram and is polling.
+
+### 6. Enable inline feedback (UNO)
+
+Card selections only work if Telegram is allowed to report them back:
+
+@BotFather → `/mybots` → your bot → **Bot Settings** → **Inline Mode** →
+**Inline Feedback** → **Enable**. Without this the bot answers inline queries
+but never receives card taps, so UNO turns appear stuck.
+
+### Local vs Railway path resolution
+
+| Env var | Local default | Railway value |
+|---|---|---|
+| `DATABASE_DIR` | empty → project root | `/data` (volume mount) |
+| `DATA_DIR` | empty → `data/` in repo | empty (use bundled `data/`) |
+
+Word lists ship in the repo (`data/*.json`), so `DATA_DIR` only needs setting
+if you relocate them.
+
 ## Environment variables
 
 | Variable | Required | Default | Purpose |
@@ -208,7 +295,7 @@ python tests\test_rich.py       # rich/emoji system: E.* markup + plain() stripp
                                 # coloured/iconed keyboards, menu start/help builders
 ```
 
-All four suites must print `PASS` (Telegram I/O is fully mocked — no network, no token
+All suites must print `PASS` (Telegram I/O is fully mocked — no network, no token
 needed).
 
 ## Known gaps / notes
@@ -219,4 +306,4 @@ needed).
   the earlier PTB build).
 - All WordSeek words must match `^[a-z]{4,6}$`; groups are enforced with soft commands
   (`/new4` → 4-letter game).
-- `data/` is required at runtime (word lists, daily rotation, banner image).
+- `data/` is required at runtime (word lists + daily rotation).

@@ -269,7 +269,10 @@ async def get_database() -> aiosqlite.Connection:
     if _db is not None:
         return _db
 
-    db_path = str(_ROOT_DIR / f"{config.database_name}.db")
+    # config.db_path honours DATABASE_DIR (Railway volume) so the db
+    # survives redeploys; otherwise it falls back to the project root.
+    db_path = str(config.db_path)
+    config.db_path.parent.mkdir(parents=True, exist_ok=True)
     logger.info("Connecting to SQLite at %s ...", db_path)
 
     _db = await aiosqlite.connect(db_path)
