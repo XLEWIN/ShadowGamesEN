@@ -20,3 +20,5 @@ venv/
 
 # Backup of the pre-merge PTB tree
 .ptb-backup/
+_probe.py
+_*.txt
