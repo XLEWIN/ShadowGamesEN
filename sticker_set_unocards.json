@@ -1,0 +1,601 @@
+{
+ "name": "unocards",
+ "title": "UNO Bot",
+ "stickers": [
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32WeMxKL93IHyBBLDaDACocjAALZAQACX1eZAAEqnpNt3SpG_z0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32WJFONCJwaxrRrTXTn9D9baAALbAQACX1eZAAHluPl_BVzaDj0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32UTMHHp-71zHTKYXzOCUnXuAALdAQACX1eZAAEFe5JBdpP-cz0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32WqzAxPrxfvYE2yn9Pza8D9AALfAQACX1eZAAFQJXWHQ2D7uj0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32VHbQIsOx0lKekKy7q1Ri0VAALhAQACX1eZAAHo1SP4devY_z0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32Vps2qYjXn2sj3jGNHU7TNdAALjAQACX1eZAALf6g-FruzaPQQ",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32XsZ8EDi3486kXntP5iBV65AALlAQACX1eZAAHwMoU1Nb4Ogj0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32XVFVxaDwoP1wABOWndU7WvYgAC5wEAAl9XmQABTgQJ6KKdX1o9BA",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32VtgoBiA6SQSPb1DtEE3TbaAALpAQACX1eZAAHmKrizqjwJ3j0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32XeE4ZNI9PmZwfpAYMP05hQAALrAQACX1eZAAHvul-ZztVWij0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32VmdD8njolv7BLxrkW4Xzu_AALtAQACX1eZAAGdURg9n6qvEz0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32WiVohMgQlwt4vqucSJSSK-AALvAQACX1eZAAFjAZc535XzNT0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32WKYIqaDRF11Jghb7Lj7lTcAALxAQACX1eZAAHAf0ks_Y82Jz0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32UD61sGhpwHZFYeurkuOOFsAALzAQACX1eZAAHI5jbpFQE9bD0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32XPgXnsmi2yU-IifsSjeBe6AAL1AQACX1eZAAHXOgABZUCgVkk9BA",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32UTcYP5BPHKsszflZUCws61AAL3AQACX1eZAAH7m-CsNWDzBT0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32WNbowHW6v7SLF502WjVcp-AAL5AQACX1eZAAFVNSG--aqs9D0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32V7Ff5ePMb9Mgm0qoSBPiMuAAL7AQACX1eZAAHDX5Qn7VbSdD0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32UnFL18GZbYMoXXbfnAbdlzAAL9AQACX1eZAAGwUxSSKSNPaj0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32WG6opxrRw921iT6kZyCQmhAAL_AQACX1eZAAEBEgKqT0vs4D0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32XMyWc-lc9-9LqTCf8bVd1qAAIBAgACX1eZAAGN2wN5nVhf3z0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32VEeY5CUrUyvEb9xJnEGZhXAAIDAgACX1eZAAFaJA80kw1XfT0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32WcCfk5uuOm05sCk6PpHBvXAAIFAgACX1eZAAGDbLTCiNGLBj0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32VYN8-JS2MYwo-7LXexYix6AAIHAgACX1eZAAGnWrRTRZj7gT0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32XxXeYYg0VDN5bbdFFJpMuMAAIJAgACX1eZAAHODOPdhwzltz0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32UtDotfnhm2lY-4allBlNzaAAILAgACX1eZAAFWg06uGplHVz0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32UgC03tVio2iwXfxiXDqITkAAINAgACX1eZAAFMYqmCS3vfyT0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32VV1Gp5OzANM0Dk9F2xRJIHAAIPAgACX1eZAAHn-hBXxRvYQj0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32V5JP-dudiF0zTwovdJYLCgAAIRAgACX1eZAAHK9atgT_cu_j0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32W74WxFZSNssWxPoXcsDd-8AAITAgACX1eZAAH_6pt2airFET0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32Vuyd34969sfmp9JxlNpINiAAIVAgACX1eZAAHQrmSSeMDfgD0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32WObOUzF4RZ9nHEN7XFl38RAAIXAgACX1eZAAFeHWWPa-piRz0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32Xgkd001byab98FwuuMx6AeAAIZAgACX1eZAAE7VUWywkd3KD0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32VpBEDzHusaAAGHYgNn_eZEmgACGwIAAl9XmQABdbNG_Vfj1CQ9BA",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32XAWXuGryy4dJLjbMY5O5z2AAIdAgACX1eZAAF8hSz11exIUj0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32U5zxJks1zLiUm5M8l3PryAAAIfAgACX1eZAAEVnCo1RKSqnD0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32Uy1ErxKE356KuYOwqQ1aQpAAIhAgACX1eZAAEhXezQrbzKOj0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32UcKubKXQzSJGVqLItth6diAAIjAgACX1eZAAHN4GBkUaxpqj0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32VCyUfkg0rTfr0y5LvG6gZAAAIlAgACX1eZAAGZvG1zNp2cVj0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32X8uu16rr_d-mdvlZiDuXM2AAInAgACX1eZAAGay7EvXnoVZj0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32Vzvi8SFnIDLmZtVfREZewuAAIpAgACX1eZAAFprUDwYHBu3T0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32Ucp7EFuev9P5KOf8NU8VzbAAIrAgACX1eZAAG1mgAB2D5sIc89BA",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32WcfkULph7IipWyJSQtXNlRAAItAgACX1eZAAHqNCCjuSEQjj0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32VoW_bZn73F1wv_AsQY-VXuAAIvAgACX1eZAAH4u547rBAiBD0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32XJzgGq8UfGkAfo79gO23CbAAIxAgACX1eZAAFBQ00TMrpMej0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32W2r8_HHi1fNRG4pDtRekNOAAIzAgACX1eZAAF7IOqIuGqyDT0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32VBI_UwEqfuInLaVzLdD3YmAAI1AgACX1eZAAHyIiYzI-E-Lj0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32W6T4GUR5RtmlacVM9VSF8SAAI3AgACX1eZAAH_E8fuZ374hz0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32Xva7KTi7vQIx7b7HX3HISJAAI5AgACX1eZAAHPK6qSI6Ku_D0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32U8quBokRt7wSl66UpzoE_DAAI7AgACX1eZAAHXiL4XwJi0ez0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32U_2c-sCzqK4ubNZsVYuuqlAAI9AgACX1eZAAGG_opl6vQSOD0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32Xkesf01dvjIPUvPRO38lYUAAI_AgACX1eZAAFrjyuhcA2ksz0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32UoYaQv8pH9idbKC-aTAyMCAAJBAgACX1eZAAEIekObsw9tqT0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32XliC29PjOaQXpSiAUnyJm4AAJDAgACX1eZAAF1m63alvMoxz0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32VwAAHBXTEY6limRKcpGLVzNgACRQIAAl9XmQAB8F2BTWYUGiM9BA",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32UflKl201_jr9QNhw3kk27CAAJHAgACX1eZAAF_ZxC64wgdND0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32Uq-K0z6Nd_T-Eq6PmxyHepAAJJAgACX1eZAAF-GuNgJ25IAAE9BA",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32Vx49netoza_c-w66A6KDKTAAJLAgACX1eZAAHIJQ71XJ39mD0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32Wqe1wpS0bydGco3X26GmARAAJNAgACX1eZAAEjmR2mhJ8SsT0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32X9FWJbSQmHPNlmZJsokR8RAAJPAgACX1eZAAEjfAwvM_8nsT0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32V68FtTi3yTE0DBVlx5dPc0AAJRAgACX1eZAAG_fl6oWmnXzz0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32W1B38WP0-gIqjGAAHFM2iM2QACUwIAAl9XmQABv8Vaivrtncw9BA",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32WG_4mlRI31rUnHxvoCzGM_AAJVAgACX1eZAAF8hUb4bS_NdD0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32WC8CqgdXgmiZ6ZHPIx5eveAAJXAgACX1eZAAGXAmJ0BKvi1z0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32VR0iq9T43nbzi7bqUgWDItAAJZAgACX1eZAAFS-DsDXK7zdj0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32UWci_j-cwe_E_OZqLWIImIAAJbAgACX1eZAAHRLf8w4EEJfz0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32WhrR1BJJkcBGoTsuuzovXbAAJdAgACX1eZAAFzsBiTRsZIej0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32WwDY9y_CkAAftxhAg1m3sP0gACXwIAAl9XmQAB-Fh2K0gkRiI9BA",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32WWWviQvArkqCXVteqceVn-AAJhAgACX1eZAAHWx9PCWaCqkz0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32U9W9hcFHYX7eihP00t6YYAA2MCAAJfV5kAAb9zwXONIGU4PQQ",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32V2ysU0MXAI3xySBZ4okDurAAJlAgACX1eZAAH2R3CHmHduZD0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32Vdt3HUiCCuqBq2UzUgRWl8AAJnAgACX1eZAAHB14u8vZ5pjT0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32WsWBl-sUk5n9gtmiJb7BrdAAJpAgACX1eZAAFaZGnJmMcN9D0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32XkV5-A4fYbTmN9g3952JN0AAJrAgACX1eZAAF3KxLEqQq8Kz0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32VSLyQrz-EHXdDl8kSbjhyWAAJtAgACX1eZAAGObwogvTEInD0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32UoAbfJbQ1hkl3h2oWI0hjvAAJvAgACX1eZAAEpOGFMRnLGmT0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32XE9ul7CzURdjhWLD6SM_1pAAJxAgACX1eZAAEe_yu4DVELEj0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32UowlAFamLe_Kga8TVRGCeJAAJzAgACX1eZAAH26plyNxWZuD0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32U1AX2mWVYWIKfdce0wAahOAAJ1AgACX1eZAAGrwYoTMk8UPT0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32ULmcLDPgL14ocSuwityv-VAAJ3AgACX1eZAAFnlFIJWhbZIz0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32UGhT75iHDLNI70CYCBMlRzAAJ5AgACX1eZAAE9cd3JVwlSEj0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32WoCoQVTOKz7LymcwhbgychAAJ7AgACX1eZAAFO5CqgPxquYT0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32USBWqMU0q5LsHccampRnFlAAJ9AgACX1eZAAEZAg2nRervSD0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32Xa5H4iYy9T_FpNUjhWPFtWAAJ_AgACX1eZAAFtLPMD6heoDz0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32XmzXFC0sqPgyrQwv4gjbFyAAKBAgACX1eZAAGuvzFU0Su89T0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32UCXEGg933k1xo7V2CajhCyAAKDAgACX1eZAAEFFjwwFZ7GiT0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32W5ArIgv9zG46EgJwIRCiOaAAKFAgACX1eZAAHZFzRnwree-z0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32WWCgPyH9Fz1Fgqlt0-bhTrAAKHAgACX1eZAAHsdpjtu9I2IT0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32VjGybJmOnFhJN55lLWdTe6AAKJAgACX1eZAAG2D__a-tqZBT0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32XbycEYKH5J-xUkB8O3v0JeAAKLAgACX1eZAAGXaAtw5YFztT0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32Wrz1Jno7VmQYUT-brq2ahZAAKNAgACX1eZAAGkCOaURWQl8D0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32VXuV0RoVQggOe35NUxU11CAAKPAgACX1eZAAH-WS6bmv9CgT0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32V_JzyhCwpJPQQ5Rk3H1KIlAAKRAgACX1eZAAF2dldgt636fz0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32W5O9S6gQZZNw73dK7pXwfaAAKTAgACX1eZAAECR8T0lu-Kmz0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32WcaDNJqdwuHGfeIF_llLWPAAKVAgACX1eZAAGedr9LYgVebD0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32V6kHGAnXvneRCurXy4i3ACAAKXAgACX1eZAALmpUbJzkaKPQQ",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32XhsJZmX0nrCiYnVHpxQ2FbAAKZAgACX1eZAAGB_02-C22Pkz0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32WhXT2nZ5ZWQX6UdJof29ApAAKbAgACX1eZAAHVmZUJxJwqmD0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32Xve4qWz3Q1Z5EnuLOsywmRAAKdAgACX1eZAAGnajv8YZQj-z0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32VORU3nlpAP6N1PQW2RcK_eAAKfAgACX1eZAAEmxeENpAa35T0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32XXK73FaBgS1_mk4EWWNghwAAKhAgACX1eZAAH2evQmPPzx8j0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32X_dldxUebWIUPD6O_LCVZeAAKjAgACX1eZAAGYOfBpuoRg_D0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32UkyRj6XWgOv2mZhUSQ3lOQAAKlAgACX1eZAAFYxwrVWROuiz0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32Vu6rNQZYWrTe3kps10Y1nNAAKnAgACX1eZAAF10j1L6rASCT0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32X_hhQFi-5MjoyAIL-yufvtAAKpAgACX1eZAAGV1nEmuqjoJD0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32W6eygc15Mw4TPbpXuAjk1PAAKrAgACX1eZAAGfJ2XK_ooNFj0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32V28ycjjsAOBYlmdF4_ig5AAAKtAgACX1eZAAEiP9aakPoiDz0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32UNVlUZwV5RwkQN_s6Pvht2AAKvAgACX1eZAAEVSSkTcHxJXD0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32UwIMylegHG15IwusnPvbnzAALEAgACX1eZAAGi2Qy93IIQwj0E",
+   "emoji": "❓",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32UF3Z7IHMrct9Ibly-jRhGPAALKAgACX1eZAAHBw478rNqN0D0E",
+   "emoji": "👉",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32WmxVmJ3YUDqO13_Uf2fSyXAALMAgACX1eZAAH8oQKsIYONPD0E",
+   "emoji": "⏫",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32UPTzk0a7sykOT-AueUXSbaAALOAgACX1eZAAHec7yiXsSGYz0E",
+   "emoji": "🔁",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32VwAfDK66at14WbLWuFLw2pAAL4AgACX1eZAAH-TdXSlvEa2z0E",
+   "emoji": "⏫",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32UubPoFcYEEmp6Q0w1OL9DQAAL6AgACX1eZAAFuilR5QnD-Vz0E",
+   "emoji": "✊",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32UzMfuHWDx_KAajjf0TSE6nAAIkBAACX1eZAAGr4ySpC741Gj0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32WVG75fa5v5nu8KYvzWJWg0AAIlBAACX1eZAAHkIJobbd58Nz0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32VbKcNKw-lvTemoARc1dYo1AAImBAACX1eZAAEWU0iFyv0PlT0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32UWNZVWuEL6u4oi_daxoI9GAAInBAACX1eZAAFWM7HfqrWiAj0E",
+   "emoji": "🃏",
+   "type": "regular"
+  },
+  {
+   "file_id": "CAACAgQAAxUAAWrQ32WskVVBR9nuyakGTnGcDwlcAAIoBAACX1eZAAHNnqNUhA6zMT0E",
+   "emoji": "🃏",
+   "type": "regular"
+  }
+ ]
+}
