@@ -1,0 +1,26 @@
+﻿def start_player_countdown(game) -> None:
+    """Start (or restart) the fast-mode auto-skip countdown for the current player.
+
+    No-op in classic/wild modes.  Stores the asyncio.Task on ``game.job``.
+    """
+    if game.mode != "fast":
+        return
+
+    player = game.current_player
+    if player is None:
+        return
+
+    time_left = player.waiting_time
+    if time_left < MIN_FAST_TURN_TIME:
+        time_left = MIN_FAST_TURN_TIME
+
+    # Cancel any existing countdown
+    if game.job is not None and not game.job.done():
+        game.job.cancel()
+
+    game.job = asyncio.create_task(_countdown_task(game, player, time_left))
+    logger.info(
+        "Started countdown for player %s (%ss)",
+        display_name(player.user), time_left,
+    )
+

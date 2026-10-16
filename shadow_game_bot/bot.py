@@ -381,34 +381,6 @@ async def inactivity_checker() -> None:
         await asyncio.sleep(30)
 
 
-# ── UNO delivery diagnostic ───────────────────
-
-async def _uno_update_observer(handler, event: Update, data: dict):
-    """Log UNO-relevant updates the instant they reach the dispatcher.
-
-    Distinguishes 'Telegram never sent the update' (no line at all) from
-    'handler ran but did nothing' (a process_result log line appears).
-    ``handler`` / ``data`` are required outer-middleware args in aiogram 3
-    but are unused here — we only observe.
-    """
-    # Guard on concrete attributes — Update.event_type raises
-    # UpdateTypeLookupError when it can't resolve a field.
-    ch = getattr(event, "chosen_inline_result", None)
-    iq = getattr(event, "inline_query", None)
-
-    if iq is not None:
-        logger.info(
-            "[uno-diag] Inline query ARRIVED from %s (id=%s)",
-            iq.from_user.username or iq.from_user.id, iq.id,
-        )
-    elif ch is not None:
-        logger.info(
-            "[uno-diag] Chosen result ARRIVED from %s result_id=%r",
-            ch.from_user.username or ch.from_user.id, ch.result_id,
-        )
-    return await handler(event, data)
-
-
 # ── Dispatcher wiring ─────────────────────────
 
 def build_dispatcher() -> Dispatcher:
@@ -528,12 +500,6 @@ def build_dispatcher() -> Dispatcher:
 
     # ── Group 11b — UNO inline gameplay (inline queries) ────────────
     inline = Router(name="uno_inline")
-    # Diagnostic observer scoped to UNO traffic only: logs the instant an
-    # update reaches the router.  Missing "Chosen result ARRIVED" while
-    # "Inline query ARRIVED" appears => Telegram is not delivering the
-    # selection (a second consumer on the same token is eating it).
-    inline.inline_query.outer_middleware(_uno_update_observer)
-    inline.chosen_inline_result.outer_middleware(_uno_update_observer)
     inline.inline_query.register(reply_to_query)
     inline.chosen_inline_result.register(process_result)
     dp.include_router(inline)
@@ -598,6 +564,13 @@ async def run() -> None:
             logger.error(
                 "chosen_inline_result NOT subscribed — inline selections "
                 "will be silently dropped by Telegram!")
+        logger.warning(
+            "UNO requires inline feedback ON in BotFather: "
+            "@BotFather -> /mybots -> @ShadowGameEnBot -> Bot Settings "
+            "-> Inline Mode -> Inline Feedback -> Enable. "
+            "Without it Telegram never sends card selections to the bot "
+            "(queries still work, so it looks like the bot is 'ignoring' taps)."
+        )
         await dp.start_polling(bot, polling_timeout=10,
                                allowed_updates=allowed)
     finally:

@@ -1,0 +1,54 @@
+﻿=== Game.play_card ===
+    def play_card(self, card):
+        """Play a card and trigger its effects.
+
+        Call only from Player.play or on game start for the first card.
+        """
+        self.deck.dismiss(self.last_card)
+        self.last_card = card
+
+        self.logger.info("Playing card %r", card)
+        if card.value == c.SKIP:
+            self.turn()
+        elif card.special == c.DRAW_FOUR:
+            self.draw_counter += 4
+            self.logger.debug("Draw counter increased by 4")
+        elif card.value == c.DRAW_TWO:
+            self.draw_counter += 2
+            self.logger.debug("Draw counter increased by 2")
+        elif card.value == c.REVERSE:
+            # Special rule for two players: reverse acts like a skip
+            if self.current_player == self.current_player.next.next:
+                self.turn()
+            else:
+                self.reverse()
+
+        # Don't turn if the current player has to choose a colour
+        if card.special not in (c.CHOOSE, c.DRAW_FOUR):
+            self.turn()
+        else:
+            self.logger.debug("Choosing colour...")
+            self.choosing_color = True
+
+=== Game.turn ===
+    def turn(self):
+        """Marks the turn as over and advances to the next player."""
+        self.logger.debug("Next player")
+        self.current_player = self.current_player.next
+        self.current_player.drew = False
+        self.current_player.turn_started = datetime.now()
+        self.choosing_color = False
+
+=== Player.play ===
+    def play(self, card):
+        """Plays a card and removes it from hand."""
+        self.cards.remove(card)
+        self.game.play_card(card)
+
+=== game_is_running ===
+def game_is_running(game) -> bool:
+    gm = _gm()
+    if gm is None:
+        return False
+    return game in gm.chatid_games.get(game.chat.id, [])
+

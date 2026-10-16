@@ -1,0 +1,26 @@
+﻿python : Traceback (most recent call last):
+At line:1 char:62
++ ... "C:\Users\pixlb\OneDrive\Documents\SdwGameBot\MergedBot"; python -c "
++                                                               ~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Traceback (most recent call last)::String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  File "<string>", line 8, in <module>
+    print(inspect.getsource(o.outer_middleware))
+          ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pixlb\AppData\Local\Programs\Python\Python313\Lib\inspect.py", line 1258, in getsource
+    lines, lnum = getsourcelines(object)
+                  ~~~~~~~~~~~~~~^^^^^^^^
+  File "C:\Users\pixlb\AppData\Local\Programs\Python\Python313\Lib\inspect.py", line 1240, in getsourcelines
+    lines, lnum = findsource(object)
+                  ~~~~~~~~~~^^^^^^^^
+  File "C:\Users\pixlb\AppData\Local\Programs\Python\Python313\Lib\inspect.py", line 1060, in findsource
+    file = getsourcefile(object)
+  File "C:\Users\pixlb\AppData\Local\Programs\Python\Python313\Lib\inspect.py", line 963, in getsourcefile
+    filename = getfile(object)
+  File "C:\Users\pixlb\AppData\Local\Programs\Python\Python313\Lib\inspect.py", line 943, in getfile
+    raise TypeError('module, class, method, function, traceback, frame, or '
+                    'code object was expected, got {}'.format(
+                    type(object).__name__))
+TypeError: module, class, method, function, traceback, frame, or code object was expected, got MiddlewareManager
+outer_middleware sig: (middleware: Union[aiogram.dispatcher.middlewares.base.BaseMiddleware, Callable[[Callable[[aiogram.types.base.TelegramObject, Dict[str, Any]], Awaitable[Any]], aiogram.types.base.TelegramObject, Dict[str, Any]], Awaitable[Any]], NoneType] = None) -> Union[Callable[[Union[aiogram.dispatcher.middlewares.base.BaseMiddleware, Callable[[Callable[[aiogram.types.base.TelegramObject, Dict[str, Any]], Awaitable[Any]], aiogram.types.base.TelegramObject, Dict[str, Any]], Awaitable[Any]]]], Union[aiogram.dispatcher.middlewares.base.BaseMiddleware, Callable[[Callable[[aiogram.types.base.TelegramObject, Dict[str, Any]], Awaitable[Any]], aiogram.types.base.TelegramObject, Dict[str, Any]], Awaitable[Any]]]], aiogram.dispatcher.middlewares.base.BaseMiddleware, Callable[[Callable[[aiogram.types.base.TelegramObject, Dict[str, Any]], Awaitable[Any]], aiogram.types.base.TelegramObject, Dict[str, Any]], Awaitable[Any]]]

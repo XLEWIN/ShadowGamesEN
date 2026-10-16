@@ -1,0 +1,125 @@
+﻿async def process_result(chosen: ChosenInlineResult) -> None:
+    """Act on the card/option the player picked in the inline bar."""
+    try:
+        user = chosen.from_user
+        gm = _gm()
+        player = gm.userid_current[user.id]
+        game = player.game
+        result_id = chosen.result_id
+        chat = game.chat
+    except (KeyError, AttributeError, TypeError):
+        # Not in a current game (or stale bookkeeping) ΓÇö say so instead
+        # of failing silently, so "bot didn't react" is never invisible.
+        uid = getattr(chosen.from_user, "id", "?")
+        logger.info(
+            "Chosen result ignored: user %s not in a current UNO game "
+            "(result_id=%r)", uid, getattr(chosen, "result_id", None),
+        )
+        return
+
+    logger.info(
+        "Selected result %r by %s", result_id, display_name(user))
+
+    try:
+        result_id, anti_cheat = result_id.rsplit(":", 1)
+        anti_cheat = int(anti_cheat)
+    except ValueError:
+        logger.warning("Malformed result_id %r ΓÇö ignoring", result_id)
+        return
+
+    last_anti_cheat = player.anti_cheat
+
+    # View-only taps must NOT burn the anti-cheat nonce: in the original
+    # protocol every selection incremented it, so tapping a grey card /
+    # game-info and then playing a real card from the same open results
+    # list made the bot reject the play as a "cheat" ΓÇö while Telegram
+    # still posted the card sticker, looking like the bot ignored the
+    # turn.  Only real gameplay actions rotate the nonce.
+    if result_id in ("hand", "gameinfo", "nogame", "notstarted"):
+        logger.debug("Info result %r ΓÇö no action", result_id)
+        return
+
+    if result_id.startswith("mode_"):
+        mode = result_id[5:]
+        game.set_mode(mode)
+        logger.info("Gamemode changed to %s", mode)
+        try:
+            await app.bot.send_message(
+                chat.id,
+                f"{E.SETTINGS} Gamemode changed to <b>{escape_html(mode)}</b>.",
+                parse_mode="HTML",
+            )
+        except Exception:
+            logger.exception("Mode-change announcement failed chat=%s", chat.id)
+        return
+
+    # UUID for a non-playable / info result ΓÇö nothing to do
+    if len(result_id) == 36:
+        logger.debug("Grey/info card tap (uuid) ΓÇö no action")
+        return
+
+    # Real gameplay action ΓÇö consume the nonce
+    player.anti_cheat += 1
+
+    if anti_cheat != last_anti_cheat:
+        logger.warning(
+            "Cheat attempt by %s: result nonce %s != current %s "
+            "(result_id=%r ΓÇö stale inline results?)",
+            display_name(user), anti_cheat, last_anti_cheat, result_id,
+        )
+        try:
+            await app.bot.send_message(
+                chat.id,
+                f"{E.CROSS} Cheat attempt by "
+                f"<b>{escape_html(display_name(player.user))}</b>!",
+                parse_mode="HTML",
+            )
+        except Exception:
+            logger.exception("Cheat warning failed chat=%s", chat.id)
+        return
+
+    # ΓöÇΓöÇ Perform the action ΓÇö any failure here means the turn did NOT
+    # complete, so log it loudly and skip the next-player announcement.
+    try:
+        if result_id == "call_bluff":
+            await reset_waiting_time(player)
+            await do_call_bluff(player)
+        elif result_id == "draw":
+            await reset_waiting_time(player)
+            await do_draw(player)
+        elif result_id == "pass":
+            game.turn()
+        elif result_id in c.COLORS:
+            game.choose_color(result_id)
+        else:
+            await reset_waiting_time(player)
+            await do_play_card(player, result_id)
+    except Exception:
+        logger.exception(
+            "UNO action failed result_id=%r user=%s chat=%s",
+            result_id, user.id, chat.id,
+        )
+        return
+
+    # ΓöÇΓöÇ Announce the next player (original bot parity) ΓÇö kept separate
+    # so a failed announcement still leaves the countdown running.
+    if not game_is_running(game):
+        return
+
+    next_name = escape_html(display_name(game.current_player.user))
+    from shadow_game_bot.handlers.maumau_actions import _choice_keyboard
+    try:
+        await app.bot.send_message(
+            chat.id,
+            f"{E.ARROW} Next player: <b>{next_name}</b>",
+            parse_mode="HTML",
+            reply_markup=_choice_keyboard(),
+        )
+    except Exception:
+        logger.exception("Next-player announcement failed chat=%s", chat.id)
+
+    try:
+        start_player_countdown(game)
+    except Exception:
+        logger.exception("Countdown start failed chat=%s", chat.id)
+
