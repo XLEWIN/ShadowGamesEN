@@ -26,7 +26,7 @@ from aiogram.exceptions import (
 )
 from aiogram.filters import BaseFilter, Command
 from aiogram.types import (
-    BotCommand, CallbackQuery, ErrorEvent, Message,
+    BotCommand, CallbackQuery, ErrorEvent, Message, Update,
 )
 
 from shadow_game_bot.config import config
@@ -381,6 +381,32 @@ async def inactivity_checker() -> None:
         await asyncio.sleep(30)
 
 
+# ── UNO delivery diagnostic ───────────────────
+
+async def _uno_update_observer(handler, event: Update, data: dict):
+    """Log UNO-relevant updates the instant they reach the dispatcher.
+
+    Distinguishes 'Telegram never sent the update' (no line at all) from
+    'handler ran but did nothing' (a process_result log line appears).
+    ``handler`` / ``data`` are required outer-middleware args in aiogram 3
+    but are unused here — we only observe.
+    """
+    kind = event.update_type
+    if kind == "inline_query":
+        iq = event.inline_query
+        logger.info(
+            "[uno-diag] Inline query ARRIVED from %s (id=%s)",
+            iq.from_user.username or iq.from_user.id, iq.id,
+        )
+    elif kind == "chosen_inline_result":
+        ch = event.chosen_inline_result
+        logger.info(
+            "[uno-diag] Chosen result ARRIVED from %s result_id=%r",
+            ch.from_user.username or ch.from_user.id, ch.result_id,
+        )
+    return await handler(event, data)
+
+
 # ── Dispatcher wiring ─────────────────────────
 
 def build_dispatcher() -> Dispatcher:
@@ -398,6 +424,12 @@ def build_dispatcher() -> Dispatcher:
 
     # Errors (leave on missing rights, expired-topic recreation)
     dp.errors.register(error_handler)
+
+    # Diagnostic observer: log UNO-relevant updates the INSTANT they arrive
+    # from Telegram (before any handler/filters).  If "Chosen result arrived"
+    # is missing while "Inline query" appears, Telegram is not delivering
+    # the selection — a second consumer on the same token is eating it.
+    dp.update.outer_middleware(_uno_update_observer)
 
     # ── Group 10 — commands (registered first) ─────────────────────
     commands = Router(name="commands")
@@ -556,8 +588,16 @@ async def run() -> None:
         await on_startup(bot)
         # Drop any webhook + pending updates (PTB drop_pending_updates=True)
         await bot.delete_webhook(drop_pending_updates=True)
+        allowed = resolve_allowed_updates(dp)
+        # Loud confirmation of what we actually subscribe to — if
+        # chosen_inline_result is missing here, selections will never arrive.
+        logger.info("Polling allowed_updates = %s", allowed)
+        if "chosen_inline_result" not in allowed:
+            logger.error(
+                "chosen_inline_result NOT subscribed — inline selections "
+                "will be silently dropped by Telegram!")
         await dp.start_polling(bot, polling_timeout=10,
-                               allowed_updates=resolve_allowed_updates(dp))
+                               allowed_updates=allowed)
     finally:
         await on_shutdown()
 

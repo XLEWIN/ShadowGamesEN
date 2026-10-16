@@ -5,6 +5,8 @@
 
 # Runtime state
 *.db
+*.db-wal
+*.db-shm
 *.log
 bot_stdout*.log
 bot_stderr*.log
