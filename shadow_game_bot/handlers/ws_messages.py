@@ -41,8 +41,11 @@ def _load_all_words(length: int) -> List[str]:
     if length not in ALL_WORD_LISTS:
         import json
         from pathlib import Path
+        from shadow_game_bot.config import config
         name = _ALL_LIST_FILES.get(length, f"all-{length}.json")
-        path = Path(__file__).resolve().parent.parent.parent / "data" / name
+        base = Path(config.data_path) if config.data_path else (
+            Path(__file__).resolve().parent.parent.parent / "data")
+        path = base / name
         try:
             ALL_WORD_LISTS[length] = json.loads(path.read_text(encoding="utf-8"))
         except Exception as exc:

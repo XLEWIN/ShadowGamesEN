@@ -255,6 +255,20 @@ async def on_startup(bot: Bot) -> None:
     me = await bot.me()
     app.bot_username = me.username
 
+    # Self-diagnosis: with privacy mode enabled, Telegram only delivers
+    # commands / replies-to-bot / @mentions to the bot — never plain group
+    # text. That silently kills WordSeek / Shadow / UNO group guessing
+    # even though /new* commands keep working. Loud warning + Deploy Logs.
+    if getattr(me, "can_read_all_group_messages", None) is False:
+        logger.error(
+            "PRIVACY MODE IS ENABLED for @%s — Telegram will NOT deliver plain "
+            "group messages (word guesses / UNO plays) to the bot, so games will "
+            "look dead even though commands (/new5) work. Fix: @BotFather -> "
+            "/mybots -> @ShadowGameEnBot -> Bot Settings -> Group Privacy -> "
+            "Turn OFF (or /setprivacy -> Disable). After that, remove the bot "
+            "from each game group and re-add it so the new setting takes effect.",
+            me.username)
+
     db = await get_database()
     app.db = db
     ws_db = WordSeekCollection(db)

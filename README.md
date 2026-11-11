@@ -276,6 +276,33 @@ API server that rejects the whole rich body simply gets the HTML message.
   word pool (1058 words), ensures today's daily word, pushes the 16-command menu, and starts
   the daily-wordle + inactivity background tasks.
 
+## Troubleshooting
+
+**Bot starts but never replies to guessed words in groups (games look dead)**
+
+Almost always **Group Privacy** is still enabled in BotFather. With privacy
+mode on, Telegram never delivers plain group messages to the bot — only
+commands, replies-to-bot and @mentions — so `/new5` starts a game but no
+word message ever reaches the handler (check the startup log: the bot now
+prints a loud `PRIVACY MODE IS ENABLED` error when this is the case).
+
+Fix:
+
+1. @BotFather → `/mybots` → your bot → **Bot Settings** → **Group Privacy**
+   → **Turn off** (equivalently `/setprivacy` → **Disable**).
+2. Remove the bot from the game group and **add it back** (Telegram does not
+   reliably apply the new setting to chats the bot is already in).
+3. Re-check with `getMe`: `can_read_all_group_messages` must be `true`.
+
+Note this affects every group-text game (WordSeek, Shadow Word Guess and
+UNO plays). Private-chat flows (Daily WordSeek) are unaffected.
+
+**Bot not replying in a forum topic**
+
+Games are scoped per topic — WordSeek started in topic A only accepts guesses
+from topic A. Start the game with `/new`/`/newword` inside the topic you want
+to play in (or configure `/setgametopic`).
+
 ## Tests
 
 ```bash
