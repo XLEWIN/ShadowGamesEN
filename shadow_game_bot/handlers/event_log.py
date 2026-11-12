@@ -52,9 +52,26 @@ async def log_new_user(message: Message) -> None:
     await _safe_log(text)
 
 
+def _our_bot_in_new_members(message: Message) -> bool:
+    """True when THIS bot itself is among the new chat members.
+
+    Telegram fires ``new_chat_members`` for *every* member join, not just
+    when the bot is added — the log must only report actual bot joins.
+    """
+    members = message.new_chat_members or []
+    if app.bot_id is not None:
+        return any(m.id == app.bot_id for m in members)
+    if app.bot_username:
+        return any((m.username or "").lower() == app.bot_username.lower()
+                   for m in members)
+    return False
+
+
 async def log_bot_added(message: Message) -> None:
     chat = message.chat
     if not chat:
+        return
+    if not _our_bot_in_new_members(message):
         return
     added_by = message.from_user
     text = (

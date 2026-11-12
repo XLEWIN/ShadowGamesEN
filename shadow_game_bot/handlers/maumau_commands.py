@@ -767,8 +767,11 @@ async def left_member_handler(message: Message) -> None:
     leaver = message.left_chat_member
 
     # Bot itself kicked → event log (same as before)
-    if leaver.is_bot and app.bot_username and \
-            leaver.username == app.bot_username:
+    _bot_id = getattr(app, "bot_id", None)
+    _is_us = ((_bot_id is not None and leaver.id == _bot_id)
+              or (app.bot_username
+                  and (leaver.username or "").lower() == app.bot_username.lower()))
+    if leaver.is_bot and _is_us:
         await log_bot_removed(message)
         return
 

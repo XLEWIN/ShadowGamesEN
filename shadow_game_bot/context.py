@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Optional
 class AppContext:
     def __init__(self) -> None:
         self.bot: Any = None
+        self.bot_id: Optional[int] = None
         self.bot_username: Optional[str] = None
         self.db: Any = None
         self.ws_db: Any = None

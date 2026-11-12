@@ -253,6 +253,7 @@ BOT_COMMANDS = [
 async def on_startup(bot: Bot) -> None:
     app.bot = bot
     me = await bot.me()
+    app.bot_id = me.id
     app.bot_username = me.username
 
     # Self-diagnosis: with privacy mode enabled, Telegram only delivers

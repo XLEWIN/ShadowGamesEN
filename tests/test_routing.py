@@ -226,6 +226,27 @@ def main() -> int:
                 assert not ERRORS, f"new_chat_members errors: {ERRORS}"
                 assert "sendMessage" in API_CALLS, API_CALLS
 
+                # 7b. random HUMAN joins a group the bot is in -> NO log
+                API_CALLS.clear(); ERRORS.clear()
+                await feed({"update_id": 1021, "message": _msg(
+                    mid=70, text=None,
+                    extra={"new_chat_members": [
+                        _user(555, "Some Human", "human555", False)]})})
+                assert not ERRORS, f"human join errors: {ERRORS}"
+                assert "sendMessage" not in API_CALLS, \
+                    f"human join triggered a log: {API_CALLS}"
+
+                # 7c. random BOT joins a group the bot is in -> NO log
+                API_CALLS.clear(); ERRORS.clear()
+                await feed({"update_id": 1022, "message": _msg(
+                    mid=71, text=None,
+                    extra={"new_chat_members": [
+                        _user(556, "OtherBot", "otherbot", True)]})})
+                assert not ERRORS, f"bot join errors: {ERRORS}"
+                assert "sendMessage" not in API_CALLS, \
+                    f"other-bot join triggered a log: {API_CALLS}"
+
+
                 # 8. bot removed → event log
                 API_CALLS.clear(); ERRORS.clear()
                 await feed({"update_id": 1008, "message": _msg(
