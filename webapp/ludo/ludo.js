@@ -40,11 +40,13 @@ const HOME_PATH = {
   red:    [[13,7],[12,7],[11,7],[10,7],[9,7]],
 };
 
-const BASE_SPOTS = {
-  blue:   [[1.7,1.7],[1.7,4.3],[4.3,1.7],[4.3,4.3]],
-  yellow: [[1.7,10.7],[1.7,13.3],[4.3,10.7],[4.3,13.3]],
-  red:    [[10.7,1.7],[10.7,4.3],[13.3,1.7],[13.3,4.3]],
-  green:  [[10.7,10.7],[10.7,13.3],[13.3,10.7],[13.3,13.3]],
+// Base-yard token positions in exact board % — matched to the well circles
+// (yards span 6/6 cells; well centers sit at 28%/72% of the yard)
+const BASE_PCT = {
+  blue:   [[11.2, 11.2], [28.8, 11.2], [11.2, 28.8], [28.8, 28.8]],
+  yellow: [[71.2, 11.2], [88.8, 11.2], [71.2, 28.8], [88.8, 28.8]],
+  red:    [[11.2, 71.2], [28.8, 71.2], [11.2, 88.8], [28.8, 88.8]],
+  green:  [[71.2, 71.2], [88.8, 71.2], [71.2, 88.8], [88.8, 88.8]],
 };
 
 const FINISH_STEP = 56;      // a pawn reaching this step is home
@@ -240,8 +242,8 @@ function buildTokens() {
 function tokenXY(color, token, idx) {
   // returns [x%, y%] board coordinates
   if (token.step < 0) {
-    const [r, c] = BASE_SPOTS[color][idx];
-    return [((c + 0.5) / 15) * 100, ((r + 0.5) / 15) * 100];
+    const [x, y] = BASE_PCT[color][idx];
+    return [x, y];
   }
   if (token.step >= FINISH_STEP) {
     const ang = { blue: Math.PI, yellow: -Math.PI / 2, green: 0, red: Math.PI / 2 }[color];
