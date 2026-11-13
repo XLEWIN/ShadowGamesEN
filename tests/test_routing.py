@@ -403,6 +403,10 @@ def main() -> int:
                     mid=24, text="/setgametopic", entities=_cmd("/setgametopic"))})
                 assert hits and "setgametopic_handler" in hits[0][1], hits
 
+                hits = await route({"update_id": 2008, "message": _msg(
+                    mid=28, text="/ludo", entities=_cmd("/ludo"))})
+                assert hits and "ludo_handler" in hits[0][1], hits
+
                 # plain group text → group text router
                 hits = await route({"update_id": 2005, "message": _msg(
                     mid=25, text="wordle")})

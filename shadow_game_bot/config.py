@@ -49,6 +49,8 @@ class Config:
     database_dir: str = ""
     #: Directory for the bundled word-list JSONs (data/).
     data_dir: str = ""
+    #: URL of the Ludo mini app (GitHub Pages by default).
+    ludo_url: str = "https://xlewin.github.io/ShadowGamesEN/webapp/ludo/"
 
     # ── WordSeek env (optional) ────────────────
     time_zone: str = "Asia/Calcutta"
@@ -87,6 +89,7 @@ class Config:
             log_group_id=_parse_int(os.getenv("LOG_GROUP_ID", "-1003884436085"), -1003884436085),
             database_dir=os.getenv("DATABASE_DIR", "").strip(),
             data_dir=os.getenv("DATA_DIR", "").strip(),
+            ludo_url=os.getenv("LUDO_URL", "https://xlewin.github.io/ShadowGamesEN/webapp/ludo/").strip(),
             time_zone=os.getenv("TIME_ZONE", "Asia/Calcutta").strip() or "Asia/Calcutta",
             daily_wordle_secret=os.getenv("DAILY_WORDLE_SECRET", "shadow-wordseek-default-secret").strip()
             or "shadow-wordseek-default-secret",

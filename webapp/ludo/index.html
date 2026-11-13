@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<meta name="theme-color" content="#0d1017" />
+<title>Shadow Games · Ludo</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='18' fill='%230d1017'/><circle cx='50' cy='50' r='34' fill='%23e8b23a'/><circle cx='50' cy='50' r='24' fill='%23131a2a'/><circle cx='41' cy='41' r='4.5' fill='%23e8b23a'/><circle cx='59' cy='41' r='4.5' fill='%23e8b23a'/><circle cx='41' cy='59' r='4.5' fill='%23e8b23a'/><circle cx='59' cy='59' r='4.5' fill='%23e8b23a'/><circle cx='50' cy='50' r='4.5' fill='%23e8b23a'/></svg>" />
+<link rel="stylesheet" href="ludo.css" />
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+</head>
+<body>
+
+<!-- ══════════ MENU SCREEN ══════════ -->
+<div id="screen-menu" class="screen active">
+  <div class="menu-bg"></div>
+  <div class="menu-inner">
+    <div class="brand">
+      <div class="brand-badge">SG</div>
+      <div class="brand-text">
+        <span class="brand-top">SHADOW GAMES</span>
+        <span class="brand-sub">ᴇɴ 🇮🇳</span>
+      </div>
+    </div>
+
+    <h1 class="game-title">LUDO</h1>
+    <div class="game-subtitle">The classic dash — rebuilt for the Shadow Games.</div>
+
+    <div class="menu-buttons">
+      <button class="btn btn-primary btn-big" id="btn-bots">
+        <span class="btn-ic">🤖</span> PLAY VS BOTS
+      </button>
+      <button class="btn btn-gold btn-big" id="btn-online">
+        <span class="btn-ic">🌐</span> CREATE / JOIN ROOM
+      </button>
+      <button class="btn btn-ghost btn-big" id="btn-local">
+        <span class="btn-ic">👥</span> PLAY IN PERSON
+      </button>
+    </div>
+
+    <div class="menu-foot">
+      <a href="https://t.me/ShadowGameEnBot" target="_blank" rel="noopener">@ShadowGameEnBot</a>
+      <span class="dot">•</span>
+      <span>Cross-platform · Mobile &amp; PC</span>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ SETUP: PLAY VS BOTS ══════════ -->
+<div id="screen-setup-bots" class="screen">
+  <div class="panel">
+    <button class="btn btn-back" data-goto="screen-menu">←</button>
+    <h2>Play vs Bots</h2>
+
+    <label class="field-label">How many players?</label>
+    <div class="seg" id="seg-bot-count">
+      <button class="seg-btn" data-v="2">2</button>
+      <button class="seg-btn" data-v="3">3</button>
+      <button class="seg-btn selected" data-v="4">4</button>
+    </div>
+
+    <label class="field-label">Your color</label>
+    <div class="color-pick" id="pick-bot-color">
+      <button class="cdot c-red selected" data-v="red" aria-label="Red"></button>
+      <button class="cdot c-green" data-v="green" aria-label="Green"></button>
+      <button class="cdot c-yellow" data-v="yellow" aria-label="Yellow"></button>
+      <button class="cdot c-blue" data-v="blue" aria-label="Blue"></button>
+    </div>
+
+    <button class="btn btn-primary btn-big wide" id="start-bots">START GAME</button>
+  </div>
+</div>
+
+<!-- ══════════ SETUP: PLAY IN PERSON ══════════ -->
+<div id="screen-setup-local" class="screen">
+  <div class="panel">
+    <button class="btn btn-back" data-goto="screen-menu">←</button>
+    <h2>Play in Person</h2>
+    <label class="field-label">Players</label>
+    <div class="seg" id="seg-local-count">
+      <button class="seg-btn" data-v="2">2</button>
+      <button class="seg-btn" data-v="3">3</button>
+      <button class="seg-btn selected" data-v="4">4</button>
+    </div>
+    <button class="btn btn-primary btn-big wide" id="start-local">START GAME</button>
+  </div>
+</div>
+
+<!-- ══════════ ONLINE LOBBY ══════════ -->
+<div id="screen-online" class="screen">
+  <div class="panel">
+    <button class="btn btn-back" data-goto="screen-menu">←</button>
+    <h2>Online Room</h2>
+
+    <div class="online-grid">
+      <button class="btn btn-gold btn-big" id="btn-create-room">➕ CREATE ROOM</button>
+      <div class="or-row"><span>or</span></div>
+      <label class="field-label" for="join-code">Room code</label>
+      <div class="join-row">
+        <input id="join-code" class="code-input" maxlength="5" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="ABCDE" />
+        <button class="btn btn-primary" id="btn-join-room">JOIN</button>
+      </div>
+    </div>
+    <div id="online-status" class="online-status"></div>
+  </div>
+</div>
+
+<!-- ══════════ ONLINE ROOM (LOBBY) ══════════ -->
+<div id="screen-room" class="screen">
+  <div class="panel">
+    <button class="btn btn-back" id="leave-room">←</button>
+    <h2>Room</h2>
+    <div class="room-code-box">
+      <div class="room-code-label">ROOM CODE</div>
+      <div class="room-code" id="room-code">-----</div>
+      <button class="btn btn-ghost btn-small" id="copy-code">📋 Copy</button>
+    </div>
+    <div id="room-players" class="room-players"></div>
+    <button class="btn btn-primary btn-big wide" id="start-online" disabled>START (need 2+ players)</button>
+    <div class="room-hint">Share the code with friends — they open this same game and join.</div>
+  </div>
+</div>
+
+<!-- ══════════ GAME SCREEN ══════════ -->
+<div id="screen-game" class="screen">
+  <div class="game-top">
+    <button class="btn btn-back" id="quit-game">✕</button>
+    <div class="turn-pill" id="turn-pill"><span class="turn-dot" id="turn-dot"></span><span id="turn-text">Your turn</span></div>
+    <button class="btn btn-back" id="toggle-sound">🔊</button>
+  </div>
+
+  <div class="board-wrap">
+    <canvas id="board"></canvas>
+  </div>
+
+  <div class="game-bottom">
+    <div class="dice-zone">
+      <button id="dice-btn" class="dice-btn" aria-label="Roll dice">
+        <div class="dice" id="dice-face"></div>
+      </button>
+      <div class="dice-hint" id="dice-hint">Tap the dice</div>
+    </div>
+    <div class="players-strip" id="players-strip"></div>
+  </div>
+</div>
+
+<!-- ══════════ WIN OVERLAY ══════════ -->
+<div id="win-overlay" class="overlay">
+  <div class="win-card">
+    <div class="win-crown">👑</div>
+    <div class="win-title" id="win-title">Red wins!</div>
+    <div class="win-sub" id="win-sub"></div>
+    <div class="win-tokens" id="win-tokens"></div>
+    <button class="btn btn-gold btn-big wide" id="win-again">PLAY AGAIN</button>
+    <button class="btn btn-ghost wide" id="win-menu">MAIN MENU</button>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script src="ludo.js"></script>
+</body>
+</html>

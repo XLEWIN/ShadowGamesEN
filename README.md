@@ -179,6 +179,21 @@ Cards render as text + colour emoji (the original sticker file_ids only work
 for that specific bot).  `/start select` in private picks which group's game
 to act in when you play in several groups at once.
 
+### Ludo (mini app)
+`/ludo` — everyone — opens the **Shadow Games · Ludo** web mini app:
+
+- **Play vs Shadow Bots** — you + up to 3 AI opponents (4 / 3 / 2-player)
+- **Play in Person** — pass-and-play on one device, 2–4 players
+- **Online rooms** — host a room, share the 5-letter code, friends join
+  from their own device (WebRTC via PeerJS, up to 4 players)
+
+The app lives in `webapp/ludo/` (published on GitHub Pages at
+`https://xlewin.github.io/ShadowGamesEN/webapp/ludo/`) and works in
+Telegram's WebView as well as any modern browser — mobile and desktop.
+The host bot's chat menu button ("Play Ludo") also opens it.
+Override the URL with `LUDO_URL`. Local preview: serve the folder and open
+`index.html` (no build step, no dependencies).
+
 ### Merged behaviour
 - `/help` is the Pi-style interactive menu: one message edited in place, seven
   modules (Word Guess / WordSeek / UNO / Scores / Group / Other / Admin) with a
@@ -189,7 +204,7 @@ to act in when you play in several groups at once.
   menu + coloured keyboard); `/start help` opens the interactive help menu;
   `/start select` opens the UNO multi-group picker.
 - `/gban`/`/ungban` are shared: banned users are blocked in both games.
-- Top-level menu has 16 commands (`setMyCommands` at startup).
+- Top-level menu has 17 commands (`setMyCommands` at startup).
 
 ## Rich Messages & premium emoji (ported from Pi)
 

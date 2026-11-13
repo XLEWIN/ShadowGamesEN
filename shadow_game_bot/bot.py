@@ -39,6 +39,7 @@ from shadow_game_bot.core.engine import GameEngine
 from shadow_game_bot.core.state import DMActionType, PendingDMAction
 from shadow_game_bot.core.maumau import GameManager
 from shadow_game_bot.services.daily_word import daily_wordle_cron_task, ensure_daily_word
+from shadow_game_bot.handlers.ludo import ludo_handler
 from shadow_game_bot.handlers.start import start_handler, start_callback
 from shadow_game_bot.handlers.menu import help_callback
 from shadow_game_bot.handlers.callbacks import callback_handler
@@ -236,6 +237,7 @@ BOT_COMMANDS = [
     ("modes", "UNO game modes"),
     ("unostats", "Your UNO stats"),
     ("game", "Start a Word Guess game"),
+    ("ludo", "Play Ludo (mini app)"),
     ("daily", "Daily WordSeek (private only)"),
     ("end", "End the WordSeek game"),
     ("stop", "Stop the Word Guess game"),
@@ -432,6 +434,7 @@ def build_dispatcher() -> Dispatcher:
     # Word Guess (shadow) commands
     for name, handler in [
         ("game", game_start_handler),
+        ("ludo", ludo_handler),
         ("stop", stop_handler),
         ("endgame", stop_handler),
         ("ranking", ranking_handler),
