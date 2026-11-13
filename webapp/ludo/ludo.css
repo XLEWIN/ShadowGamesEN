@@ -49,12 +49,18 @@ html, body {
 .screen.active { display: flex; }
 
 /* ══════════ shared backgrounds ══════════ */
-.menu-bg, .game-bg {
+.menu-bg {
   position: absolute; inset: 0; z-index: -1;
   background:
     radial-gradient(1100px 700px at 50% -15%, rgba(122, 63, 199, 0.32) 0%, transparent 60%),
     url('assets/nebula.webp') center / cover no-repeat,
     #120a1e;
+}
+.game-bg {
+  position: absolute; inset: 0; z-index: -1;
+  background:
+    radial-gradient(1100px 650px at 50% -18%, rgba(80, 60, 180, 0.22) 0%, transparent 55%),
+    #060c1a;
 }
 
 /* ══════════ MENU ══════════ */
@@ -175,7 +181,12 @@ html, body {
 .room-hint { color: var(--muted); font-size: 12px; text-align: center; }
 
 /* ══════════ GAME SCREEN ══════════ */
-#screen-game { justify-content: flex-start; }
+#screen-game {
+  justify-content: flex-start;
+  background:
+    radial-gradient(900px 550px at 50% -15%, #141d3a 0%, transparent 55%),
+    #060c1a;
+}
 
 .game-top {
   display: flex; align-items: center; justify-content: space-between;
@@ -204,11 +215,99 @@ html, body {
   flex: 1; display: flex; align-items: center; justify-content: center;
   width: 100%; min-height: 0; padding: 2px;
 }
-#board {
-  border-radius: 20px;
-  box-shadow: 0 18px 55px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255,255,255,.08), 0 0 70px rgba(120, 60, 220, 0.25);
-  max-width: 100%; max-height: 100%;
-  touch-action: none;
+/* ══════════ LUDO BOARD (DOM grid — foony-identical look) ══════════ */
+.ludo-board {
+  position: relative;
+  width: min(94vw, 56vh, 560px);
+  aspect-ratio: 1 / 1;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 18px 55px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255,255,255,.07);
+  background: #060c1a;
+}
+.ludo-cells {
+  position: absolute; inset: 0;
+  display: grid;
+  grid-template-columns: repeat(15, 1fr);
+  grid-template-rows: repeat(15, 1fr);
+}
+.cell {
+  position: relative;
+  border: 1px solid rgba(0, 0, 0, 0.35);
+  background: #ffffff;
+  display: flex; align-items: center; justify-content: center;
+}
+.cell-safe { background: #e5e7eb; }
+.cell-red    { background: #ef4444; }
+.cell-yellow { background: #facc15; }
+.cell-green  { background: #22c55e; }
+.cell-blue   { background: #3b82f6; }
+.star {
+  width: 52%; height: 52%;
+  color: #9ca3af;
+  pointer-events: none;
+}
+.cell-red .star, .cell-yellow .star, .cell-green .star, .cell-blue .star { color: rgba(255,255,255,.6); }
+
+.yard { position: relative; display: block; }
+.yard-blue   { background: #1e3a8a; grid-area: 1 / 1 / 7 / 7; }
+.yard-yellow { background: #854d0e; grid-area: 1 / 10 / 7 / 16; }
+.yard-red    { background: #7f1d1d; grid-area: 10 / 1 / 16 / 7; }
+.yard-green  { background: #14532d; grid-area: 10 / 10 / 16 / 16; }
+.well {
+  position: absolute;
+  width: 40%; height: 40%;
+  border-radius: 50%;
+  border: 4px solid rgba(0, 0, 0, 0.12);
+  background: rgba(0, 0, 0, 0.22);
+  box-shadow: inset 0 4px 10px rgba(0,0,0,.5);
+}
+.well-1 { left: 8%;  top: 8%; }
+.well-2 { right: 8%; top: 8%; }
+.well-3 { left: 8%;  bottom: 8%; }
+.well-4 { right: 8%; bottom: 8%; }
+
+.ludo-pinwheel {
+  position: absolute;
+  left: 40%; top: 40%;
+  width: 20%; height: 20%;
+  z-index: 2;
+}
+.pin-tri { position: absolute; inset: 0; }
+.pin-tri-blue   { clip-path: polygon(0 0, 0 100%, 50% 50%); background: #3b82f6; }
+.pin-tri-yellow { clip-path: polygon(0 0, 100% 0, 50% 50%); background: #facc15; }
+.pin-tri-green  { clip-path: polygon(100% 0, 100% 100%, 50% 50%); background: #22c55e; }
+.pin-tri-red    { clip-path: polygon(0 100%, 100% 100%, 50% 50%); background: #ef4444; }
+.ludo-pin-coin {
+  position: absolute; left: 50%; top: 50%;
+  width: 32%; height: 32%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: #0f0c1c;
+  border: 3px solid #facc15;
+  color: #facc15;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 900; font-size: 11px; letter-spacing: 0.5px;
+  z-index: 3;
+}
+
+.ludo-pieces { position: absolute; inset: 0; z-index: 4; pointer-events: none; }
+.token {
+  position: absolute;
+  width: 6.1%; height: 6.1%;
+  transform: translate(-50%, -78%);
+  pointer-events: auto;
+  cursor: pointer;
+  transition: left .18s ease, top .18s ease;
+  filter: drop-shadow(0 3px 3px rgba(0,0,0,.55));
+}
+.token.movable {
+  animation: token-pulse 1s ease-in-out infinite;
+  filter: drop-shadow(0 0 9px rgba(255,255,255,.95)) drop-shadow(0 3px 3px rgba(0,0,0,.55));
+}
+@keyframes token-pulse {
+  0%, 100% { transform: translate(-50%, -78%) scale(1); }
+  50% { transform: translate(-50%, -88%) scale(1.12); }
 }
 
 .game-bottom {
@@ -246,8 +345,8 @@ html, body {
 .players-strip { display: flex; flex-direction: column; gap: 7px; flex: 1; align-items: stretch; max-width: 260px; }
 .pstrip {
   display: flex; align-items: center; gap: 9px;
-  background: rgba(28, 20, 48, 0.92); border: 2px solid var(--line);
-  border-radius: 14px; padding: 5px 12px 5px 6px; font-size: 12px;
+  background: rgba(15, 23, 42, 0.92); border: 2px solid #26324e;
+  border-radius: 12px; padding: 6px 12px 6px 7px; font-size: 12px;
 }
 .pstrip.active { border-color: var(--green); box-shadow: 0 0 18px rgba(61, 220, 132, 0.3); }
 .pstrip img.ps-av { width: 34px; height: 34px; border-radius: 50%; background: #120a1e; flex-shrink: 0; }
@@ -287,6 +386,15 @@ html, body {
 }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
+@media (max-height: 760px) {
+  .ludo-board { width: min(92vw, 48vh); }
+  .pstrip { padding: 4px 10px 4px 6px; font-size: 11px; }
+  .pstrip img.ps-av { width: 28px; height: 28px; }
+  .players-strip { gap: 4px; }
+  .turn-banner { display: none; }
+  .dice { width: 56px; height: 56px; }
+  .game-top { padding-top: 4px; }
+}
 @media (max-width: 480px) {
   .btn-big { font-size: 16px; padding: 16px 14px; }
   .game-icon-wrap { width: 110px; height: 110px; }

@@ -42,9 +42,9 @@
 
     <label class="field-label">Bot count</label>
     <div class="seg" id="seg-bot-count">
-      <button class="seg-btn" data-v="2">1</button>
-      <button class="seg-btn" data-v="3">2</button>
-      <button class="seg-btn selected" data-v="4">3</button>
+      <button class="seg-btn" data-v="1">1</button>
+      <button class="seg-btn" data-v="2">2</button>
+      <button class="seg-btn selected" data-v="3">3</button>
     </div>
 
     <label class="field-label">Your color</label>
@@ -121,7 +121,17 @@
   <div class="turn-banner" id="turn-banner">All pawns start in base.</div>
 
   <div class="game-main">
-    <canvas id="board"></canvas>
+    <div id="board" class="ludo-board" aria-label="Ludo board">
+      <div class="ludo-cells" id="ludo-cells"></div>
+      <div class="ludo-pinwheel" id="ludo-pinwheel">
+        <span class="pin-tri pin-tri-blue"></span>
+        <span class="pin-tri pin-tri-yellow"></span>
+        <span class="pin-tri pin-tri-green"></span>
+        <span class="pin-tri pin-tri-red"></span>
+        <span class="ludo-pin-coin">SG</span>
+      </div>
+      <div class="ludo-pieces" id="ludo-pieces"></div>
+    </div>
   </div>
 
   <div class="game-bottom">

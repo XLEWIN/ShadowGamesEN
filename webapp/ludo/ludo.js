@@ -159,164 +159,110 @@ function drawDie(n) {
   }
 }
 
-/* ────────────────────────── Board rendering ────────────────────────── */
-const canvas = () => $('board');
-const ctx2d = () => canvas().getContext('2d');
-let cell = 32, originX = 0, originY = 0, dpr = 1;
-
-function boardSize() {
-  return Math.min(window.innerWidth - 16, window.innerHeight * 0.66, 640);
-}
-function fitCanvas() {
-  const size = boardSize();
-  dpr = Math.max(1, window.devicePixelRatio || 1);
-  const c = canvas();
-  c.style.width = size + 'px';
-  c.style.height = size + 'px';
-  c.width = Math.round(size * dpr);
-  c.height = Math.round(size * dpr);
-  cell = size / 15;
-  originX = 0; originY = 0;
-}
-
-const cellXY = (r, c) => [originX + (c + 0.5) * cell, originY + (r + 0.5) * cell];
-
-function drawBoard(highlightTokens) {
-  const c = canvas();
-  const g = ctx2d();
-  g.setTransform(dpr, 0, 0, dpr, 0, 0);
-  const S = cell * 15;
-
-  // background panel
-  g.clearRect(0, 0, S, S);
-  g.fillStyle = '#171226';
-  roundRect(g, 0, 0, S, S, cell * 0.5);
-  g.fill();
-
-  // base yards (foony layout: TL blue, TR yellow, BL red, BR green)
-  drawYard(g, 0, 0, COLORS.blue, '#16324f', '#234b71');
-  drawYard(g, 0, 9, COLORS.yellow, '#3f3106', '#584510');
-  drawYard(g, 9, 0, COLORS.red, '#471510', '#5f211a');
-  drawYard(g, 9, 9, COLORS.green, '#06301c', '#0c4a2a');
-
-  // main path cells
-  const START_FILL = { 0: COLORS.blue.hex, 13: COLORS.yellow.hex, 26: COLORS.green.hex, 39: COLORS.red.hex };
-  MAIN_PATH.forEach(([r, cIdx], i) => {
-    const fill = START_FILL[i] || '#d9d9de';
-    drawCell(g, r, cIdx, fill);
-    if (SAFE.has(i)) drawStar(g, r, cIdx, START_FILL[i] ? '#f2c832' : '#8b8b94');
-  });
-
-  // home stretches
-  for (const color of ORDER) {
-    HOME_PATH[color].forEach(([r, cIdx]) => drawCell(g, r, cIdx, COLORS[color].hex));
-  }
-
-  // center: 4 triangles (pinwheel) + gold coin
-  const mid = cell * 7.5;
-  const tri = (pts, fill) => { g.fillStyle = fill; g.beginPath(); g.moveTo(pts[0][0], pts[0][1]); for (const p of pts.slice(1)) g.lineTo(p[0], p[1]); g.closePath(); g.fill(); };
-  tri([[mid, mid], [cell * 6, cell * 6], [cell * 6, cell * 9]], COLORS.blue.hex);
-  tri([[mid, mid], [cell * 6, cell * 6], [cell * 9, cell * 6]], COLORS.yellow.hex);
-  tri([[mid, mid], [cell * 9, cell * 6], [cell * 9, cell * 9]], COLORS.green.hex);
-  tri([[mid, mid], [cell * 6, cell * 9], [cell * 9, cell * 9]], COLORS.red.hex);
-  g.fillStyle = '#14101f';
-  g.beginPath(); g.arc(mid, mid, cell * 1.02, 0, Math.PI * 2); g.fill();
-  g.strokeStyle = COLORS.yellow.hex; g.lineWidth = cell * 0.09; g.stroke();
-  g.fillStyle = COLORS.yellow.hex;
-  g.font = `900 ${cell * 0.8}px 'Exo 2', sans-serif`;
-  g.textAlign = 'center'; g.textBaseline = 'middle';
-  g.fillText('SG', mid, mid + cell * 0.05);
-
-  // grid lines over path area
-  g.strokeStyle = 'rgba(10, 10, 16, 0.4)';
-  g.lineWidth = 1;
-  for (const [r, cIdx] of MAIN_PATH) strokeCell(g, r, cIdx);
-  for (const color of ORDER) for (const [r, cIdx] of HOME_PATH[color]) strokeCell(g, r, cIdx);
-
-  // tokens
-  drawTokens(g, highlightTokens || new Set());
-}
-
-function drawCell(g, r, c, fill) {
-  g.fillStyle = fill;
-  roundRect(g, c * cell + 1, r * cell + 1, cell - 2, cell - 2, cell * 0.14);
-  g.fill();
-}
-function strokeCell(g, r, c) {
-  roundRect(g, c * cell + 1, r * cell + 1, cell - 2, cell - 2, cell * 0.14);
-  g.stroke();
-}
-function drawYard(g, r0, c0, col, panelFill, pathFill) {
-  const x = c0 * cell, y = r0 * cell, s = cell * 6;
-  // outer panel
-  g.fillStyle = panelFill;
-  roundRect(g, x + 1, y + 1, s - 2, s - 2, cell * 0.4);
-  g.fill();
-  g.strokeStyle = col.hex; g.lineWidth = cell * 0.1;
-  roundRect(g, x + cell * 0.4, y + cell * 0.4, s - cell * 0.8, s - cell * 0.8, cell * 0.32);
-  g.stroke();
-  // inner dark area where pawns sit
-  g.fillStyle = pathFill;
-  roundRect(g, x + cell * 1.15, y + cell * 1.15, s - cell * 2.3, s - cell * 2.3, cell * 0.22);
-  g.fill();
-  g.strokeStyle = 'rgba(0,0,0,0.4)'; g.lineWidth = cell * 0.05; g.stroke();
-}
-function drawStar(g, r, c, color) {
-  const [x, y] = cellXY(r, c);
-  const R = cell * 0.26, ri = R * 0.45;
-  g.fillStyle = color;
-  g.beginPath();
-  for (let i = 0; i < 10; i++) {
-    const ang = -Math.PI / 2 + (i * Math.PI) / 5;
-    const rad = i % 2 === 0 ? R : ri;
-    const px = x + Math.cos(ang) * rad, py = y + Math.sin(ang) * rad;
-    i === 0 ? g.moveTo(px, py) : g.lineTo(px, py);
-  }
-  g.closePath(); g.fill();
-}
-function roundRect(g, x, y, w, h, r) {
-  r = Math.min(r, w / 2, h / 2);
-  g.beginPath();
-  g.moveTo(x + r, y);
-  g.arcTo(x + w, y, x + w, y + h, r);
-  g.arcTo(x + w, y + h, x, y + h, r);
-  g.arcTo(x, y + h, x, y, r);
-  g.arcTo(x, y, x + w, y, r);
-  g.closePath();
-}
-
-// Pawn sprites (foony-style glossy pawns) — preload and re-render when ready
-const PIECE_IMG = {};
+/* ────────────────────────── Board rendering (DOM grid — foony look) ────────────────────────── */
+const STAR_SVG = '<svg class="star" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>';
+const MAIN_PATH_INDEX = {};
+MAIN_PATH.forEach(([r, c], i) => { MAIN_PATH_INDEX[r + ',' + c] = i; });
+const HOME_LOOKUP = {};
 for (const color of ORDER) {
-  const img = new Image();
-  img.onload = () => render();
-  img.onerror = () => render();
-  img.src = `assets/pieces_${color}.webp`;
-  PIECE_IMG[color] = img;
+  HOME_PATH[color].forEach(([r, c]) => { HOME_LOOKUP[r + ',' + c] = color; });
+}
+// Solid colored arm ranges on the main path (like foony's arms)
+const ARM_FILL = {};
+for (const [col, [a, b]] of Object.entries({ blue: [0, 4], yellow: [11, 17], green: [25, 31], red: [36, 43] })) {
+  for (let i = a; i <= b; i++) ARM_FILL[i] = col;
 }
 
-// Where a token should be drawn (pixel center coords)
+let cellsBuilt = false;
+function buildBoard() {
+  if (cellsBuilt) return;
+  cellsBuilt = true;
+  const cells = $('ludo-cells');
+  if (!cells) return;
+  cells.innerHTML = '';
+
+  // Yards (positioned via grid-area classes)
+  for (const color of ORDER) {
+    const yard = document.createElement('div');
+    yard.className = 'yard yard-' + color;
+    yard.innerHTML = '<div class="well well-1"></div><div class="well well-2"></div>'
+      + '<div class="well well-3"></div><div class="well well-4"></div>';
+    cells.appendChild(yard);
+  }
+
+  // Cross cells: arms, home stretches, starts, white track, safe silvers
+  for (let r = 0; r < 15; r++) {
+    for (let c = 0; c < 15; c++) {
+      const inCross = (r >= 6 && r <= 8) || (c >= 6 && c <= 8);
+      if (!inCross) continue;
+      const d = document.createElement('div');
+      d.style.gridRow = String(r + 1);
+      d.style.gridColumn = String(c + 1);
+      const key = r + ',' + c;
+      const home = HOME_LOOKUP[key];
+      const mp = MAIN_PATH_INDEX[key];
+      if (home) {
+        d.className = 'cell cell-' + home;
+      } else if (mp !== undefined) {
+        let cls = 'cell';
+        if (ARM_FILL[mp]) cls += ' cell-' + ARM_FILL[mp];
+        else if (SAFE.has(mp)) cls += ' cell-safe';
+        d.className = cls;
+        if (SAFE.has(mp)) d.innerHTML = STAR_SVG;
+      } else {
+        d.className = 'cell';
+      }
+      cells.appendChild(d);
+    }
+  }
+}
+
+// Token <img> elements — created once, repositioned on every render
+let tokenEls = [];
+function buildTokens() {
+  const layer = $('ludo-pieces');
+  if (!layer || tokenEls.length) return;
+  for (const color of ORDER) {
+    for (let i = 0; i < 4; i++) {
+      const img = document.createElement('img');
+      img.className = 'token';
+      img.src = `assets/pieces_${color}.webp`;
+      img.alt = color;
+      img.dataset.color = color;
+      img.dataset.idx = String(i);
+      img.draggable = false;
+      layer.appendChild(img);
+      tokenEls.push(img);
+    }
+  }
+}
+
 function tokenXY(color, token, idx) {
+  // returns [x%, y%] board coordinates
   if (token.step < 0) {
     const [r, c] = BASE_SPOTS[color][idx];
-    return [(c + 0.5) * cell, (r + 0.5) * cell];
+    return [((c + 0.5) / 15) * 100, ((r + 0.5) / 15) * 100];
   }
   if (token.step >= FINISH_STEP) {
     const ang = { blue: Math.PI, yellow: -Math.PI / 2, green: 0, red: Math.PI / 2 }[color];
-    return [cell * 7.5 + Math.cos(ang) * cell * 0.42, cell * 7.5 + Math.sin(ang) * cell * 0.42];
+    return [50 + Math.cos(ang) * 2.9, 50 + Math.sin(ang) * 2.9];
   }
   if (token.step >= HOME_ENTRY_STEP) {
     const [r, c] = HOME_PATH[color][token.step - HOME_ENTRY_STEP];
-    return cellXY(r, c);
+    return [((c + 0.5) / 15) * 100, ((r + 0.5) / 15) * 100];
   }
   const p = MAIN_PATH[(START_INDEX[color] + token.step) % 52];
-  return cellXY(p[0], p[1]);
+  return [((p[1] + 0.5) / 15) * 100, ((p[0] + 0.5) / 15) * 100];
 }
 
-let tokenPositions = [];   // last drawn positions, for hit testing
-function drawTokens(g, highlight) {
-  tokenPositions = [];
-  // group tokens that share a cell to offset them
+function render(highlight) {
+  const board = $('board');
+  if (!board) return;
+  buildBoard();
+  buildTokens();
+  const hl = highlight instanceof Set ? highlight : new Set(highlight || []);
+
+  // Group tokens sharing a cell to fan them out
   const buckets = new Map();
   for (const color of ORDER) {
     if (!state.tokens[color]) continue;
@@ -324,67 +270,32 @@ function drawTokens(g, highlight) {
       const [x, y] = tokenXY(color, tok, i);
       const key = tok.step < 0 ? `${color}-base-${i}` :
         tok.step >= FINISH_STEP ? `done-${color}-${i}` :
-        `${Math.round(x)},${Math.round(y)}`;
+        `${Math.round(x * 10)},${Math.round(y * 10)}`;
       if (!buckets.has(key)) buckets.set(key, []);
       buckets.get(key).push({ color, idx: i, x, y, step: tok.step });
     });
   }
-  for (const [key, list] of buckets) {
-    const n = list.length;
+  const display = new Map();
+  for (const list of buckets.values()) {
     list.forEach((t, i) => {
-      let x = t.x, y = t.y, radius = cell * 0.33;
-      if (n > 1 && t.step >= 0) {
-        const ang = (i / n) * Math.PI * 2 - Math.PI / 2;
-        const off = cell * 0.17;
-        x += Math.cos(ang) * off; y += Math.sin(ang) * off;
-        radius = cell * 0.22;
+      let x = t.x, y = t.y;
+      if (list.length > 1 && t.step >= 0) {
+        const ang = (i / list.length) * Math.PI * 2 - Math.PI / 2;
+        x += Math.cos(ang) * 1.6; y += Math.sin(ang) * 1.6;
       }
-      const col = COLORS[t.color];
-      const hl = highlight.has(`${t.color}:${t.idx}`);
-
-      // ground shadow ellipse
-      g.beginPath(); g.ellipse(x, y + radius * 0.72, radius * 0.95, radius * 0.4, 0, 0, Math.PI * 2);
-      g.fillStyle = 'rgba(0,0,0,0.42)'; g.fill();
-
-      // pawn sprite (fallback: glossy circle)
-      const img = PIECE_IMG[t.color];
-      if (img && img.complete && img.naturalWidth > 0) {
-        const size = radius * 2.5;
-        const spriteY = y + radius * 0.55 - size * 0.5;
-        if (hl) {
-          g.save();
-          g.shadowColor = '#ffffff';
-          g.shadowBlur = cell * 0.45;
-          g.drawImage(img, x - size / 2, spriteY, size, size);
-          g.drawImage(img, x - size / 2, spriteY, size, size);
-          g.restore();
-        } else {
-          g.drawImage(img, x - size / 2, spriteY, size, size);
-        }
-      } else {
-        const grad = g.createRadialGradient(x - radius * 0.35, y - radius * 0.4, radius * 0.15, x, y, radius);
-        grad.addColorStop(0, col.light);
-        grad.addColorStop(0.55, col.hex);
-        grad.addColorStop(1, col.dark);
-        g.beginPath(); g.arc(x, y, radius, 0, Math.PI * 2);
-        g.fillStyle = grad; g.fill();
-        g.lineWidth = cell * 0.055; g.strokeStyle = hl ? '#ffffff' : 'rgba(0,0,0,0.55)'; g.stroke();
-      }
-
-      if (hl) {
-        g.beginPath(); g.arc(x, y, radius + cell * 0.09, 0, Math.PI * 2);
-        g.strokeStyle = 'rgba(255,255,255,0.85)';
-        g.lineWidth = cell * 0.06;
-        g.stroke();
-      }
-      tokenPositions.push({ color: t.color, idx: t.idx, x, y, r: radius, step: t.step });
+      display.set(`${t.color}:${t.idx}`, { x, y });
     });
   }
-}
 
-function render(highlight) {
-  if (!$('board')) return;
-  drawBoard(highlight || new Set());
+  for (const img of tokenEls) {
+    const key = img.dataset.color + ':' + img.dataset.idx;
+    const pos = display.get(key);
+    if (!pos) { img.style.display = 'none'; continue; }
+    img.style.display = '';
+    img.style.left = pos.x + '%';
+    img.style.top = pos.y + '%';
+    img.classList.toggle('movable', hl.has(key));
+  }
 }
 
 /* ────────────────────────── Turn / rules engine ────────────────────────── */
@@ -673,19 +584,15 @@ function scheduleIfBot() {
 
 /* ────────────────────────── Input: tap a token ────────────────────────── */
 function boardClick(ev) {
+  const tokenEl = ev.target.closest && ev.target.closest('.token');
+  if (!tokenEl) return;
   if (!state.awaitingMove || currentPlayer().isBot || currentPlayer().isRemote) return;
-  const c = canvas();
-  const rect = c.getBoundingClientRect();
-  const x = (ev.clientX - rect.left), y = (ev.clientY - rect.top);
   const color = currentColor();
-  let best = null, bestDist = Infinity;
-  for (const t of tokenPositions) {
-    if (t.color !== color) continue;
-    if (!state.highlight.includes(`${t.color}:${t.idx}`)) continue;
-    const d = Math.hypot(t.x - x, t.y - y);
-    if (d < t.r + cell * 0.25 && d < bestDist) { best = t; bestDist = d; }
-  }
-  if (best) { haptic('light'); doMove(best.idx); }
+  if (tokenEl.dataset.color !== color) return;
+  const idx = +tokenEl.dataset.idx;
+  if (!state.highlight.includes(`${color}:${idx}`)) return;
+  haptic('light');
+  doMove(idx);
 }
 
 /* ────────────────────────── Game setup ────────────────────────── */
@@ -702,7 +609,6 @@ function startGameWithPlayers(mode, players) {
   state.highlight = [];
   drawDie(5);
   $('win-overlay').classList.remove('active');
-  fitCanvas();
   showScreen('screen-game');
   $('dice-btn').disabled = false;
   updateHeader();
@@ -1031,7 +937,8 @@ function bindUI() {
   });
 
   $('dice-btn').addEventListener('click', () => { haptic(); rollDice(true); });
-  canvas().addEventListener('pointerdown', boardClick);
+  const piecesLayer = $('ludo-pieces');
+  if (piecesLayer) piecesLayer.addEventListener('pointerdown', boardClick);
 
   $('win-again').addEventListener('click', () => {
     haptic('medium');
@@ -1046,7 +953,7 @@ function bindUI() {
     leaveGame();
   });
 
-  window.addEventListener('resize', () => { if ($('screen-game').classList.contains('active')) { fitCanvas(); render(new Set(state.highlight || [])); } });
+  window.addEventListener('resize', () => { if ($('screen-game').classList.contains('active')) render(new Set(state.highlight || [])); });
 }
 
 function leaveGame() {
