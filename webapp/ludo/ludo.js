@@ -2,13 +2,20 @@
 'use strict';
 
 /* ────────────────────────── Board geometry (15×15 grid) ────────────────────────── */
-const ORDER = ['red', 'green', 'yellow', 'blue'];
+const ORDER = ['blue', 'yellow', 'green', 'red'];
 const COLORS = {
-  red:    { name: 'Red',    hex: '#ff5a5a', dark: '#8f1d1d', light: '#ff8a8a', text: '#2b0505' },
-  green:  { name: 'Green',  hex: '#37d67a', dark: '#0d5c2c', light: '#7dffa8', text: '#052b12' },
-  yellow: { name: 'Yellow', hex: '#ffd23f', dark: '#8f6f08', light: '#fff0a0', text: '#2b1c04' },
-  blue:   { name: 'Blue',   hex: '#4aa8ff', dark: '#123f73', light: '#8fd0ff', text: '#041a30' },
+  red:    { name: 'Red',    hex: '#d64533', dark: '#6b1a10', light: '#ff8a75', text: '#2b0505' },
+  yellow: { name: 'Yellow', hex: '#e0bd3a', dark: '#6e5200', light: '#ffee9c', text: '#2b1c04' },
+  green:  { name: 'Green',  hex: '#27ae5f', dark: '#064a22', light: '#7dffa8', text: '#052b12' },
+  blue:   { name: 'Blue',   hex: '#2f5fb8', dark: '#0d2748', light: '#8fd0ff', text: '#041a30' },
 };
+const AVATARS = {
+  red: 'assets/petey.webp',
+  yellow: 'assets/bomby.webp',
+  green: 'assets/bruno.webp',
+  blue: 'assets/bulby.webp',
+};
+const avatarFor = (pl) => (pl && pl.isBot) ? (AVATARS[pl.color] || 'assets/guest.webp') : 'assets/guest.webp';
 
 // 52 main path cells, clockwise-ish, starting at Red's entry square.
 const MAIN_PATH = [
@@ -22,22 +29,22 @@ const MAIN_PATH = [
   [8,5],[8,4],[8,3],[8,2],[8,1],[8,0],
   [7,0],[6,0],
 ];
-const START_INDEX = { red: 0, green: 13, yellow: 26, blue: 39 };
+const START_INDEX = { blue: 0, yellow: 13, green: 26, red: 39 };
 // Path indices that are safe from capture (starts + star cells).
 const SAFE = new Set([0, 8, 13, 21, 26, 34, 39, 47]);
 
 const HOME_PATH = {
-  red:    [[7,1],[7,2],[7,3],[7,4],[7,5]],
-  green:  [[1,7],[2,7],[3,7],[4,7],[5,7]],
-  yellow: [[7,13],[7,12],[7,11],[7,10],[7,9]],
-  blue:   [[13,7],[12,7],[11,7],[10,7],[9,7]],
+  blue:   [[7,1],[7,2],[7,3],[7,4],[7,5]],
+  yellow: [[1,7],[2,7],[3,7],[4,7],[5,7]],
+  green:  [[7,13],[7,12],[7,11],[7,10],[7,9]],
+  red:    [[13,7],[12,7],[11,7],[10,7],[9,7]],
 };
 
 const BASE_SPOTS = {
-  red:    [[10.7,1.7],[10.7,4.3],[13.3,1.7],[13.3,4.3]],
-  green:  [[1.7,1.7],[1.7,4.3],[4.3,1.7],[4.3,4.3]],
+  blue:   [[1.7,1.7],[1.7,4.3],[4.3,1.7],[4.3,4.3]],
   yellow: [[1.7,10.7],[1.7,13.3],[4.3,10.7],[4.3,13.3]],
-  blue:   [[10.7,10.7],[10.7,13.3],[13.3,10.7],[13.3,13.3]],
+  red:    [[10.7,1.7],[10.7,4.3],[13.3,1.7],[13.3,4.3]],
+  green:  [[10.7,10.7],[10.7,13.3],[13.3,10.7],[13.3,13.3]],
 };
 
 const FINISH_STEP = 56;      // a pawn reaching this step is home
@@ -100,8 +107,8 @@ function tgReady() {
   try {
     tg.ready(); tg.expand();
     tg.disableVerticalSwipes && tg.disableVerticalSwipes();
-    tg.setHeaderColor && tg.setHeaderColor('#0d1017');
-    tg.setBackgroundColor && tg.setBackgroundColor('#0d1017');
+    tg.setHeaderColor && tg.setHeaderColor('#120a1e');
+    tg.setBackgroundColor && tg.setBackgroundColor('#120a1e');
   } catch (e) { /* not in Telegram — fine */ }
 }
 function tgName() {
@@ -126,6 +133,14 @@ function toast(msg) {
   el.classList.add('show');
   clearTimeout(el._t);
   el._t = setTimeout(() => el.classList.remove('show'), 2600);
+}
+
+function setBanner(msg, ms = 2600) {
+  const el = $('turn-banner');
+  if (!el) return;
+  el.textContent = msg;
+  clearTimeout(el._t);
+  el._t = setTimeout(() => { el.textContent = 'All pawns start in base.'; }, ms);
 }
 
 /* ────────────────────────── Dice rendering ────────────────────────── */
@@ -172,27 +187,24 @@ function drawBoard(highlightTokens) {
   g.setTransform(dpr, 0, 0, dpr, 0, 0);
   const S = cell * 15;
 
-  // background
+  // background panel
   g.clearRect(0, 0, S, S);
-  g.fillStyle = '#101623';
+  g.fillStyle = '#171226';
   roundRect(g, 0, 0, S, S, cell * 0.5);
   g.fill();
 
-  // base yards
-  drawYard(g, 0, 0, COLORS.green);
-  drawYard(g, 0, 9, COLORS.yellow);
-  drawYard(g, 9, 0, COLORS.red);      // red = bottom-left
-  drawYard(g, 9, 9, COLORS.blue);
+  // base yards (foony layout: TL blue, TR yellow, BL red, BR green)
+  drawYard(g, 0, 0, COLORS.blue, '#16324f', '#234b71');
+  drawYard(g, 0, 9, COLORS.yellow, '#3f3106', '#584510');
+  drawYard(g, 9, 0, COLORS.red, '#471510', '#5f211a');
+  drawYard(g, 9, 9, COLORS.green, '#06301c', '#0c4a2a');
 
   // main path cells
+  const START_FILL = { 0: COLORS.blue.hex, 13: COLORS.yellow.hex, 26: COLORS.green.hex, 39: COLORS.red.hex };
   MAIN_PATH.forEach(([r, cIdx], i) => {
-    let fill = '#e9e5d8';
-    if (i === 0) fill = COLORS.red.hex;
-    else if (i === 13) fill = COLORS.green.hex;
-    else if (i === 26) fill = COLORS.yellow.hex;
-    else if (i === 39) fill = COLORS.blue.hex;
+    const fill = START_FILL[i] || '#d9d9de';
     drawCell(g, r, cIdx, fill);
-    if (SAFE.has(i)) drawStar(g, r, cIdx, '#a4453c');
+    if (SAFE.has(i)) drawStar(g, r, cIdx, START_FILL[i] ? '#f2c832' : '#8b8b94');
   });
 
   // home stretches
@@ -200,23 +212,23 @@ function drawBoard(highlightTokens) {
     HOME_PATH[color].forEach(([r, cIdx]) => drawCell(g, r, cIdx, COLORS[color].hex));
   }
 
-  // center: 4 triangles + gold circle
+  // center: 4 triangles (pinwheel) + gold coin
   const mid = cell * 7.5;
   const tri = (pts, fill) => { g.fillStyle = fill; g.beginPath(); g.moveTo(pts[0][0], pts[0][1]); for (const p of pts.slice(1)) g.lineTo(p[0], p[1]); g.closePath(); g.fill(); };
-  tri([[mid, mid], [cell * 6, cell * 6], [cell * 6, cell * 9]], COLORS.red.hex);
-  tri([[mid, mid], [cell * 6, cell * 6], [cell * 9, cell * 6]], COLORS.green.hex);
-  tri([[mid, mid], [cell * 9, cell * 6], [cell * 9, cell * 9]], COLORS.yellow.hex);
-  tri([[mid, mid], [cell * 6, cell * 9], [cell * 9, cell * 9]], COLORS.blue.hex);
-  g.fillStyle = '#e8b23a';
-  g.beginPath(); g.arc(mid, mid, cell * 1.05, 0, Math.PI * 2); g.fill();
-  g.strokeStyle = '#7a520c'; g.lineWidth = cell * 0.12; g.stroke();
-  g.fillStyle = '#241a04';
-  g.font = `900 ${cell * 0.85}px Segoe UI, sans-serif`;
+  tri([[mid, mid], [cell * 6, cell * 6], [cell * 6, cell * 9]], COLORS.blue.hex);
+  tri([[mid, mid], [cell * 6, cell * 6], [cell * 9, cell * 6]], COLORS.yellow.hex);
+  tri([[mid, mid], [cell * 9, cell * 6], [cell * 9, cell * 9]], COLORS.green.hex);
+  tri([[mid, mid], [cell * 6, cell * 9], [cell * 9, cell * 9]], COLORS.red.hex);
+  g.fillStyle = '#14101f';
+  g.beginPath(); g.arc(mid, mid, cell * 1.02, 0, Math.PI * 2); g.fill();
+  g.strokeStyle = COLORS.yellow.hex; g.lineWidth = cell * 0.09; g.stroke();
+  g.fillStyle = COLORS.yellow.hex;
+  g.font = `900 ${cell * 0.8}px 'Exo 2', sans-serif`;
   g.textAlign = 'center'; g.textBaseline = 'middle';
-  g.fillText('SG', mid, mid + cell * 0.06);
+  g.fillText('SG', mid, mid + cell * 0.05);
 
   // grid lines over path area
-  g.strokeStyle = 'rgba(16,22,35,0.35)';
+  g.strokeStyle = 'rgba(10, 10, 16, 0.4)';
   g.lineWidth = 1;
   for (const [r, cIdx] of MAIN_PATH) strokeCell(g, r, cIdx);
   for (const color of ORDER) for (const [r, cIdx] of HOME_PATH[color]) strokeCell(g, r, cIdx);
@@ -234,17 +246,20 @@ function strokeCell(g, r, c) {
   roundRect(g, c * cell + 1, r * cell + 1, cell - 2, cell - 2, cell * 0.14);
   g.stroke();
 }
-function drawYard(g, r0, c0, col) {
+function drawYard(g, r0, c0, col, panelFill, pathFill) {
   const x = c0 * cell, y = r0 * cell, s = cell * 6;
-  g.fillStyle = col.dark;
+  // outer panel
+  g.fillStyle = panelFill;
   roundRect(g, x + 1, y + 1, s - 2, s - 2, cell * 0.4);
   g.fill();
-  g.strokeStyle = col.hex; g.lineWidth = cell * 0.09;
-  roundRect(g, x + cell * 0.45, y + cell * 0.45, s - cell * 0.9, s - cell * 0.9, cell * 0.32);
+  g.strokeStyle = col.hex; g.lineWidth = cell * 0.1;
+  roundRect(g, x + cell * 0.4, y + cell * 0.4, s - cell * 0.8, s - cell * 0.8, cell * 0.32);
   g.stroke();
-  g.fillStyle = 'rgba(0,0,0,0.35)';
-  roundRect(g, x + cell * 1.25, y + cell * 1.25, s - cell * 2.5, s - cell * 2.5, cell * 0.25);
+  // inner dark area where pawns sit
+  g.fillStyle = pathFill;
+  roundRect(g, x + cell * 1.15, y + cell * 1.15, s - cell * 2.3, s - cell * 2.3, cell * 0.22);
   g.fill();
+  g.strokeStyle = 'rgba(0,0,0,0.4)'; g.lineWidth = cell * 0.05; g.stroke();
 }
 function drawStar(g, r, c, color) {
   const [x, y] = cellXY(r, c);
@@ -270,6 +285,16 @@ function roundRect(g, x, y, w, h, r) {
   g.closePath();
 }
 
+// Pawn sprites (foony-style glossy pawns) — preload and re-render when ready
+const PIECE_IMG = {};
+for (const color of ORDER) {
+  const img = new Image();
+  img.onload = () => render();
+  img.onerror = () => render();
+  img.src = `assets/pieces_${color}.webp`;
+  PIECE_IMG[color] = img;
+}
+
 // Where a token should be drawn (pixel center coords)
 function tokenXY(color, token, idx) {
   if (token.step < 0) {
@@ -277,7 +302,7 @@ function tokenXY(color, token, idx) {
     return [(c + 0.5) * cell, (r + 0.5) * cell];
   }
   if (token.step >= FINISH_STEP) {
-    const ang = { red: Math.PI, green: -Math.PI / 2, yellow: 0, blue: Math.PI / 2 }[color];
+    const ang = { blue: Math.PI, yellow: -Math.PI / 2, green: 0, red: Math.PI / 2 }[color];
     return [cell * 7.5 + Math.cos(ang) * cell * 0.42, cell * 7.5 + Math.sin(ang) * cell * 0.42];
   }
   if (token.step >= HOME_ENTRY_STEP) {
@@ -317,20 +342,34 @@ function drawTokens(g, highlight) {
       const col = COLORS[t.color];
       const hl = highlight.has(`${t.color}:${t.idx}`);
 
-      // shadow
-      g.beginPath(); g.arc(x, y + cell * 0.05, radius, 0, Math.PI * 2);
-      g.fillStyle = 'rgba(0,0,0,0.45)'; g.fill();
-      // body
-      const grad = g.createRadialGradient(x - radius * 0.35, y - radius * 0.4, radius * 0.15, x, y, radius);
-      grad.addColorStop(0, col.light);
-      grad.addColorStop(0.55, col.hex);
-      grad.addColorStop(1, col.dark);
-      g.beginPath(); g.arc(x, y, radius, 0, Math.PI * 2);
-      g.fillStyle = grad; g.fill();
-      g.lineWidth = cell * 0.055; g.strokeStyle = hl ? '#ffffff' : 'rgba(0,0,0,0.55)'; g.stroke();
-      // gloss
-      g.beginPath(); g.arc(x - radius * 0.35, y - radius * 0.38, radius * 0.32, 0, Math.PI * 2);
-      g.fillStyle = 'rgba(255,255,255,0.35)'; g.fill();
+      // ground shadow ellipse
+      g.beginPath(); g.ellipse(x, y + radius * 0.72, radius * 0.95, radius * 0.4, 0, 0, Math.PI * 2);
+      g.fillStyle = 'rgba(0,0,0,0.42)'; g.fill();
+
+      // pawn sprite (fallback: glossy circle)
+      const img = PIECE_IMG[t.color];
+      if (img && img.complete && img.naturalWidth > 0) {
+        const size = radius * 2.5;
+        const spriteY = y + radius * 0.55 - size * 0.5;
+        if (hl) {
+          g.save();
+          g.shadowColor = '#ffffff';
+          g.shadowBlur = cell * 0.45;
+          g.drawImage(img, x - size / 2, spriteY, size, size);
+          g.drawImage(img, x - size / 2, spriteY, size, size);
+          g.restore();
+        } else {
+          g.drawImage(img, x - size / 2, spriteY, size, size);
+        }
+      } else {
+        const grad = g.createRadialGradient(x - radius * 0.35, y - radius * 0.4, radius * 0.15, x, y, radius);
+        grad.addColorStop(0, col.light);
+        grad.addColorStop(0.55, col.hex);
+        grad.addColorStop(1, col.dark);
+        g.beginPath(); g.arc(x, y, radius, 0, Math.PI * 2);
+        g.fillStyle = grad; g.fill();
+        g.lineWidth = cell * 0.055; g.strokeStyle = hl ? '#ffffff' : 'rgba(0,0,0,0.55)'; g.stroke();
+      }
 
       if (hl) {
         g.beginPath(); g.arc(x, y, radius + cell * 0.09, 0, Math.PI * 2);
@@ -415,6 +454,7 @@ function advanceAfterMove(events) {
 
   if (state.sixes >= 3) {
     toast('Three 6s in a row — turn forfeited!');
+    setBanner('Three 6s — turn lost!');
     state.sixes = 0;
     return passToNext();
   }
@@ -460,18 +500,22 @@ function updateHeader() {
   $('turn-dot').style.color = COLORS[p.color].hex;
   $('turn-text').textContent = state.over ? 'Game over' :
     (p.isBot ? `${p.name}'s turn` : (state.mode === 'local' ? `${COLORS[p.color].name}'s turn` : 'Your turn'));
-  $('dice-hint').textContent = state.over ? '' : (canRoll() ? 'Tap the dice' : 'Choose a token');
-  // players strip
+  $('dice-hint').textContent = state.over ? '' : (canRoll() ? 'ROLL THE DICE!' : 'PICK A PAWN!');
+  // players strip (foony-style cards with avatars)
   const strip = $('players-strip');
   strip.innerHTML = '';
   state.players.forEach((pl, i) => {
     const finished = state.tokens[pl.color].filter(t => t.step === FINISH_STEP).length;
+    const isYou = !pl.isBot && pl.isLocal;
+    const tag = pl.isBot ? 'BOT' : (isYou ? 'YOU' : 'PLAYER');
     const div = document.createElement('div');
     div.className = 'pstrip' + (i === state.turnIdx && !state.over ? ' active' : '');
-    div.style.color = COLORS[pl.color].hex;
-    div.innerHTML = `<span class="ps-dot" style="background:${COLORS[pl.color].hex}"></span>
-      <span class="ps-name">${escapeHtml(pl.name)}</span>
-      <span class="ps-count">${finished}/4</span>`;
+    div.innerHTML = `<img class="ps-av" src="${avatarFor(pl)}" alt="" />
+      <span class="ps-info">
+        <span class="ps-name" style="color:${COLORS[pl.color].hex}">${escapeHtml(pl.name)}</span>
+        <span class="ps-tag">${tag}</span>
+      </span>
+      <span class="ps-count">🏠 ${finished}/4</span>`;
     strip.appendChild(div);
   });
   // Keep roll button in sync and mirror state to online clients
@@ -613,8 +657,8 @@ function animateMove(color, idx, events) {
     setTimeout(broadcastState, 120);
   }
   setTimeout(() => {
-    if (events.includes('capture')) toast('Captured! 💥');
-    if (events.includes('finish')) toast('A token reached home! 🏠');
+    if (events.includes('capture')) { toast('Captured! 💥'); setBanner('💥 Captured a pawn!'); }
+    if (events.includes('finish')) { toast('A pawn reached home! 🏠'); setBanner('🏠 Pawn reached home!'); }
     advanceAfterMove(events);
   }, 160);
 }
@@ -667,15 +711,15 @@ function startGameWithPlayers(mode, players) {
 }
 
 function startBotsGame() {
-  const count = parseInt($('seg-bot-count').querySelector('.selected').dataset.v, 10);
+  const botCount = parseInt($('seg-bot-count').querySelector('.selected').dataset.v, 10);
   const myColor = $('pick-bot-color').querySelector('.selected').dataset.v;
   const tgN = tgName();
   const players = [];
   const others = ORDER.filter(c => c !== myColor);
-  const botNames = ['Shadow Bot', 'BotAlpha', 'BotBeta', 'BotGamma'];
+  const botNames = { blue: 'Bulby', yellow: 'Bomby', green: 'Bruno', red: 'Petey' };
   players.push({ color: myColor, name: tgN, isBot: false, isLocal: true });
-  for (let i = 0; i < count - 1; i++) {
-    players.push({ color: others[i], name: botNames[i] || ('Bot ' + (i + 1)), isBot: true });
+  for (let i = 0; i < botCount; i++) {
+    players.push({ color: others[i], name: botNames[others[i]] || ('Bot ' + (i + 1)), isBot: true });
   }
   players.sort((a, b) => ORDER.indexOf(a.color) - ORDER.indexOf(b.color));
   startGameWithPlayers('bots', players);
@@ -921,8 +965,7 @@ function renderRoomPlayers(players) {
   players.forEach(p => {
     const div = document.createElement('div');
     div.className = 'room-player';
-    const color = p.color && COLORS[p.color] ? COLORS[p.color].hex : '#555';
-    div.innerHTML = `<span class="rp-dot" style="background:${color}"></span>
+    div.innerHTML = `<img class="ps-av" style="width:36px;height:36px;border-radius:50%" src="assets/guest.webp" alt="" />
       <span class="rp-name">${escapeHtml(p.name)}${p.isYou ? ' (You)' : ''}</span>
       <span class="rp-tag">${p.isHost ? 'HOST' : 'JOINED'}</span>`;
     box.appendChild(div);
