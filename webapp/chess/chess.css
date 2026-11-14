@@ -168,7 +168,7 @@ html, body {
 .move-dot { position: absolute; width: 30%; height: 30%; border-radius: 50%; background: rgba(255, 254, 241, 0.38); box-shadow: 0 0 6px rgba(255,254,241,.3); pointer-events: none; }
 .capture-ring { position: absolute; inset: 4%; border: 3px solid rgba(255, 240, 170, 0.6); border-radius: 4px; pointer-events: none; }
 
-.chess-pieces { position: absolute; inset: 4.6%; z-index: 3; }
+.chess-pieces { position: absolute; inset: 4.6%; z-index: 3; pointer-events: none; }
 .piece { position: absolute; width: 12.5%; height: 12.5%; background-size: contain; background-repeat: no-repeat; background-position: center; cursor: pointer; transition: left .16s ease, top .16s ease; z-index: 3; filter: drop-shadow(0 2px 2px rgba(0,0,0,.5)); pointer-events: auto; touch-action: manipulation; }
 .piece:not(.static):hover { z-index: 5; transform: scale(1.09); }
 .piece.static { cursor: default; }
