@@ -290,6 +290,14 @@ async def reply_to_query(inline_query: InlineQuery) -> None:
         if players and len(players) > 1:
             switch_text = f"Current game: {game.chat.title}"
 
+    # Bare inline menu: show the game invitations alongside UNO results
+    if not (inline_query.query or "").strip():
+        try:
+            from shadow_game_bot.handlers.games import game_hub_articles
+            results.extend(game_hub_articles())
+        except Exception:
+            logger.exception("failed to add game hub articles")
+
     button = None
     if switch_text:
         button = InlineQueryResultsButton(

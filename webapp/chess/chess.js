@@ -108,6 +108,17 @@ const $ = (id) => document.getElementById(id);
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
   $(id).classList.add('active');
+  try {
+    const tgA = window.Telegram && window.Telegram.WebApp;
+    if (tgA && tgA.BackButton) {
+      if (id === 'screen-menu') {
+        tgA.BackButton.hide();
+      } else {
+        tgA.BackButton.show();
+        tgA.BackButton.onClick(() => showScreen('screen-menu'));
+      }
+    }
+  } catch (e) { /* not in Telegram */ }
 }
 function toast(msg) {
   const el = $('toast');
@@ -385,11 +396,16 @@ function updatePlayerCards() {
 }
 
 /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Input â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+let lastTap = { t: 0, key: '' };
 function onSquareTap(ev) {
   const el = (ev.target.closest && (ev.target.closest('.piece') || ev.target.closest('.sq')));
   if (!el || state.over) return;
   const square = el.dataset.square;
   if (!square) return;
+  // Debounce: a physical tap can fire both pointerdown and click
+  const now = Date.now();
+  if (lastTap.t && now - lastTap.t < 220 && lastTap.key === square) return;
+  lastTap = { t: now, key: square };
   const p = currentPlayerModel();
   const me = localPlayerModel();
   // Whose turn may act: both humans in local mode; only the local seat elsewhere
@@ -1042,6 +1058,8 @@ function bindUI() {
 
   $('chess-tiles').addEventListener('pointerdown', onSquareTap);
   $('chess-pieces').addEventListener('pointerdown', onSquareTap);
+  $('chess-tiles').addEventListener('click', onSquareTap);
+  $('chess-pieces').addEventListener('click', onSquareTap);
 
   $('win-again').addEventListener('click', () => {
     haptic('medium');

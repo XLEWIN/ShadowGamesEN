@@ -76,6 +76,30 @@ def _invite_article(game: str, code: str) -> InlineQueryResultArticle:
     )
 
 
+# ── Shared articles for the inline menu ───────
+
+def game_hub_articles() -> list:
+    """Hub/game open articles shown in the bare inline menu."""
+    return [
+        _article(
+            "hub", "🎮 Shadow Games",
+            "Ludo · Chess · UNO · WordSeek · Shadow Word — all in one hub",
+            "🎮 <b>Shadow Games</b> — Ludo, Chess and all the chat games!",
+            "🎮 Open Games Hub", _HUB_URL,
+            f"{_HUB_URL.rstrip('/')}/ludo/assets/icon.webp"),
+        _article(
+            "open-ludo", "🎲 Shadow Games · Ludo",
+            "Play vs AI, 1v1 with a friend, or online rooms",
+            "🎲 <b>Shadow Games · Ludo</b> — race your pawns home!",
+            "🎮 Open Ludo", _LUDO_URL, f"{_LUDO_URL}assets/icon.webp"),
+        _article(
+            "open-chess", "♟️ Shadow Games · Chess",
+            "Real rules — vs AI, 1v1, or online rooms with clocks",
+            "♟️ <b>Shadow Games · Chess</b> — outwit. outplay. outlast.",
+            "🎮 Open Chess", _CHESS_URL, f"{_CHESS_URL}assets/icon.webp"),
+    ]
+
+
 def _article(result_id: str, title: str, description: str, text: str,
              button_text: str, url: str, thumbnail: str | None = None) -> InlineQueryResultArticle:
     markup = InlineKeyboardMarkup(inline_keyboard=[[
@@ -115,11 +139,7 @@ async def games_inline_query(query: InlineQuery) -> None:
             "♟️ <b>Shadow Games · Chess</b> — outwit. outplay. outlast.",
             "🎮 Open Chess", _CHESS_URL, f"{_CHESS_URL}assets/icon.webp"))
     else:  # "games" / "game" / anything else matching the filter
-        articles.append(_article(
-            "hub", "🎮 Shadow Games",
-            "Ludo · Chess · UNO · WordSeek · Shadow Word",
-            "🎮 <b>Shadow Games</b> — Ludo, Chess and all the chat games!",
-            "🎮 Open Games Hub", _HUB_URL, f"{_HUB_URL.rstrip('/')}/ludo/assets/icon.webp"))
+        articles = game_hub_articles()
 
     await query.answer(articles, cache_time=120, is_personal=False)
 

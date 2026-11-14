@@ -158,7 +158,7 @@ html, body {
   box-shadow: 0 24px 70px rgba(0, 0, 0, 0.75), 0 0 55px rgba(103, 232, 249, 0.28), inset 0 0 0 2px rgba(8, 51, 68, .9);
 }
 .chess-tiles { position: absolute; inset: 4.6%; display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr); border-radius: 4px; overflow: hidden; }
-.sq { position: relative; display: flex; align-items: center; justify-content: center; }
+.sq { position: relative; display: flex; align-items: center; justify-content: center; pointer-events: auto; touch-action: manipulation; }
 .sq-light { background: rgba(255, 254, 241, 0.045); }
 .sq-dark  { background: rgba(0, 0, 0, 0.155); }
 .sq.last-move { background: rgba(255, 254, 241, 0.2); }
@@ -169,7 +169,7 @@ html, body {
 .capture-ring { position: absolute; inset: 4%; border: 3px solid rgba(255, 240, 170, 0.6); border-radius: 4px; pointer-events: none; }
 
 .chess-pieces { position: absolute; inset: 4.6%; z-index: 3; }
-.piece { position: absolute; width: 12.5%; height: 12.5%; background-size: contain; background-repeat: no-repeat; background-position: center; cursor: pointer; transition: left .16s ease, top .16s ease; z-index: 3; filter: drop-shadow(0 2px 2px rgba(0,0,0,.5)); }
+.piece { position: absolute; width: 12.5%; height: 12.5%; background-size: contain; background-repeat: no-repeat; background-position: center; cursor: pointer; transition: left .16s ease, top .16s ease; z-index: 3; filter: drop-shadow(0 2px 2px rgba(0,0,0,.5)); pointer-events: auto; touch-action: manipulation; }
 .piece:not(.static):hover { z-index: 5; transform: scale(1.09); }
 .piece.static { cursor: default; }
 

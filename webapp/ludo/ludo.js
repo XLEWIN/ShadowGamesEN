@@ -128,6 +128,17 @@ const $ = (id) => document.getElementById(id);
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
   $(id).classList.add('active');
+  try {
+    const tgA = window.Telegram && window.Telegram.WebApp;
+    if (tgA && tgA.BackButton) {
+      if (id === 'screen-menu') {
+        tgA.BackButton.hide();
+      } else {
+        tgA.BackButton.show();
+        tgA.BackButton.onClick(() => showScreen('screen-menu'));
+      }
+    }
+  } catch (e) { /* not in Telegram */ }
 }
 function toast(msg) {
   const el = $('toast');
@@ -588,9 +599,13 @@ function scheduleIfBot() {
 }
 
 /* ────────────────────────── Input: tap a token ────────────────────────── */
+let lastBoardTap = 0;
 function boardClick(ev) {
   const tokenEl = ev.target.closest && ev.target.closest('.token');
   if (!tokenEl) return;
+  const now = Date.now();
+  if (lastBoardTap && now - lastBoardTap < 220) return;
+  lastBoardTap = now;
   if (!state.awaitingMove || currentPlayer().isBot || currentPlayer().isRemote) return;
   const color = currentColor();
   if (tokenEl.dataset.color !== color) return;
@@ -943,7 +958,10 @@ function bindUI() {
 
   $('dice-btn').addEventListener('click', () => { haptic(); rollDice(true); });
   const piecesLayer = $('ludo-pieces');
-  if (piecesLayer) piecesLayer.addEventListener('pointerdown', boardClick);
+  if (piecesLayer) {
+    piecesLayer.addEventListener('pointerdown', boardClick);
+    piecesLayer.addEventListener('click', boardClick);
+  }
 
   $('win-again').addEventListener('click', () => {
     haptic('medium');
