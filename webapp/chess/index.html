@@ -41,6 +41,14 @@
     <button class="btn-back" data-goto="screen-menu">←</button>
     <h2 class="panel-title"><span class="pt-kicker">SHADOW GAMES</span>Play vs AI</h2>
 
+    <label class="field-label">Time control</label>
+    <div class="seg" id="seg-time-ai">
+      <button class="seg-btn" data-t="60" data-inc="0">1 + 0</button>
+      <button class="seg-btn" data-t="180" data-inc="2">3 + 2</button>
+      <button class="seg-btn selected" data-t="300" data-inc="3">5 + 3</button>
+      <button class="seg-btn" data-t="600" data-inc="5">10 + 5</button>
+    </div>
+
     <label class="field-label">Difficulty</label>
     <div class="seg" id="seg-difficulty">
       <button class="seg-btn" data-v="casual">Casual</button>
@@ -64,6 +72,14 @@
   <div class="panel">
     <button class="btn-back" data-goto="screen-menu">←</button>
     <h2 class="panel-title"><span class="pt-kicker">SHADOW GAMES</span>Play 1v1</h2>
+    <label class="field-label">Time control</label>
+    <div class="seg" id="seg-time-local">
+      <button class="seg-btn" data-t="60" data-inc="0">1 + 0</button>
+      <button class="seg-btn" data-t="180" data-inc="2">3 + 2</button>
+      <button class="seg-btn selected" data-t="300" data-inc="3">5 + 3</button>
+      <button class="seg-btn" data-t="600" data-inc="5">10 + 5</button>
+    </div>
+
     <label class="field-label">Players (same device, pass &amp; play)</label>
     <div class="room-hint" style="font-size:12.5px; text-align:left; line-height:1.6">
       Two players share one device — White moves first.<br>
@@ -101,6 +117,15 @@
       <div class="room-code-label">INVITE CODE</div>
       <div class="room-code" id="room-code">-----</div>
       <button class="btn btn-dark btn-small" id="copy-code">📋 Copy</button>
+    </div>
+    <div class="time-room-wrap" id="time-room-wrap">
+      <label class="field-label">Time control</label>
+      <div class="seg" id="seg-time-room">
+        <button class="seg-btn" data-t="60" data-inc="0">1 + 0</button>
+        <button class="seg-btn" data-t="180" data-inc="2">3 + 2</button>
+        <button class="seg-btn selected" data-t="300" data-inc="3">5 + 3</button>
+        <button class="seg-btn" data-t="600" data-inc="5">10 + 5</button>
+      </div>
     </div>
     <div id="room-players" class="room-players"></div>
     <button class="btn btn-gold btn-big wide" id="start-online" disabled>WAITING FOR OPPONENT…</button>

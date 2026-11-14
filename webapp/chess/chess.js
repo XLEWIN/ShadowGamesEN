@@ -53,6 +53,7 @@ const state = {
   difficulty: 'tactician',
   online: null,            // PeerJS session
   muted: false,
+  clock: { w: 300, b: 300, inc: 3, active: false, last: 0 },
 };
 
 /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Audio â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
@@ -116,6 +117,80 @@ function toast(msg) {
   el._t = setTimeout(() => el.classList.remove('show'), 2600);
 }
 const escapeHtml = (s) => String(s).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+
+/* ────────────────────────── Clocks ────────────────────────── */
+const fmtClock = (sec) => {
+  sec = Math.max(0, Math.ceil(sec));
+  const m = Math.floor(sec / 60), s = sec % 60;
+  return `${m}:${String(s).padStart(2, '0')}`;
+};
+
+function resetClock(seconds, inc) {
+  state.clock = { w: seconds, b: seconds, inc, active: true, last: performance.now() };
+  updateClockDom();
+}
+
+function updateClockDom() {
+  document.querySelectorAll('.pcard').forEach(card => {
+    const color = card.dataset.color;
+    if (!color) return;
+    const t = state.clock[color];
+    const el = card.querySelector('.pc-clock');
+    if (el) {
+      el.textContent = fmtClock(t);
+      el.classList.toggle('low', t <= 10 && t > 0);
+    }
+  });
+}
+
+let clockInterval = null;
+function startClockLoop() {
+  stopClockLoop();
+  clockInterval = setInterval(() => {
+    if (!state.clock.active || state.over) { stopClockLoop(); return; }
+    tickClock();
+  }, 100);
+}
+function stopClockLoop() {
+  if (clockInterval) { clearInterval(clockInterval); clockInterval = null; }
+}
+
+function tickClock() {
+  const c = state.clock;
+  const now = performance.now();
+  let dt = (now - c.last) / 1000;
+  c.last = now;
+  if (dt > 2) return; // tab was hidden — don't jump the clock
+  const active = state.game.turn();
+  c[active] = Math.max(0, c[active] - dt);
+  if (c[active] <= 0) {
+    c.active = false;
+    timeoutLoser(active);
+    return;
+  }
+  updateClockDom();
+}
+
+function addClockIncrement() {
+  const c = state.clock;
+  if (!c || !c.active) return;
+  const mover = state.game.turn() === 'w' ? 'b' : 'w';
+  c[mover] += c.inc;
+  c.last = performance.now();
+  updateClockDom();
+}
+
+function timeoutLoser(loser) {
+  const winner = loser === 'w' ? 'b' : 'w';
+  state.over = true;
+  state.result = 'timeout';
+  state.winner = winner;
+  stopClockLoop();
+  sfx.draw();
+  showGameOver();
+  if (state.mode === 'online' && state.online?.isHost) broadcastState();
+  updateClockDom();
+}
 
 /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Board build â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 const SQ_LIGHT = 'sq-light', SQ_DARK = 'sq-dark';
@@ -301,8 +376,10 @@ function updatePlayerCards() {
     div.className = 'pcard' + (state.game.turn() === p.color && !state.over ? ' active' : '');
     const av = p.avatar || AVATARS.you;
     const tag = p.isBot ? 'AI' : (p.isLocal ? 'YOU' : (p.isRemote ? 'OPPONENT' : 'PLAYER'));
+    div.dataset.color = p.color;
     div.innerHTML = `<img class="pc-av" src="${av}" alt="" />
-      <span class="pc-info"><span class="pc-name">${escapeHtml(p.name)}</span><span class="pc-tag">${tag} Â· ${p.color === 'w' ? 'WHITE' : 'BLACK'}</span></span>`;
+      <span class="pc-info"><span class="pc-name">${escapeHtml(p.name)}</span><span class="pc-tag">${tag}</span></span>
+      <span class="pc-clock" data-clock="${p.color}">${fmtClock(state.clock[p.color] ?? 0)}</span>`;
     box.appendChild(div);
   });
 }
@@ -409,6 +486,7 @@ function showPromotionPicker(from, to) {
 
 /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Move pipeline â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function onMoveApplied(m) {
+  addClockIncrement();
   checkGameOver();
   if (state.over) { render(); return; }
   const p = currentPlayerModel();
@@ -440,6 +518,8 @@ function checkGameOver() {
 }
 
 function showGameOver() {
+  stopClockLoop();
+  state.clock.active = false;
   const kicker = $('win-kicker');
   const title = $('win-title');
   const sub = $('win-sub');
@@ -454,6 +534,15 @@ function showGameOver() {
     sub.textContent = youWon
       ? (state.mode === 'ai' ? 'You defeated the Shadow AI.' : 'Well played.')
       : (winnerP ? `${winnerP.name} wins.` : 'Better luck next time.');
+    if (youWon) sfx.win(); else sfx.draw();
+  } else if (state.result === 'timeout') {
+    const winnerP = state.players.find(p => p.color === state.winner);
+    const youWon = state.winner === myColor;
+    kicker.textContent = 'TIME\'S UP';
+    title.textContent = 'Flag fall!';
+    sub.textContent = winnerP
+      ? `${winnerP.name} wins on time.`
+      : 'Time expired.';
     if (youWon) sfx.win(); else sfx.draw();
   } else {
     const reasons = {
@@ -562,6 +651,7 @@ function aiMove() {
   try {
     applied = state.game.move(chosen);
   } catch (e) { return; }
+  addClockIncrement();
   haptic('light');
   if (applied.captured) sfx.capture(); else sfx.move();
   if (applied.flags.includes('k') || applied.flags.includes('q')) sfx.castle();
@@ -616,6 +706,7 @@ function createRoom() {
   const peer = new Peer(PEER_PREFIX + code, peerConfig());
   const myName = tgName();
   state.online = { isHost: true, code, peer, conn: null, started: false };
+  $('time-room-wrap').classList.remove('hidden');
   $('room-code').textContent = code;
   renderRoomPlayers([{ name: myName, isHost: true, isYou: true }]);
   $('start-online').disabled = true;
@@ -643,6 +734,7 @@ function joinRoom(code) {
   const myName = tgName();
   const peer = new Peer(undefined, peerConfig());
   state.online = { isHost: false, code, peer, conn: null, started: false };
+  $('time-room-wrap').classList.add('hidden');
   peer.on('open', () => {
     const conn = peer.connect(PEER_PREFIX + code, { reliable: true });
     state.online.conn = conn;
@@ -688,6 +780,7 @@ function hostOnData(data) {
       try { state.online.conn.send({ type: 'illegal' }); } catch (e2) { }
       return;
     }
+    addClockIncrement();
     haptic('light');
     if (m.captured) sfx.capture(); else sfx.move();
     if (state.game.inCheck()) sfx.check();
@@ -722,15 +815,21 @@ function hostOnLeave() {
 }
 
 function resetOnlineMatch() {
+  const tSel = $('seg-time-room').querySelector('.selected');
+  const seconds = +(tSel?.dataset.t || 300);
+  const inc = +(tSel?.dataset.inc || 3);
   state.game = new Chess();
   state.over = false;
   state.result = null;
   state.winner = null;
   state.selected = null;
   state.legalTargets = [];
+  resetClock(seconds, inc);
+  startClockLoop();
   $('win-overlay').classList.remove('active');
   broadcastState();
   render();
+  updateClockDom();
 }
 
 function clientOnData(data) {
@@ -745,7 +844,7 @@ function clientOnData(data) {
     startMatch('online', [
       { name: data.players[0].name, color: 'w', isBot: false, isLocal: false, isRemote: true, avatar: AVATARS.you },
       { name: data.players[1].name, color: 'b', isBot: false, isLocal: true, isRemote: false, avatar: AVATARS.you },
-    ]);
+    ], { seconds: +(data.clockSeconds || 300), inc: +(data.inc || 3) });
     return;
   }
   if (data.type === 'state') {
@@ -762,13 +861,23 @@ function hostStartOnline() {
   if (!state.online || !state.online.isHost || !state.online.conn) return;
   const myName = tgName();
   const opp = state.online.conn._name || 'Opponent';
+  const tSel = $('seg-time-room').querySelector('.selected');
+  const clockSeconds = +(tSel?.dataset.t || 300);
+  const inc = +(tSel?.dataset.inc || 3);
   state.online.started = true;
-  state.online.conn.send({ type: 'start', players: [{ name: myName }, { name: opp }] });
+  state.online.conn.send({ type: 'start', players: [{ name: myName }, { name: opp }], clockSeconds, inc });
   state.orientation = 'w';
   startMatch('online', [
     { name: myName, color: 'w', isBot: false, isLocal: true, isRemote: false, avatar: AVATARS.you },
     { name: opp, color: 'b', isBot: false, isLocal: false, isRemote: true, avatar: AVATARS.you },
-  ]);
+  ], { seconds: clockSeconds, inc });
+  state.online.syncInterval = setInterval(() => {
+    if (!state.online || !state.online.conn || state.over) {
+      clearInterval(state.online && state.online.syncInterval);
+      return;
+    }
+    broadcastState();
+  }, 2000);
 }
 
 function broadcastState() {
@@ -780,6 +889,7 @@ function broadcastState() {
     over: state.over,
     result: state.result,
     winner: state.winner,
+    clock: { w: state.clock.w, b: state.clock.b, inc: state.clock.inc },
   };
   try { state.online.conn.send(payload); } catch (e) { }
 }
@@ -794,13 +904,24 @@ function applyRemoteState(data) {
   const hist = data.history || [];
   // chess.js has no direct set-history; render SAN list manually
   state.remoteHistory = hist;
+  if (data.clock) {
+    state.clock = {
+      w: data.clock.w,
+      b: data.clock.b,
+      inc: data.clock.inc,
+      active: !data.over,
+      last: performance.now(),
+    };
+  }
   $('win-overlay').classList.toggle('active', false);
   render();
+  updateClockDom();
   if (state.over) showGameOver();
 }
 
 /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Match setup â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
-function startMatch(mode, players) {
+function startMatch(mode, players, clockSpec) {
+  const spec = clockSpec || { seconds: 300, inc: 3 };
   state.mode = mode;
   state.players = players;
   state.game = new Chess();
@@ -813,7 +934,10 @@ function startMatch(mode, players) {
   $('promo-overlay').classList.remove('active');
   buildBoard();
   showScreen('screen-game');
+  resetClock(spec.seconds, spec.inc);
+  startClockLoop();
   render();
+  updateClockDom();
 }
 
 function startAiGame() {
@@ -828,8 +952,9 @@ function startAiGame() {
     { name: tgName(), color: myColor, isBot: false, isLocal: true, isRemote: false, avatar: AVATARS.you },
     { name: aiName, color: aiColor, isBot: true, isLocal: false, isRemote: false, avatar: AVATARS[ai.name.toLowerCase()] || AVATARS.bulby },
   ].sort((a, b) => (a.color === 'w' ? -1 : 1) - (b.color === 'w' ? -1 : 1));
+  const tSel = $('seg-time-ai').querySelector('.selected');
   state.orientation = myColor;   // human at the bottom
-  startMatch('ai', players);
+  startMatch('ai', players, { seconds: +(tSel?.dataset.t || 300), inc: +(tSel?.dataset.inc || 3) });
   if (myColor === 'b') {
     setTimeout(() => aiMove(), 500);
   }
@@ -841,7 +966,8 @@ function startLocalGame() {
     { name: 'Player 2', color: 'b', isBot: false, isLocal: true, isRemote: false, avatar: AVATARS.petey },
   ];
   state.orientation = 'w';
-  startMatch('local', players);
+  const tSel = $('seg-time-local').querySelector('.selected');
+  startMatch('local', players, { seconds: +(tSel?.dataset.t || 300), inc: +(tSel?.dataset.inc || 3) });
 }
 
 /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Move-list render for online â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
@@ -872,12 +998,16 @@ function bindUI() {
   document.querySelectorAll('[data-goto]').forEach(b =>
     b.addEventListener('click', () => { haptic(); showScreen(b.dataset.goto); }));
 
-  $('seg-difficulty').addEventListener('click', e => {
-    const btn = e.target.closest('.seg-btn'); if (!btn) return;
-    haptic();
-    $('seg-difficulty').querySelectorAll('.seg-btn').forEach(b => b.classList.remove('selected'));
-    btn.classList.add('selected');
-  });
+  for (const id of ['seg-difficulty', 'seg-time-ai', 'seg-time-local', 'seg-time-room']) {
+    const el = $(id);
+    if (!el) continue;
+    el.addEventListener('click', e => {
+      const btn = e.target.closest('.seg-btn'); if (!btn) return;
+      haptic();
+      el.querySelectorAll('.seg-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+    });
+  }
   $('pick-color').addEventListener('click', e => {
     const btn = e.target.closest('button[data-v]'); if (!btn) return;
     haptic();
@@ -932,6 +1062,8 @@ function bindUI() {
 }
 
 function leaveGame() {
+  stopClockLoop();
+  if (state.online?.syncInterval) clearInterval(state.online.syncInterval);
   if (state.online?.peer) { try { state.online.peer.destroy(); } catch (e) { } }
   state.online = null;
   showScreen('screen-menu');

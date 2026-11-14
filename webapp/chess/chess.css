@@ -200,6 +200,19 @@ html, body {
 .pcard .pc-tag { color: var(--muted); font-size: 8.5px; letter-spacing: 2px; font-weight: 700; }
 .pcard.active .pc-tag { color: var(--gold); }
 
+.pcard .pc-clock {
+  font-family: 'Consolas', monospace; font-weight: 800; font-size: 14px;
+  color: var(--ivory); background: rgba(0,0,0,.45);
+  border: 1px solid var(--line-soft); border-radius: 9px;
+  padding: 3px 8px; margin-left: auto; letter-spacing: 1px; min-width: 54px; text-align: center;
+}
+.pcard.active .pc-clock { border-color: var(--gold); color: var(--gold-bright); box-shadow: 0 0 12px rgba(227,183,91,.35); }
+.pcard .pc-clock.low { color: #ff7a6b; border-color: #ff5a4d; background: rgba(255,60,50,.12); animation: clock-pulse 1s steps(2,end) infinite; }
+@keyframes clock-pulse { 50% { background: rgba(255,60,50,.3); } }
+
+.time-room-wrap { display: flex; flex-direction: column; gap: 8px; }
+.time-room-wrap.hidden { display: none; }
+
 /* ────────── PROMOTION MODAL ────────── */
 .overlay { position: fixed; inset: 0; z-index: 25; background: rgba(3, 4, 10, 0.82); backdrop-filter: blur(5px); display: none; align-items: center; justify-content: center; }
 .overlay.active { display: flex; }
