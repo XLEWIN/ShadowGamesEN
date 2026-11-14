@@ -408,6 +408,10 @@ def main() -> int:
                 assert hits and "ludo_handler" in hits[0][1], hits
 
                 # plain group text → group text router
+                hits = await route({"update_id": 2009, "message": _msg(
+                    mid=29, text="/chess", entities=_cmd("/chess"))})
+                assert hits and "chess_handler" in hits[0][1], hits
+
                 hits = await route({"update_id": 2005, "message": _msg(
                     mid=25, text="wordle")})
                 assert hits and "message_handler" in hits[0][1], hits

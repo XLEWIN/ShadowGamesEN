@@ -194,6 +194,20 @@ The host bot's chat menu button ("Play Ludo") also opens it.
 Override the URL with `LUDO_URL`. Local preview: serve the folder and open
 `index.html` (no build step, no dependencies).
 
+### Chess (mini app)
+`/chess` — everyone — opens the **Shadow Games · Chess** web mini app:
+
+- **Play vs AI** — Casual (depth 1, forgiving) / Tactician (depth 2) / Master (depth 3, alpha-beta + piece-square tables), play as White / Black / Random
+- **Play 1v1** — pass-and-play on one device, full legal rules
+- **Online rooms** — 5-letter invite code, host-authoritative (host validates), board flips for the black seat
+
+The app lives in `webapp/chess/` (GitHub Pages:
+`https://xlewin.github.io/ShadowGamesEN/webapp/chess/`, same repo as Ludo) and
+works in Telegram's WebView as well as any modern browser. Rules are enforced
+by a vendored copy of **chess.js** (castling, en passant, promotion,
+checkmate/stalemate, threefold repetition, 50-move rule, insufficient
+material). Override the URL with `CHESS_URL`.
+
 ### Merged behaviour
 - `/help` is the Pi-style interactive menu: one message edited in place, seven
   modules (Word Guess / WordSeek / UNO / Scores / Group / Other / Admin) with a
@@ -204,7 +218,7 @@ Override the URL with `LUDO_URL`. Local preview: serve the folder and open
   menu + coloured keyboard); `/start help` opens the interactive help menu;
   `/start select` opens the UNO multi-group picker.
 - `/gban`/`/ungban` are shared: banned users are blocked in both games.
-- Top-level menu has 17 commands (`setMyCommands` at startup).
+- Top-level menu has 18 commands (`setMyCommands` at startup).
 
 ## Rich Messages & premium emoji (ported from Pi)
 
