@@ -26,7 +26,18 @@ _LUDO_URL = "https://xlewin.github.io/ShadowGamesEN/webapp/ludo/"
 _CHESS_URL = "https://xlewin.github.io/ShadowGamesEN/webapp/chess/"
 
 _GAME_RE = re.compile(r"^\s*(ludo|chess|games?)\b", re.I)
-_CODE_RE = re.compile(r"\b([A-Z0-9]{5})\b")
+_CODE_TOKEN_RE = re.compile(r"^[A-Z0-9]{5}$")
+_GAME_WORDS = {"LUDO", "CHESS", "GAMES", "GAME"}
+
+
+def _extract_code(raw: str):
+    """First standalone 5-char alnum token that isn't the game keyword itself."""
+    for i, token in enumerate(raw.upper().split()):
+        if i == 0 and token in _GAME_WORDS:
+            continue
+        if _CODE_TOKEN_RE.fullmatch(token):
+            return token
+    return None
 
 
 def _hub_url() -> str:
@@ -120,8 +131,7 @@ async def games_inline_query(query: InlineQuery) -> None:
     text = raw.lower()
     m = _GAME_RE.match(text)
     game = m.group(1).lower() if m else ""
-    code_m = _CODE_RE.search(raw.upper())
-    code = code_m.group(1) if code_m else None
+    code = _extract_code(raw)
 
     articles = []
     if code and game in ("ludo", "chess"):
