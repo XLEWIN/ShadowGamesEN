@@ -41,6 +41,7 @@ from shadow_game_bot.core.maumau import GameManager
 from shadow_game_bot.services.daily_word import daily_wordle_cron_task, ensure_daily_word
 from shadow_game_bot.handlers.ludo import ludo_handler
 from shadow_game_bot.handlers.chess import chess_handler
+from shadow_game_bot.handlers.games import games_handler, games_inline_query, GamesInlineFilter
 from shadow_game_bot.handlers.start import start_handler, start_callback
 from shadow_game_bot.handlers.menu import help_callback
 from shadow_game_bot.handlers.callbacks import callback_handler
@@ -240,6 +241,7 @@ BOT_COMMANDS = [
     ("game", "Start a Word Guess game"),
     ("ludo", "Play Ludo (mini app)"),
     ("chess", "Play Chess (mini app)"),
+    ("games", "All games (mini app hub)"),
     ("daily", "Daily WordSeek (private only)"),
     ("end", "End the WordSeek game"),
     ("stop", "Stop the Word Guess game"),
@@ -436,6 +438,7 @@ def build_dispatcher() -> Dispatcher:
     # Word Guess (shadow) commands
     for name, handler in [
         ("game", game_start_handler),
+        ("games", games_handler),
         ("ludo", ludo_handler),
         ("chess", chess_handler),
         ("stop", stop_handler),
@@ -521,6 +524,8 @@ def build_dispatcher() -> Dispatcher:
 
     # ── Group 11b — UNO inline gameplay (inline queries) ────────────
     inline = Router(name="uno_inline")
+    # Game invites are matched first; everything else falls to UNO.
+    inline.inline_query.register(games_inline_query, GamesInlineFilter())
     inline.inline_query.register(reply_to_query)
     inline.chosen_inline_result.register(process_result)
     dp.include_router(inline)

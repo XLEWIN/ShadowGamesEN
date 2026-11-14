@@ -154,6 +154,8 @@ if you relocate them.
 | `/captcha` | owner | Slot-machine captcha (set in a group; users must tap the right emoji) |
 
 ### Word Guess (ShadowgameBot)
+`/games` — Games Hub mini app. `/ludo` — Ludo mini app. `/chess` — Chess mini app.
+
 `/start`, `/help`, `/rules`, `/game`, `/stop`, `/score`, `/stats`, `/mystats`,
 `/ranking`, `/globalranking`, `/chatranking`, `/game`…
 
@@ -179,6 +181,27 @@ Cards render as text + colour emoji (the original sticker file_ids only work
 for that specific bot).  `/start select` in private picks which group's game
 to act in when you play in several groups at once.
 
+### Games Hub (mini app)
+`/games` — everyone — opens the **Shadow Games Hub** mini app:
+
+- ♟️ **Ludo** and ♟️ **Chess** as web mini apps (1v1, vs AI, online rooms,
+  shareable 5-letter room codes with auto-join via `?room=`)
+- 🎴 **UNO**, 🟩 **WordSeek**, 🔤 **Shadow Word**, ☀️ **Daily WordSeek** — the
+  chat games, linked straight to the bot
+
+The hub lives at `webapp/index.html`
+(`https://xlewin.github.io/ShadowGamesEN/webapp/`) and is what the bot's
+chat menu button ("Play Games") opens. `/ludo` opens Ludo directly and
+`/chess` opens Chess directly. Override with `GAMES_URL`, `LUDO_URL` and
+`CHESS_URL`.
+
+**Room invitations** work everywhere: in a game room tap **🔗 Invite friends**,
+which opens @ShadowGameEnBot in inline mode (`ludo ABCDE` / `chess ABCDE`).
+Sharing the invite sends a message with a **Join Room** URL button — tapping
+it opens the webapp at `…/?room=CODE` and auto-joins the room (works in
+groups and PMs, bare browser too). You can also type
+`@ShadowGameEnBot ludo ABCDE` by hand.
+
 ### Ludo (mini app)
 `/ludo` — everyone — opens the **Shadow Games · Ludo** web mini app:
 
@@ -190,7 +213,7 @@ to act in when you play in several groups at once.
 The app lives in `webapp/ludo/` (published on GitHub Pages at
 `https://xlewin.github.io/ShadowGamesEN/webapp/ludo/`) and works in
 Telegram's WebView as well as any modern browser — mobile and desktop.
-The host bot's chat menu button ("Play Ludo") also opens it.
+The host bot's chat menu button ("Play Games") opens the Games Hub.
 Override the URL with `LUDO_URL`. Local preview: serve the folder and open
 `index.html` (no build step, no dependencies).
 
@@ -218,7 +241,7 @@ material). Override the URL with `CHESS_URL`.
   menu + coloured keyboard); `/start help` opens the interactive help menu;
   `/start select` opens the UNO multi-group picker.
 - `/gban`/`/ungban` are shared: banned users are blocked in both games.
-- Top-level menu has 18 commands (`setMyCommands` at startup).
+- Top-level menu has 19 commands (`setMyCommands` at startup).
 
 ## Rich Messages & premium emoji (ported from Pi)
 

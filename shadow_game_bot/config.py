@@ -53,6 +53,8 @@ class Config:
     ludo_url: str = "https://xlewin.github.io/ShadowGamesEN/webapp/ludo/"
     #: URL of the Chess mini app (GitHub Pages by default).
     chess_url: str = "https://xlewin.github.io/ShadowGamesEN/webapp/chess/"
+    #: URL of the Games Hub (GitHub Pages by default).
+    games_url: str = "https://xlewin.github.io/ShadowGamesEN/webapp/"
 
     # ── WordSeek env (optional) ────────────────
     time_zone: str = "Asia/Calcutta"
@@ -93,6 +95,7 @@ class Config:
             data_dir=os.getenv("DATA_DIR", "").strip(),
             ludo_url=os.getenv("LUDO_URL", "https://xlewin.github.io/ShadowGamesEN/webapp/ludo/").strip(),
             chess_url=os.getenv("CHESS_URL", "https://xlewin.github.io/ShadowGamesEN/webapp/chess/").strip(),
+            games_url=os.getenv("GAMES_URL", "https://xlewin.github.io/ShadowGamesEN/webapp/").strip(),
             time_zone=os.getenv("TIME_ZONE", "Asia/Calcutta").strip() or "Asia/Calcutta",
             daily_wordle_secret=os.getenv("DAILY_WORDLE_SECRET", "shadow-wordseek-default-secret").strip()
             or "shadow-wordseek-default-secret",

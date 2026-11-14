@@ -1058,6 +1058,22 @@ function bindUI() {
     leaveGame();
   });
 
+  // 🔗 Invite friends to the room (Telegram: opens @ShadowGameEnBot in inline mode)
+  $('invite-room').addEventListener('click', () => {
+    const code = $('room-code').textContent.trim();
+    const tgw = window.Telegram && window.Telegram.WebApp;
+    const appUrl = `https://xlewin.github.io/ShadowGamesEN/webapp/chess/?room=${code}`;
+    haptic();
+    if (tgw) {
+      try {
+        tgw.openTelegramLink(`https://t.me/ShadowGameEnBot?inline=${encodeURIComponent('chess ' + code)}`);
+        return;
+      } catch (e) { /* fall back to link copy */ }
+    }
+    try { navigator.clipboard.writeText(appUrl); toast('Invite link copied — send it to a friend!'); }
+    catch (e) { toast(appUrl); }
+  });
+
   window.addEventListener('resize', () => { if ($('screen-game').classList.contains('active')) render(); });
 }
 
@@ -1073,3 +1089,17 @@ function leaveGame() {
 try { window.__chess = { state, render, aiMove, negamax, evaluate: (g) => evaluate(g) }; } catch (e) { }
 
 bindUI();
+
+/* ────────────────────────── Auto-join from invite link (?room=CODE) ────────────────────────── */
+(function autoJoinFromLink() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const room = (params.get('room') || '').trim().toUpperCase();
+    if (/^[A-Z0-9]{5}$/.test(room) && $('join-code') && $('btn-join-room')) {
+      $('join-code').value = room;
+      showScreen('screen-online');
+      // small delay so the UI settles before connecting
+      setTimeout(() => joinRoom(room), 250);
+    }
+  } catch (e) { /* ignore */ }
+})();

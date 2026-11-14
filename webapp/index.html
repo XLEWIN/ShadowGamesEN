@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<meta name="theme-color" content="#05070f" />
+<title>Shadow Games · Games</title>
+<link rel="icon" href="ludo/assets/icon.webp" />
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+@font-face { font-family: 'Exo 2'; src: url('ludo/assets/Exo2-latin.woff2') format('woff2'); font-weight: 100 900; font-display: swap; }
+:root {
+  --bg: #05070f; --panel: #0d1224; --panel-2: #131a33; --panel-3: #1a2243;
+  --gold: #e3b75b; --gold-bright: #ffd97a; --gold-deep: #8a6b2f; --gold-shadow: #241a04;
+  --ivory: #f2ead9; --muted: #a99e86; --line: rgba(227,183,91,.22);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { min-height: 100%; background: var(--bg); color: var(--ivory); font-family: 'Exo 2', system-ui, sans-serif; overscroll-behavior: none; }
+.screen { position: relative; min-height: 100vh; padding: 26px 16px calc(28px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; align-items: center; }
+.bg { position: fixed; inset: 0; z-index: -1;
+  background:
+    radial-gradient(1100px 750px at 50% -20%, rgba(58,45,110,.42) 0%, transparent 60%),
+    radial-gradient(900px 620px at 85% 115%, rgba(120,80,20,.18) 0%, transparent 55%),
+    radial-gradient(700px 500px at 8% 110%, rgba(40,30,80,.3) 0%, transparent 55%),
+    var(--bg);
+}
+.bg::after { content: ""; position: absolute; inset: 0; background-image: radial-gradient(rgba(255,236,190,.09) 1px, transparent 1.4px); background-size: 30px 30px; mask-image: radial-gradient(ellipse at center, black 45%, transparent 85%); -webkit-mask-image: radial-gradient(ellipse at center, black 45%, transparent 85%); }
+
+.brand { display: flex; align-items: center; gap: 13px; margin-bottom: 4px; }
+.brand-badge { width: 56px; height: 56px; border-radius: 15px; background: linear-gradient(160deg, var(--gold-bright), var(--gold) 45%, var(--gold-deep)); display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 26px rgba(227,183,91,.35), inset 0 2px 2px rgba(255,255,255,.6), inset 0 -3px 6px rgba(60,40,0,.5); }
+.brand-badge svg { width: 44px; height: 44px; }
+.brand-text { display: flex; flex-direction: column; }
+.brand-top { font-weight: 900; letter-spacing: 6px; font-size: 13px; }
+.brand-sub { font-size: 9px; letter-spacing: 4px; color: var(--gold); font-weight: 700; }
+
+.title { font-size: clamp(34px, 9vw, 52px); font-weight: 900; letter-spacing: 8px; text-indent: 8px; background: linear-gradient(180deg, #fdf6e3 8%, var(--gold-bright) 34%, var(--gold) 58%, #6e4f14 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; filter: drop-shadow(0 8px 22px rgba(227,183,91,.28)); }
+.subtitle { color: var(--muted); font-size: 12px; letter-spacing: 1px; margin: 2px 0 18px; text-align: center; }
+
+.section { width: min(680px, 100%); margin-bottom: 12px; }
+.section-title { font-size: 9px; letter-spacing: 4px; color: var(--gold); font-weight: 800; margin: 14px 2px 8px; display: flex; align-items: center; gap: 10px; }
+.section-title::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, var(--line), transparent); }
+
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.game-card {
+  position: relative; display: flex; flex-direction: column; align-items: center; gap: 10px;
+  text-decoration: none; color: var(--ivory);
+  background: linear-gradient(180deg, var(--panel-2), var(--panel));
+  border: 1px solid var(--line); border-radius: 20px; padding: 18px 12px 16px;
+  transition: transform .15s, box-shadow .15s, border-color .15s;
+  box-shadow: 0 12px 30px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.05);
+}
+.game-card:hover, .game-card:focus-visible { transform: translateY(-4px); border-color: var(--gold); box-shadow: 0 18px 44px rgba(227,183,91,.22), inset 0 1px 0 rgba(255,255,255,.07); outline: none; }
+.game-card:active { transform: translateY(-1px) scale(.98); }
+.game-icon { width: 96px; height: 96px; border-radius: 18px; object-fit: contain; filter: drop-shadow(0 8px 16px rgba(0,0,0,.6)); }
+.game-name { font-size: 17px; font-weight: 900; letter-spacing: 2px; }
+.game-desc { font-size: 10px; color: var(--muted); text-align: center; line-height: 1.4; min-height: 28px; }
+.game-cta { font-size: 9px; letter-spacing: 2px; font-weight: 800; color: var(--gold-shadow); background: linear-gradient(180deg, #ffe9a8, var(--gold) 55%, #a87c2c); box-shadow: 0 3px 0 #3d2b08, inset 0 1px 0 rgba(255,255,255,.6); padding: 6px 18px; border-radius: 9px; }
+.game-card.soon { opacity: .55; pointer-events: none; }
+.game-card.soon .game-cta { background: var(--panel-3); color: var(--muted); box-shadow: none; }
+
+.chat-grid { display: grid; gap: 10px; }
+.chat-card {
+  display: flex; align-items: center; gap: 12px; text-decoration: none; color: var(--ivory);
+  background: linear-gradient(180deg, var(--panel-2), var(--panel));
+  border: 1px solid rgba(255,255,255,.08); border-radius: 16px; padding: 12px 14px;
+  transition: border-color .15s, transform .15s;
+}
+.chat-card:hover, .chat-card:focus-visible { border-color: var(--gold); transform: translateX(4px); outline: none; }
+.chat-emoji { font-size: 30px; width: 44px; text-align: center; flex-shrink: 0; }
+.chat-info { min-width: 0; }
+.chat-name { font-weight: 800; font-size: 13px; letter-spacing: 1px; }
+.chat-desc { font-size: 10.5px; color: var(--muted); margin-top: 2px; line-height: 1.35; }
+.chat-cmd { margin-left: auto; font-family: 'Consolas', monospace; font-size: 11px; color: var(--gold-bright); background: var(--panel-3); border: 1px solid var(--line); padding: 5px 10px; border-radius: 8px; white-space: nowrap; }
+
+.foot { margin-top: auto; padding-top: 22px; color: var(--muted); font-size: 11px; display: flex; gap: 10px; align-items: center; }
+.foot a { color: var(--gold); text-decoration: none; font-weight: 700; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="bg"></div>
+<div class="screen">
+  <div class="brand">
+    <div class="brand-badge"><svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#0c0a14" d="M24 2 43 13.5v21L24 46 5 34.5v-21L24 2z"/><path fill="none" stroke="#2a2214" stroke-width="2.2" d="M24 6.5 39.3 15.4v17.2L24 41.5 8.7 32.6V15.4L24 6.5z"/><text x="24" y="30.5" text-anchor="middle" font-family="'Exo 2',sans-serif" font-weight="900" font-size="15" fill="#0c0a14">SG</text></svg></div>
+    <div class="brand-text"><span class="brand-top">SHADOW GAMES</span><span class="brand-sub">◈ ᴇɴ ɪɴᴅɪᴀ ◈</span></div>
+  </div>
+
+  <h1 class="title">GAMES</h1>
+  <div class="subtitle">Pick a game — beat your friends.</div>
+
+  <!-- ══════════ MINI APPS ══════════ -->
+  <div class="section">
+    <div class="section-title">MINI APPS</div>
+    <div class="grid">
+      <a class="game-card" href="./ludo/">
+        <img class="game-icon" src="ludo/assets/icon.webp" alt="Ludo" />
+        <div class="game-name">LUDO</div>
+        <div class="game-desc">Race your pawns home — vs AI, 1v1 or online rooms</div>
+        <span class="game-cta">PLAY</span>
+      </a>
+      <a class="game-card" href="./chess/">
+        <img class="game-icon" src="chess/assets/icon.webp" alt="Chess" />
+        <div class="game-name">CHESS</div>
+        <div class="game-desc">Foony board, real rules — vs AI, 1v1 or online rooms</div>
+        <span class="game-cta">PLAY</span>
+      </a>
+      <div class="game-card soon">
+        <img class="game-icon" src="ludo/assets/icon.webp" alt="More games coming" style="filter:grayscale(1);opacity:.6" />
+        <div class="game-name" style="letter-spacing:2px">COMING SOON</div>
+        <div class="game-desc">More Shadow Games mini apps are on the way</div>
+        <span class="game-cta">SOON</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ GAMES IN CHAT ══════════ -->
+  <div class="section">
+    <div class="section-title">PLAY IN THE BOT CHAT</div>
+    <div class="chat-grid">
+      <a class="chat-card" href="https://t.me/ShadowGameEnBot?start=games">
+        <div class="chat-emoji">🎴</div>
+        <div class="chat-info"><div class="chat-name">UNO</div><div class="chat-desc">Classic / Fast / Wild — bluff, stack and counter-attack with your friends.</div></div>
+        <span class="chat-cmd">/newuno</span>
+      </a>
+      <a class="chat-card" href="https://t.me/ShadowGameEnBot?start=games">
+        <div class="chat-emoji">🟩</div>
+        <div class="chat-info"><div class="chat-name">WORDSEEK</div><div class="chat-desc">Guess the hidden word together — 4 to 6 letters.</div></div>
+        <span class="chat-cmd">/new</span>
+      </a>
+      <a class="chat-card" href="https://t.me/ShadowGameEnBot?start=games">
+        <div class="chat-emoji">🔤</div>
+        <div class="chat-info"><div class="chat-name">SHADOW WORD</div><div class="chat-desc">One describes, the rest guess — Xeons on the line.</div></div>
+        <span class="chat-cmd">/game</span>
+      </a>
+      <a class="chat-card" href="https://t.me/ShadowGameEnBot">
+        <div class="chat-emoji">☀️</div>
+        <div class="chat-info"><div class="chat-name">DAILY WORDSEEK</div><div class="chat-desc">One shared puzzle per day, 6 tries, streaks and a leaderboard.</div></div>
+        <span class="chat-cmd">/daily</span>
+      </a>
+      <a class="chat-card" href="https://t.me/ShadowGameEnBot?start=games">
+        <div class="chat-emoji">🧮</div>
+        <div class="chat-info"><div class="chat-name">EVERYTHING ELSE</div><div class="chat-desc">Scores, rewards, UNO stats, group leaderboards, admin tools &amp; more.</div></div>
+        <span class="chat-cmd">/help</span>
+      </a>
+    </div>
+  </div>
+
+  <div class="foot"><a href="https://t.me/ShadowGameEnBot">@ShadowGameEnBot</a><span class="dot">•</span><span>Shadow Games — the Indian gaming hub</span></div>
+</div>
+<script>
+  try { const tg = window.Telegram && window.Telegram.WebApp; if (tg) { tg.ready(); tg.expand(); tg.setHeaderColor && tg.setHeaderColor('#05070f'); tg.setBackgroundColor && tg.setBackgroundColor('#05070f'); } } catch (e) { }
+</script>
+</body>
+</html>

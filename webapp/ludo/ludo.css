@@ -516,3 +516,5 @@ html, body {
     transition-duration: 0.001s !important;
   }
 }
+
+.room-code-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
