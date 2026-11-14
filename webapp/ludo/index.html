@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-<meta name="theme-color" content="#120a1e" />
+<meta name="theme-color" content="#05070f" />
 <title>Shadow Games · Ludo</title>
 <link rel="icon" href="assets/icon.webp" />
 <link rel="stylesheet" href="ludo.css" />
@@ -16,14 +16,22 @@
 <div id="screen-menu" class="screen active">
   <div class="menu-bg"></div>
   <div class="menu-inner">
-    <div class="game-icon-wrap"><img class="game-icon" src="assets/icon.webp" alt="Ludo" /></div>
+    <div class="brand">
+      <div class="brand-badge"><svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#0c0a14" d="M24 2 43 13.5v21L24 46 5 34.5v-21L24 2z"/><path fill="none" stroke="#2a2214" stroke-width="2.2" d="M24 6.5 39.3 15.4v17.2L24 41.5 8.7 32.6V15.4L24 6.5z"/><path fill="#0c0a14" d="M24 13.2 34.6 19.4v13.2L24 39 13.4 32.6V19.4L24 13.2z" opacity=".35"/><text x="24" y="30.5" text-anchor="middle" font-family="'Exo 2',sans-serif" font-weight="900" font-size="15" fill="#0c0a14">SG</text></svg></div>
+      <div class="brand-text">
+        <span class="brand-top">SHADOW GAMES</span>
+        <span class="brand-sub">THE ROYAL BOARD</span>
+      </div>
+    </div>
+
     <h1 class="game-title">LUDO</h1>
-    <div class="game-subtitle">Race your pawns home — the Shadow Games way.</div>
+    <div class="game-rule"><span></span><em>✦</em><span></span></div>
+    <div class="game-subtitle">Roll the bones. Claim the crown.</div>
 
     <div class="menu-buttons">
-      <button class="btn btn-green btn-big" id="btn-bots"><span class="btn-ic">🤖</span> PLAY VS BOTS</button>
-      <button class="btn btn-orange btn-big" id="btn-online"><span class="btn-ic">➕</span> CREATE ROOM</button>
-      <button class="btn btn-orange btn-big" id="btn-local"><span class="btn-ic">👥</span> PLAY IN PERSON</button>
+      <button class="btn btn-gold btn-big" id="btn-bots"><span class="btn-ic">🤖</span> PLAY VS BOTS</button>
+      <button class="btn btn-dark btn-big" id="btn-online"><span class="btn-ic">➕</span> CREATE ROOM</button>
+      <button class="btn btn-dark btn-big" id="btn-local"><span class="btn-ic">👥</span> PLAY IN PERSON</button>
     </div>
 
     <div class="menu-foot">
@@ -38,7 +46,7 @@
 <div id="screen-setup-bots" class="screen">
   <div class="panel">
     <button class="btn btn-back" data-goto="screen-menu">←</button>
-    <h2>Play vs Bots</h2>
+    <h2 class="panel-title"><span class="pt-kicker">SHADOW GAMES</span>Play vs Bots</h2>
 
     <label class="field-label">Bot count</label>
     <div class="seg" id="seg-bot-count">
@@ -47,7 +55,7 @@
       <button class="seg-btn selected" data-v="3">3</button>
     </div>
 
-    <label class="field-label">Your color</label>
+    <label class="field-label">Your colour</label>
     <div class="color-pick" id="pick-bot-color">
       <button class="cdot c-red selected" data-v="red" aria-label="Red"></button>
       <button class="cdot c-yellow" data-v="yellow" aria-label="Yellow"></button>
@@ -55,7 +63,7 @@
       <button class="cdot c-blue" data-v="blue" aria-label="Blue"></button>
     </div>
 
-    <button class="btn btn-green btn-big wide" id="start-bots">START GAME</button>
+    <button class="btn btn-gold btn-big wide" id="start-bots">START GAME</button>
   </div>
 </div>
 
@@ -63,14 +71,14 @@
 <div id="screen-setup-local" class="screen">
   <div class="panel">
     <button class="btn btn-back" data-goto="screen-menu">←</button>
-    <h2>Play in Person</h2>
+    <h2 class="panel-title"><span class="pt-kicker">SHADOW GAMES</span>Play in Person</h2>
     <label class="field-label">Players</label>
     <div class="seg" id="seg-local-count">
       <button class="seg-btn" data-v="2">2</button>
       <button class="seg-btn" data-v="3">3</button>
       <button class="seg-btn selected" data-v="4">4</button>
     </div>
-    <button class="btn btn-green btn-big wide" id="start-local">START GAME</button>
+    <button class="btn btn-gold btn-big wide" id="start-local">START GAME</button>
   </div>
 </div>
 
@@ -78,15 +86,15 @@
 <div id="screen-online" class="screen">
   <div class="panel">
     <button class="btn btn-back" data-goto="screen-menu">←</button>
-    <h2>Online Room</h2>
+    <h2 class="panel-title"><span class="pt-kicker">SHADOW GAMES</span>Online Room</h2>
 
     <div class="online-grid">
-      <button class="btn btn-orange btn-big" id="btn-create-room">➕ CREATE ROOM</button>
+      <button class="btn btn-gold btn-big" id="btn-create-room">➕ CREATE ROOM</button>
       <div class="or-row"><span>or</span></div>
       <label class="field-label" for="join-code">Join by code</label>
       <div class="join-row">
         <input id="join-code" class="code-input" maxlength="5" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="ABCDE" />
-        <button class="btn btn-green" id="btn-join-room">JOIN</button>
+        <button class="btn btn-dark" id="btn-join-room">JOIN</button>
       </div>
     </div>
     <div id="online-status" class="online-status"></div>
@@ -97,14 +105,14 @@
 <div id="screen-room" class="screen">
   <div class="panel">
     <button class="btn btn-back" id="leave-room">←</button>
-    <h2>Room</h2>
+    <h2 class="panel-title"><span class="pt-kicker">SHADOW GAMES</span>Your Room</h2>
     <div class="room-code-box">
       <div class="room-code-label">INVITE CODE</div>
       <div class="room-code" id="room-code">-----</div>
-      <button class="btn btn-ghost btn-small" id="copy-code">📋 Copy</button>
+      <button class="btn btn-dark btn-small" id="copy-code">📋 Copy</button>
     </div>
     <div id="room-players" class="room-players"></div>
-    <button class="btn btn-green btn-big wide" id="start-online" disabled>START (need 2+ players)</button>
+    <button class="btn btn-gold btn-big wide" id="start-online" disabled>START (need 2+ players)</button>
     <div class="room-hint">Share the code with friends — they open this same game and join.</div>
   </div>
 </div>
@@ -122,13 +130,16 @@
 
   <div class="game-main">
     <div id="board" class="ludo-board" aria-label="Ludo board">
+      <div class="board-bezel"></div>
       <div class="ludo-cells" id="ludo-cells"></div>
       <div class="ludo-pinwheel" id="ludo-pinwheel">
         <span class="pin-tri pin-tri-blue"></span>
         <span class="pin-tri pin-tri-yellow"></span>
         <span class="pin-tri pin-tri-green"></span>
         <span class="pin-tri pin-tri-red"></span>
-        <span class="ludo-pin-coin">SG</span>
+        <span class="ludo-pin-coin" aria-hidden="true">
+          <svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="30" fill="#0c0a14" stroke="#e3b75b" stroke-width="3"/><path d="M32 12a20 20 0 1 0 20 20" fill="none" stroke="#e3b75b" stroke-width="2.4" stroke-linecap="round" opacity=".55"/><text x="32" y="40" text-anchor="middle" font-family="'Exo 2',sans-serif" font-weight="900" font-size="20" fill="#e3b75b">SG</text></svg>
+        </span>
       </div>
       <div class="ludo-pieces" id="ludo-pieces"></div>
     </div>
@@ -148,12 +159,14 @@
 <!-- ══════════ WIN OVERLAY ══════════ -->
 <div id="win-overlay" class="overlay">
   <div class="win-card">
-    <img class="win-crown" src="assets/crown.webp" alt="crown" />
+    <div class="win-rays"></div>
+    <img class="win-crown" src="assets/crown.webp" alt="Crown" />
+    <div class="win-kicker">VICTORY</div>
     <div class="win-title" id="win-title">Red wins!</div>
     <div class="win-sub" id="win-sub"></div>
     <div class="win-tokens" id="win-tokens">🔴 🟢 🟡 🔵 → 🏆</div>
-    <button class="btn btn-green btn-big wide" id="win-again">PLAY AGAIN</button>
-    <button class="btn btn-ghost wide" id="win-menu">MAIN MENU</button>
+    <button class="btn btn-gold btn-big wide" id="win-again">PLAY AGAIN</button>
+    <button class="btn btn-dark wide" id="win-menu">MAIN MENU</button>
   </div>
 </div>
 

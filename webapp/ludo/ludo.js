@@ -409,8 +409,8 @@ function endGame(color) {
 function updateHeader() {
   const p = currentPlayer();
   if (!p) return;
-  $('turn-dot').style.background = COLORS[p.color].hex;
-  $('turn-dot').style.color = COLORS[p.color].hex;
+  $('turn-dot').style.background = COLORS[p.color].light;
+  $('turn-dot').style.color = COLORS[p.color].light;
   $('turn-text').textContent = state.over ? 'Game over' :
     (p.isBot ? `${p.name}'s turn` : (state.mode === 'local' ? `${COLORS[p.color].name}'s turn` : 'Your turn'));
   $('dice-hint').textContent = state.over ? '' : (canRoll() ? 'ROLL THE DICE!' : 'PICK A PAWN!');
@@ -425,7 +425,7 @@ function updateHeader() {
     div.className = 'pstrip' + (i === state.turnIdx && !state.over ? ' active' : '');
     div.innerHTML = `<img class="ps-av" src="${avatarFor(pl)}" alt="" />
       <span class="ps-info">
-        <span class="ps-name" style="color:${COLORS[pl.color].hex}">${escapeHtml(pl.name)}</span>
+        <span class="ps-name" style="color:${COLORS[pl.color].light}">${escapeHtml(pl.name)}</span>
         <span class="ps-tag">${tag}</span>
       </span>
       <span class="ps-count">🏠 ${finished}/4</span>`;
@@ -470,6 +470,8 @@ function doRoll(broadcast) {
   const dice = 1 + Math.floor(Math.random() * 6);
   state.busy = true;
   sfx.roll();
+  const diceEl = $('dice-face');
+  if (diceEl) diceEl.classList.add('rolling');
   // rolling animation
   let ticks = 0;
   const iv = setInterval(() => {
@@ -479,6 +481,7 @@ function doRoll(broadcast) {
       clearInterval(iv);
       state.dice = dice;
       drawDie(dice);
+      if (diceEl) diceEl.classList.remove('rolling');
       state.busy = false;
       onAfterRoll(broadcast);
     }
