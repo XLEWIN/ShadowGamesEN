@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <radialGradient id="head" cx="38%" cy="30%" r="75%">
+      <stop offset="0%" stop-color="#7dffa8"/>
+      <stop offset="38%" stop-color="#1e9e58"/>
+      <stop offset="100%" stop-color="#064a22"/>
+    </radialGradient>
+    <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#7dffa8"/>
+      <stop offset="30%" stop-color="#1e9e58"/>
+      <stop offset="100%" stop-color="#064a22"/>
+    </linearGradient>
+    <radialGradient id="baseTop" cx="50%" cy="42%" r="70%">
+      <stop offset="0%" stop-color="#fff6c8"/>
+      <stop offset="45%" stop-color="#c9a227"/>
+      <stop offset="100%" stop-color="#6e520a"/>
+    </radialGradient>
+    <linearGradient id="baseSide" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffe896"/>
+      <stop offset="55%" stop-color="#c9a227"/>
+      <stop offset="100%" stop-color="#6e520a"/>
+    </linearGradient>
+  </defs>
+
+  <!-- lower gold base disc -->
+  <ellipse cx="32" cy="52.5" rx="20" ry="6.4" fill="url(#baseSide)"/>
+  <ellipse cx="32" cy="49.4" rx="20" ry="6.4" fill="url(#baseTop)" stroke="#6e520a" stroke-width="1.2"/>
+
+  <!-- tapered body -->
+  <path d="M14.5 47 C17 40 22 36.5 24.5 28 C24.5 24.5 24 22.5 23 19 L41 19 C40 22.5 39.5 24.5 39.5 28 C42 36.5 47 40 49.5 47 Z"
+        fill="url(#body)" stroke="#064a22" stroke-width="1.6" stroke-linejoin="round"/>
+  <!-- body highlight -->
+  <path d="M23.5 42 C25.5 34 29 30 30.5 22" stroke="#7dffa8" stroke-opacity=".75" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+
+  <!-- gold collar ring between body and head -->
+  <ellipse cx="32" cy="19" rx="9.2" ry="3.2" fill="url(#baseSide)" stroke="#6e520a" stroke-width="1.1"/>
+
+  <!-- head -->
+  <circle cx="32" cy="11.4" r="9.6" fill="url(#head)" stroke="#064a22" stroke-width="1.5"/>
+  <!-- head specular -->
+  <ellipse cx="28.6" cy="7.6" rx="3.1" ry="2" fill="#ffffff" opacity=".9"/>
+  <circle cx="29.6" cy="8.8" r="1" fill="#ffffff" opacity=".95"/>
+</svg>

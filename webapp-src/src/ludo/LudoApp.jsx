@@ -10,7 +10,7 @@ import { createSfx } from '../shared/audio.js';
 const AVATARS = { red: 'assets/petey.webp', yellow: 'assets/bomby.webp', green: 'assets/bruno.webp', blue: 'assets/bulby.webp' };
 const avatarFor = (p) => (p && p.isBot) ? (AVATARS[p.color] || 'assets/guest.webp') : 'assets/guest.webp';
 const PIP_LAYOUTS = { 1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] };
-const PIECES = { red: 'assets/pieces_red.webp', blue: 'assets/pieces_blue.webp', green: 'assets/pieces_green.webp', yellow: 'assets/pieces_yellow.webp' };
+const PIECES = { red: 'assets/pieces_red.svg', blue: 'assets/pieces_blue.svg', green: 'assets/pieces_green.svg', yellow: 'assets/pieces_yellow.svg' };
 
 /* ── Board cells (module-scope, computed once) ─────────────── */
 const CELLS = (() => {
@@ -576,10 +576,10 @@ export default function LudoApp() {
               return (
                 <button key={`${t.color}-${t.idx}`}
                         className={`token-wrap ${movable ? 'token-movable' : ''}`}
-                        style={{ left: `${t.x}%`, top: `${t.y}%`, transform: 'translate(-50%,-58%)', background: 'none', border: 'none', padding: 0 }}
+                        style={{ left: `${t.x}%`, top: `${t.y}%`, transform: 'translate(-50%,-58%)', background: 'none', border: 'none', padding: 0, width: '6.2%', aspectRatio: '1 / 1' }}
                         onClick={() => { if (myTurn()) doMove(t.idx); }}
                         aria-label={`${t.color} pawn ${t.idx + 1}`}>
-                  <img src={PIECES[t.color]} alt="" draggable="false" className="block w-full h-full" style={{ width: '68px', height: '68px', maxWidth: '11cqw', maxHeight: '11cqw' }} />
+                  <img src={PIECES[t.color]} alt="" draggable="false" className="token-img block w-full h-full" />
                 </button>
               );
             })}

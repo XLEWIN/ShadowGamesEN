@@ -92,16 +92,13 @@ body {
 .ludo-cell-blue { background: linear-gradient(180deg,#3f74cf 0%,#2f66c4 55%,#14305e 100%); }
 .yard { position: relative; overflow: hidden; }
 .well { position: absolute; width: 39%; height: 39%; border-radius: 9999px; border: 2.5px solid rgba(227,183,91,.5); background: radial-gradient(circle at 50% 42%, rgba(0,0,0,.72) 0%, rgba(0,0,0,.4) 55%, rgba(0,0,0,.08) 100%); box-shadow: inset 0 5px 12px rgba(0,0,0,.85), inset 0 -2px 4px rgba(227,183,91,.12), 0 1px 0 rgba(255,255,255,.06); }
-.ludo-token {
-  transition: left .18s ease, top .18s ease;
-  filter: drop-shadow(0 5px 5px rgba(0,0,0,.65));
-  position: absolute; width: 45%; height: 45%; pointer-events: none;
-}
-.token-wrap { position: absolute; pointer-events: auto; cursor: pointer; }
+.token-wrap { position: absolute; pointer-events: auto; cursor: pointer; transition: left .18s ease, top .18s ease; filter: drop-shadow(0 4px 4px rgba(0,0,0,.7)); }
+.token-wrap:hover .token-img { filter: brightness(1.15) drop-shadow(0 0 6px rgba(255,255,255,.35)); }
 .token-movable { animation: token-float 1.15s ease-in-out infinite; }
+.token-movable .token-img { filter: drop-shadow(0 0 10px rgba(255,225,130,.95)) drop-shadow(0 6px 6px rgba(0,0,0,.6)); }
 @keyframes token-float {
   0%,100% { transform: translate(-50%,-58%) translateY(0) scale(1); }
-  50% { transform: translate(-50%,-58%) translateY(-7%) scale(1.13); }
+  50% { transform: translate(-50%,-58%) translateY(-7%) scale(1.12); }
 }
 
 /* ── Chess pieces ───────────────────── */
