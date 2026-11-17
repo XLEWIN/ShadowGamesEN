@@ -22,3 +22,6 @@ venv/
 .ptb-backup/
 _probe.py
 _*.txt
+
+# React/Vite webapp source deps + builds
+webapp-src/node_modules/
