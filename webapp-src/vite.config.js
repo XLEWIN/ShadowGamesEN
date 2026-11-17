@@ -13,7 +13,7 @@ export default defineConfig({
     // Emit into the published webapp/ directory; keep existing assets there.
     outDir: '../webapp',
     emptyOutDir: false,
-    assetsDir: '_app',
+    assetsDir: 'app',
     rollupOptions: {
       input: {
         hub: resolve(root, 'index.html'),
