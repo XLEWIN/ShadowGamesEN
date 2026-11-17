@@ -103,7 +103,7 @@ export default function LudoApp() {
     setDiceN(5);
     setRolling(false);
     bump();
-    scheduleIfBot();
+    scheduleBotIfNeeded();
   }
 
   const myTurn = () => {
@@ -112,12 +112,6 @@ export default function LudoApp() {
     if (G.current.mode === 'local') return true;
     return true; // local player always acts on own turn (this hook only fires for human players)
   };
-
-  function scheduleIfBot() {
-    const p = currentPlayer();
-    if (!p || p.isBot) return;
-    // human — wait for input
-  }
 
   function passTurn() {
     G.current.dice = null;
