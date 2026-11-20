@@ -47,7 +47,7 @@ from shadow_game_bot.handlers.menu import help_callback
 from shadow_game_bot.handlers.callbacks import callback_handler
 from shadow_game_bot.handlers.messages import message_handler
 from shadow_game_bot.handlers.private import private_message_handler  # noqa: F401 (used via ws_messages)
-from shadow_game_bot.handlers.event_log import log_bot_added
+from shadow_game_bot.handlers.event_log import log_bot_added, _safe_log
 from shadow_game_bot.handlers.commands import (
     help_handler, rules_handler, mystats_handler, ranking_handler,
     globalranking_handler, chatranking_handler, game_start_handler,
@@ -182,6 +182,20 @@ async def _recreate_expired_topic(chat_id: int, topic_id: int) -> None:
 async def error_handler(event: ErrorEvent) -> None:
     err = event.exception
     desc = str(err) if err is not None else ""
+
+    # Mirror handler failures to the log group so they're visible in Telegram
+    # (Railway's stdout alone isn't enough to diagnose a dead bot).
+    try:
+        update = event.update
+        msg = update.message or update.edited_message if update else None
+        chat = msg.chat if msg else None
+        chat_info = f" (chat={chat.id}, type={chat.type})" if chat else ""
+        await _safe_log(
+            f"⚠️ Handler error{chat_info}\n"
+            f"{type(err).__name__}: {desc[:400]}"
+        )
+    except Exception:
+        pass
 
     # Special cases ported from WordSeek's error-handler.ts
     if isinstance(err, TelegramBadRequest):
@@ -324,6 +338,18 @@ async def on_startup(bot: Bot) -> None:
 
     # Make sure today's daily word exists (also resets inactive streaks)
     await ensure_daily_word(ws_db)
+
+    # Startup ping to the log group — confirms the bot is alive and
+    # running this exact build (visible in Telegram, not just Railway logs).
+    try:
+        from shadow_game_bot.handlers.event_log import _safe_log
+        await _safe_log(
+            f"✅ Bot started (build {config.log_level})\n"
+            f"Polling · allowed updates subscribed\n"
+            f"DB: {config.db_path}"
+        )
+    except Exception:
+        logger.exception("startup ping failed")
 
     # Command menu (BotFather-style list)
     try:
