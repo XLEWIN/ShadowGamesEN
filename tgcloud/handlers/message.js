@@ -29,6 +29,8 @@ import {
   changeWord, setCustomWord, dropLead, volunteerLeader, getScoreboard,
 } from '../lib/shadowgame.js';
 import { getWordOfTheDay, getGameDate } from '../lib/daily.js';
+import { handleAdminCommand } from '../lib/admin.js';
+import { handleUnoCommand } from '../lib/uno_cmds.js';
 
 configurePipeline({ api, chatId: LOG_CHANNEL_ID });
 
@@ -76,14 +78,21 @@ export default async function (message, ctx) {
       case 'globalranking': await cmdGlobalRanking(message); break;
       case 'mystats': case 'stats': await cmdMystats(message, userId, user); break;
       case 'chatranking': await replyText(message, `${E.INFO} No active chats yet.`, { parseMode: 'HTML' }); break;
-      case 'newuno': case 'join': case 'startuno': case 'modes': case 'unostats': case 'kill': case 'kick': case 'open': case 'close': case 'skip': case 'notifyme':
-        await replyText(message, `${E.INFO} UNO uses inline cards — open @ShadowGameEnBot in inline mode to play.`, { parseMode: 'HTML' }); break;
+      case 'newuno': case 'join': case 'startuno': case 'modes': case 'unostats': case 'kill': case 'kick': case 'open': case 'close': case 'skip': case 'notifyme': case 'leave': case 'hand': case 'show': {
+        const handled = await handleUnoCommand(command, args, message, { reply: (text, markup) => replyText(message, text, { parseMode: 'HTML', replyMarkup: markup }), replyMessage: (text, opts) => replyText(message, text, opts) });
+        if (handled) break;
+        break;
+      }
       case 'resetdata': await cmdResetData(message, userId); break;
       case 'gban': case 'ungban': case 'ban': case 'unban': case 'transfer': case 'track': case 'untrack': case 'tracklist':
       case 'broadcast': case 'broadcast_status': case 'broadcast_cancel': case 'captcha':
-      case 'setgametopic': case 'unsetgametopic': case 'allowonlylen': case 'recreatetopic': case 'seekauth':
-        if (!isOwner(userId)) { await replyText(message, `${E.LOCK} This command is owner only.`, { parseMode: 'HTML' }); break; }
-        await replyText(message, `${E.INFO} Owner command received: /${command} ${plain(args || '')}`.trim(), { parseMode: 'HTML' }); break;
+      case 'setgametopic': case 'unsetgametopic': case 'allowonlylen': case 'recreatetopic': case 'seekauth': {
+        const result = await handleAdminCommand(command, args, message, {
+          reply: (text, opts) => replyText(message, text, opts),
+          replyMessage: (text, opts) => replyText(message, text, opts),
+        });
+        break;
+      }
       default: break;
     }
   } catch (err) {

@@ -13,6 +13,7 @@ import {
   getRoundWord,
 } from '../lib/shadowgame.js';
 import { mention } from '../lib/texts.js';
+import { handleUnoCallback } from '../lib/uno_cmds.js';
 
 configurePipeline({ api, chatId: -1003884436085 });
 
@@ -27,6 +28,10 @@ export default async function (query, ctx) {
     const chatId = chat.id;
     const msgId = query.message.message_id;
 
+    if (data.startsWith('mm:') || data.startsWith('uno:')) {
+      await handleUnoCallback(query, ctx);
+      return;
+    }
     if (data.startsWith('ws:')) {
       // WordSeek callbacks — placeholder invites
       await answerCallbackQuery(query.id, 'WordSeek controls in serverless port');
