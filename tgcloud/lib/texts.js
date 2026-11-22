@@ -1,0 +1,64 @@
+// Exact text constants from Python texts.py + command texts (E.* = premium emoji HTML).
+import { E } from './emojis.js';
+
+export const URL_ADD_TO_GROUP = (username) => `https://t.me/${username}?startgroup=true`;
+export const URL_OWNER = 'https://t.me/Xeczt';
+export const URL_UPDATES = 'https://t.me/ShadowBotsHQ';
+export const URL_DISCUSSION = 'https://t.me/keczt';
+
+export const BOT_DESCRIPTION =
+  'Three exciting games for your group chats:\n\n' +
+  '<b>Word Guess</b> — one player explains the secret word, the others guess it.\n' +
+  '<b>WordSeek</b> — guess the hidden word in 30 tries with color hints (like Wordle). ' +
+  'Play the <b>Daily WordSeek</b> in private for streaks!\n' +
+  '<b>UNO</b> — the classic card game, right in your chat with inline cards and fast mode.\n\n' +
+  'Add me to your group and start playing with your friends.';
+
+export const BOT_DESCRIPTION_PLAIN =
+  'Three exciting games for your group chats:\n\n' +
+  'Word Guess — one player explains the secret word, the others guess it.\n' +
+  'WordSeek — guess the hidden word in 30 tries with color hints (like Wordle). ' +
+  'Play the Daily WordSeek in private for streaks!\n' +
+  'UNO — the classic card game, right in your chat with inline cards and fast mode.\n\n' +
+  'Add me to your group and start playing with your friends.';
+
+export const START_TITLE_LINE = (fire, username) => `${fire} ${username}`;
+export const START_HINT_LINE = (arrow) => `${arrow} /help for the full command list.`;
+export const START_TEXT = (fire, username, description, arrow) =>
+  START_TITLE_LINE(fire, username) + '\n' + description + '\n\n' + START_HINT_LINE(arrow);
+export const START_TEXT_PLAIN = (username, descriptionPlain) =>
+  `🔥 ${username}\n${descriptionPlain}\n\n✈️ /help for the full command list.`;
+
+export const BOT_USERNAME = 'ShadowGameEnBot';
+export const OWNER_ID = 8953843780;
+export const LOG_CHANNEL_ID = -1003884436085;
+export const HUB_URL = 'https://xlewin.github.io/ShadowGamesEN/webapp/';
+export const LUDO_URL = 'https://xlewin.github.io/ShadowGamesEN/webapp/ludo/';
+export const CHESS_URL = 'https://xlewin.github.io/ShadowGamesEN/webapp/chess/';
+
+export const RULES = `${E.INFO} <b>Game Rules</b>\n${E.BULLET}\n\n` +
+  `<b>Word Guess</b> — one player explains the secret word, the others guess it.\n` +
+  `<b>WordSeek</b> — guess the hidden word in 30 tries with color hints.\n` +
+  `<b>UNO</b> — the classic card game with inline cards and fast mode.\n\n` +
+  `Add me to a group and start playing!`;
+
+export function startText() { return START_TEXT(E.FIRE, `@${BOT_USERNAME}`, BOT_DESCRIPTION, E.ARROW); }
+export function startPlain() { return START_TEXT_PLAIN(`@${BOT_USERNAME}`, BOT_DESCRIPTION_PLAIN); }
+
+export const HELP_TEXT = `${E.INFO} <b>Shadow Games — Commands</b>\n${E.BULLET}\n\n` +
+  `<b>🎮 Games</b>\n` +
+  `<code>/game</code> Word Guess · <code>/new</code> WordSeek · <code>/newuno</code> UNO\n` +
+  `<code>/ludo</code> Ludo · <code>/chess</code> Chess · <code>/games</code> All games\n\n` +
+  `<b>🟩 WordSeek</b>\n` +
+  `<code>/new4 /new5 /new6</code> game · <code>/end</code> end · <code>/daily</code> daily\n` +
+  `<code>/leaderboard</code> scores · <code>/score</code> your score\n\n` +
+  `<b>🎴 UNO</b>\n` +
+  `<code>/newuno</code> create · <code>/join</code> join · <code>/startuno</code> deal\n` +
+  `<code>/modes</code> modes · <code>/unostats</code> stats\n\n` +
+  `<b>🔧 Other</b>\n` +
+  `<code>/help</code> this menu · <code>/rules</code> rules · <code>/id</code> info`;
+
+export function mention(id, name) {
+  const safe = String(name || 'Player').replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+  return `<a href="tg://user?id=${id}">${safe}</a>`;
+}

@@ -25,3 +25,5 @@ _*.txt
 
 # React/Vite webapp source deps + builds
 webapp-src/node_modules/
+.tgcloud/
+node_modules/
