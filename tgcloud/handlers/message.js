@@ -79,17 +79,22 @@ export default async function (message, ctx) {
       case 'mystats': case 'stats': await cmdMystats(message, userId, user); break;
       case 'chatranking': await replyText(message, `${E.INFO} No active chats yet.`, { parseMode: 'HTML' }); break;
       case 'newuno': case 'join': case 'startuno': case 'modes': case 'unostats': case 'kill': case 'kick': case 'open': case 'close': case 'skip': case 'notifyme': case 'leave': case 'hand': case 'show': {
-        const handled = await handleUnoCommand(command, args, message, { reply: (text, markup) => replyText(message, text, { parseMode: 'HTML', replyMarkup: markup }), replyMessage: (text, opts) => replyText(message, text, opts) });
-        if (handled) break;
+        // ctx.reply receives the SAME opts object the UNO module built
+        // ({ parseMode, replyMarkup }); never wrap it again — a nested
+        // replyMarkup is not an InlineKeyboardMarkup and Telegram drops it.
+        await handleUnoCommand(command, args, message, {
+          reply: (text, opts) => replyText(message, text, { parseMode: 'HTML', ...(opts || {}) }),
+          replyMessage: (text, opts) => replyText(message, text, { parseMode: 'HTML', ...(opts || {}) }),
+        });
         break;
       }
       case 'resetdata': await cmdResetData(message, userId); break;
       case 'gban': case 'ungban': case 'ban': case 'unban': case 'transfer': case 'track': case 'untrack': case 'tracklist':
       case 'broadcast': case 'broadcast_status': case 'broadcast_cancel': case 'captcha':
       case 'setgametopic': case 'unsetgametopic': case 'allowonlylen': case 'recreatetopic': case 'seekauth': {
-        const result = await handleAdminCommand(command, args, message, {
-          reply: (text, opts) => replyText(message, text, opts),
-          replyMessage: (text, opts) => replyText(message, text, opts),
+        await handleAdminCommand(command, args, message, {
+          reply: (text, opts) => replyText(message, text, { parseMode: 'HTML', ...(opts || {}) }),
+          replyMessage: (text, opts) => replyText(message, text, { parseMode: 'HTML', ...(opts || {}) }),
         });
         break;
       }
