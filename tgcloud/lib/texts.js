@@ -32,9 +32,11 @@ export const START_TEXT_PLAIN = (username, descriptionPlain) =>
 export const BOT_USERNAME = 'ShadowGameEnBot';
 export const OWNER_ID = 8953843780;
 export const LOG_CHANNEL_ID = -1003884436085;
-export const HUB_URL = 'https://xlewin.github.io/ShadowGamesEN/webapp/';
-export const LUDO_URL = 'https://xlewin.github.io/ShadowGamesEN/webapp/ludo/';
-export const CHESS_URL = 'https://xlewin.github.io/ShadowGamesEN/webapp/chess/';
+// Mini Apps are served by tgcloud static hosting — no GitHub identity in URLs.
+export const WEBAPP_BASE = 'https://app8670418995.tgcloud.ai/';
+export const HUB_URL = WEBAPP_BASE;
+export const LUDO_URL = `${WEBAPP_BASE}ludo/`;
+export const CHESS_URL = `${WEBAPP_BASE}chess/`;
 
 export const RULES = `${E.INFO} <b>Game Rules</b>\n${E.BULLET}\n\n` +
   `<b>Word Guess</b> — one player explains the secret word, the others guess it.\n` +

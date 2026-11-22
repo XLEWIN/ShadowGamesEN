@@ -484,7 +484,7 @@ export default function LudoApp() {
               const code = o?.code || '';
               const tgw = window.Telegram && window.Telegram.WebApp;
               if (tgw) { try { tgw.openTelegramLink(`https://t.me/ShadowGameEnBot?inline=${encodeURIComponent('ludo ' + code)}`); return; } catch (e) { } }
-              const link = `https://xlewin.github.io/ShadowGamesEN/webapp/ludo/?room=${code}`;
+              const link = new URL(`./?room=${encodeURIComponent(code)}`, window.location.href).href;
               try { navigator.clipboard.writeText(link); announce('Invite link copied'); } catch (e) { announce(link); }
             }}>🔗 Invite friends</button>
           </div>

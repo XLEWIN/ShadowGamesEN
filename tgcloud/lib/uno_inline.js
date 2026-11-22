@@ -4,7 +4,7 @@
 import { api } from 'sdk';
 import { getState, setState, deleteState } from './db.js';
 import { E, EID } from './emojis.js';
-import { mention } from './texts.js';
+import { mention, HUB_URL, LUDO_URL, CHESS_URL } from './texts.js';
 import { unoChoiceKeyboard } from './keyboards.js';
 import { STICKERS, STICKERS_GREY, STICKERS_OPTIONS } from './uno_stickers.js';
 import {
@@ -43,9 +43,6 @@ const sticker = (id, fileId, messageText) => ({
   ...(messageText ? { input_message_content: { message_text: messageText } } : {}),
 });
 
-const HUB_URL = 'https://xlewin.github.io/ShadowGamesEN/webapp/';
-const LUDO_URL = 'https://xlewin.github.io/ShadowGamesEN/webapp/ludo/';
-const CHESS_URL = 'https://xlewin.github.io/ShadowGamesEN/webapp/chess/';
 function hubArticles() {
   const game = (id, title, desc, url, label) => ({
     ...article(id, title, desc, `${title} — @ShadowGameEnBot`),

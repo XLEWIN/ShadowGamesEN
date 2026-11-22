@@ -11,7 +11,8 @@
     "webhook": "tgcloud webhook",
     "test": "node --test tests_js/*.test.js",
     "check": "node --check tgcloud/handlers/message.js && node --test tests_js/*.test.js",
-    "deploy": "tgcloud push"
+    "build:web": "npm --prefix webapp-src run build",
+    "deploy": "npm run build:web && tgcloud push"
   },
   "devDependencies": {
     "@tgcloud/cli": "^0.2.0"
