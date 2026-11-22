@@ -26,4 +26,11 @@ export const btnWebApp = (text, url, iconEmojiId, style) => ({
   ...(style ? { style } : {}),
   ...(iconEmojiId ? { icon_custom_emoji_id: iconEmojiId } : {}),
 });
+export const btnSwitchInline = (text, query = '') => ({
+  text, switch_inline_query_current_chat: query,
+});
 export const buildKeyboard = (rows) => ({ inline_keyboard: rows });
+// The classic UNO "Make your choice!" button — opens the inline sticker bar.
+export const unoChoiceKeyboard = () => buildKeyboard([
+  [btnSwitchInline('🎴 Make your choice!', '')],
+]);

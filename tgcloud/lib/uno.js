@@ -60,6 +60,7 @@ export function newGame(chat, mode = 'fast') {
     deck: [],
     graveyard: [],
     lastCard: null,
+    lastCardOwner: null,
     lastMessageId: null,
     starter: null,
   };
@@ -79,7 +80,7 @@ function dismiss(g, card) {
 
 export function addPlayer(g, user) {
   if (g.players.some(p => p.userId === user.id)) return false;
-  g.players.push({ userId: user.id, name: user.first_name || 'Player', username: user.username || null, cards: [], drew: false });
+  g.players.push({ userId: user.id, name: user.first_name || 'Player', username: user.username || null, cards: [], drew: false, antiCheat: 0 });
   return true;
 }
 
@@ -118,20 +119,28 @@ function turn(g) {
 
 function applyCard(g, card) {
   g.lastCard = card;
-  if (card.value === 'skip') {
-    turn(g);
-  } else if (card.special === 'draw_four') {
-    g.drawCounter += 4;
+  if (card.special === 'colorchooser' || card.special === 'draw_four') {
+    if (card.special === 'draw_four') g.drawCounter += 4;
     g.choosingColor = true;
     return;
-  } else if (card.value === 'draw') {
-    g.drawCounter += 2;
-  } else if (card.value === 'reverse') {
-    if (g.players.length === 2) turn(g);
-    else g.reversed = !g.reversed;
   }
-  if (!card.special || (card.special !== 'colorchooser' && card.special !== 'draw_four')) turn(g);
-  else g.choosingColor = true;
+  let turns = 1;
+  if (card.value === 'skip') turns = 2; // skip always advances twice
+  else if (card.value === 'reverse') {
+    if (g.players.length === 2) turns = 2; // 2-player reverse acts as skip
+    else g.reversed = !g.reversed;
+  } else if (card.value === 'draw') g.drawCounter += 2;
+  for (let i = 0; i < turns; i++) turn(g);
+}
+
+export function advanceTurn(g) { turn(g); }
+
+// Draw without the turn check — used by +4 bluff resolution.
+export function forceDraw(g, userId, n = 1) {
+  const p = g.players.find(p => p.userId === userId);
+  if (!p) return null;
+  for (let i = 0; i < n; i++) p.cards.push(drawCard(g));
+  return p;
 }
 
 export function chooseColor(g, color) {
@@ -171,6 +180,7 @@ export function playCard(g, userId, key) {
   if (!playableCards(g, p).some(c => cardKey(c) === key)) return { ok: false, reason: 'That card is not playable' };
   p.cards.splice(idx, 1);
   dismiss(g, g.lastCard);
+  g.lastCardOwner = userId;
   applyCard(g, card);
   return { ok: true, card, finished: p.cards.length === 0, player: p };
 }
