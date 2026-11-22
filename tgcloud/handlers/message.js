@@ -64,9 +64,9 @@ export default async function (message, ctx) {
       case 'help': await cmdHelp(message, isPrivate); break;
       case 'rules': await cmdRules(message); break;
       case 'id': await cmdId(message); break;
-      case 'ludo': await cmdWebApp(message, '🎲', 'Ludo', 'Play vs AI, 1v1 or online rooms', LUDO_URL); break;
-      case 'chess': await cmdWebApp(message, '♟️', 'Chess', 'Real rules — vs AI, 1v1, online rooms with clocks', CHESS_URL); break;
-      case 'games': await cmdWebApp(message, '🎮', 'Games Hub', 'All games in one place', HUB_URL); break;
+      case 'ludo': await cmdWebApp(message, 'Ludo', 'Play vs AI, 1v1 or online rooms', LUDO_URL); break;
+      case 'chess': await cmdWebApp(message, 'Chess', 'Real rules — vs AI, 1v1, online rooms with clocks', CHESS_URL); break;
+      case 'games': await cmdWebApp(message, 'Games Hub', 'All games in one place', HUB_URL); break;
       case 'new': case 'new4': case 'new5': case 'new6': await cmdNew(message, command, args, isPrivate); break;
       case 'end': await cmdEnd(message, isPrivate); break;
       case 'daily': await cmdDaily(message, isPrivate, userId); break;
@@ -111,7 +111,7 @@ async function cmdStart(message, args, isPrivate, userId, user) {
   if (!isPrivate) {
     await replyText(message, `${E.GAME} ${mention(userId, user.first_name || 'Player')} <b>started a new game!</b>\n\n${E.SPARKLE} Choose the word mode for this game:`, {
       parseMode: 'HTML',
-      replyMarkup: buildKeyboard([[btnPrimary('Normal', 'mode:normal', E.INFO), btnSuccess('Fiction', 'mode:fiction', E.FIRE)]]),
+      replyMarkup: buildKeyboard([[btnPrimary('Normal', 'mode:normal', EID.INFO), btnSuccess('Fiction', 'mode:fiction', EID.FIRE)]]),
     });
     return;
   }
@@ -147,10 +147,10 @@ async function cmdRules(message) {
   await replyText(message, text, { parseMode: 'HTML' });
 }
 
-async function cmdWebApp(message, icon, name, desc, url) {
+async function cmdWebApp(message, name, desc, url) {
   await replyText(message, `${E.GAME} <b>Shadow Games · ${name}</b>\n\n${desc}`, {
     parseMode: 'HTML',
-    replyMarkup: buildKeyboard([[btnWebApp(`${icon} Play ${name}`, url, undefined, 'primary')]]),
+    replyMarkup: buildKeyboard([[btnWebApp(`Play ${name}`, url)]]),
   });
 }
 
@@ -220,7 +220,7 @@ async function cmdGame(message, chat, user, isPrivate, args) {
   if (isPrivate) { await replyText(message, `${E.WARNING} Use this command in a group chat.`, { parseMode: 'HTML' }); return; }
   const existing = await getActiveGame(chat.id);
   if (existing) {
-    await replyText(message, `${E.INFO} A game is already active in this chat.`, { parseMode: 'HTML', replyMarkup: buildKeyboard([[btnDanger('Stop Game', 'sgb:stop')]]) });
+    await replyText(message, `${E.INFO} A game is already active in this chat.`, { parseMode: 'HTML', replyMarkup: buildKeyboard([[btnDanger('Stop Game', 'sgb:stop', EID.CROSS)]]) });
     return;
   }
   const category = String(args || '').trim().toLowerCase() === 'fiction' ? 'fiction' : 'normal';
@@ -228,7 +228,7 @@ async function cmdGame(message, chat, user, isPrivate, args) {
     const { word, round } = await startNewGame(chat.id, user.id, user.first_name || 'Player', user.username, chat.title, category);
     await replyText(message, `${E.GAME} ${mention(user.id, user.first_name || 'Player')} <b>started a word game!</b>\n\n${E.SPARKLE} <b>Your word:</b> <code>${escapeHtml(word)}</code>\n\n${E.INFO} Describe it — don't say the word!`, {
       parseMode: 'HTML',
-      replyMarkup: buildKeyboard([[btnSuccess('Change Word', 'sgb:change'), btnDefault('Set Word (DM)', 'sgb:setword'), btnDanger('End Round', 'sgb:drop')]]),
+      replyMarkup: buildKeyboard([[btnSuccess('Change Word', 'sgb:change', EID.INFO), btnDefault('Set Word (DM)', 'sgb:setword', EID.FOLDER), btnDanger('End Round', 'sgb:drop', EID.CROSS)]]),
     });
   } catch (e) {
     await reportHandlerError(e, { where: 'cmdGame' });
@@ -272,7 +272,7 @@ async function cmdMystats(message, userId, user) {
   const total = rows.reduce((s, r) => s + r.score, 0);
   const words = rows.reduce((s, r) => s + r.wordsGuessed, 0);
   const text = `${E.USER} <b>Your Profile</b>\n${E.BULLET}\n\n📝 <b>Name:</b> ${escapeHtml(user.first_name || 'Unknown')}\n💰 <b>Total Xeons:</b> ${total}\n🔤 <b>Words Guessed:</b> ${words}\n🎯 <b>Games Played:</b> ${rows.length}\n\n${E.BULLET}`;
-  await replyText(message, text, { parseMode: 'HTML', replyMarkup: buildKeyboard([[btnPrimary('Check Global Ranking', 'sgb:global_ranking', E.TROPHY)]]) });
+  await replyText(message, text, { parseMode: 'HTML', replyMarkup: buildKeyboard([[btnPrimary('Check Global Ranking', 'sgb:global_ranking', EID.TROPHY)]]) });
 }
 
 async function cmdResetData(message, userId) {
@@ -286,9 +286,9 @@ async function handleGroupText(message) {
   const shadow = await handleShadowGuess(message.chat.id, message.from.id, message.from.first_name || 'Player', message.from.username, message.text || '');
   if (shadow) {
     if (shadow.wasLeader) {
-      await replyText(message, `${E.DISAPPROVE} ${mention(message.from.id, shadow.winner_name)} guessed the word!\n\nNo winner this round.\nNo points were awarded.\n\n${E.INFO} A new leader must be selected.`, { parseMode: 'HTML', replyMarkup: buildKeyboard([[btnPrimary('Become Leader', 'sgb:volunteer', E.USER)]]) });
+      await replyText(message, `${E.DISAPPROVE} ${mention(message.from.id, shadow.winner_name)} guessed the word!\n\nNo winner this round.\nNo points were awarded.\n\n${E.INFO} A new leader must be selected.`, { parseMode: 'HTML', replyMarkup: buildKeyboard([[btnPrimary('Become Leader', 'sgb:volunteer', EID.USER)]]) });
     } else {
-      await replyText(message, `${E.SUCCESS} ${mention(shadow.winnerId, shadow.winnerName)} guessed the word and wins +1 Xeon!\n\n${E.CROWN} New Leader: ${mention(shadow.winnerId, shadow.winnerName)}\n\n${E.ARROW} ${mention(shadow.winnerId, shadow.winnerName)} is explaining the word!`, { parseMode: 'HTML', replyMarkup: buildKeyboard([[btnSuccess('Change Word', 'sgb:change'), btnDefault('Set Word (DM)', 'sgb:setword'), btnDanger('End Round', 'sgb:drop')]]) });
+      await replyText(message, `${E.SUCCESS} ${mention(shadow.winnerId, shadow.winnerName)} guessed the word and wins +1 Xeon!\n\n${E.CROWN} New Leader: ${mention(shadow.winnerId, shadow.winnerName)}\n\n${E.ARROW} ${mention(shadow.winnerId, shadow.winnerName)} is explaining the word!`, { parseMode: 'HTML', replyMarkup: buildKeyboard([[btnSuccess('Change Word', 'sgb:change', EID.INFO), btnDefault('Set Word (DM)', 'sgb:setword', EID.FOLDER), btnDanger('End Round', 'sgb:drop', EID.CROSS)]]) });
     }
     return;
   }

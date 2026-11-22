@@ -18,15 +18,15 @@ export function buildStartBlocks(username) {
     paragraph(htmlToRich(START_HINT_LINE(E.ARROW))),
     divider(),
     buttonsBlock([
-      button('Add me to a group', { url: URL_ADD_TO_GROUP(username), icon: E.ADD }),
+      button('Add me to a group', { url: URL_ADD_TO_GROUP(username), style: 'success', icon: E.ADD }),
       button('Help Menu', { callback_data: 'start:help', style: 'primary', icon: E.INFO }),
     ], 'center'),
     buttonsBlock([
-      button('Owner', { url: URL_OWNER, icon: E.CROWN }),
+      button('Owner', { url: URL_OWNER, style: 'danger', icon: E.CROWN }),
     ], 'center'),
     buttonsBlock([
-      button('Official Channel', { url: URL_UPDATES, icon: E.ANNOUNCE }),
-      button('Support Chat', { url: URL_DISCUSSION, icon: E.INFO }),
+      button('Official Channel', { url: URL_UPDATES, style: 'primary', icon: E.ANNOUNCE }),
+      button('Support Chat', { url: URL_DISCUSSION, style: 'primary', icon: E.INFO }),
     ], 'center'),
   ];
 }
@@ -41,8 +41,8 @@ export function buildStartKeyboard(username, icons = true) {
       btnUrl('Owner', URL_OWNER, icons ? EID.CROWN : null, 'primary'),
     ],
     [
-      btnUrl('Official Channel', URL_UPDATES, icons ? EID.ANNOUNCE : null),
-      btnUrl('Support Chat', URL_DISCUSSION, icons ? EID.INFO : null),
+      btnUrl('Official Channel', URL_UPDATES, icons ? EID.ANNOUNCE : null, 'primary'),
+      btnUrl('Support Chat', URL_DISCUSSION, icons ? EID.INFO : null, 'primary'),
     ],
   ]);
 }

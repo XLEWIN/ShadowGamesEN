@@ -3,7 +3,7 @@
 
 import { api } from 'sdk';
 import { getState, setState, deleteState } from './db.js';
-import { E } from './emojis.js';
+import { E, EID } from './emojis.js';
 import { mention } from './texts.js';
 import { unoChoiceKeyboard } from './keyboards.js';
 import { STICKERS, STICKERS_GREY, STICKERS_OPTIONS } from './uno_stickers.js';
@@ -50,12 +50,14 @@ function hubArticles() {
   const game = (id, title, desc, url, label) => ({
     ...article(id, title, desc, `${title} — @ShadowGameEnBot`),
     thumbnail_url: `${url}assets/icon.webp`,
-    reply_markup: { inline_keyboard: [[{ text: label, url }]] },
+    reply_markup: { inline_keyboard: [[{
+      text: label, url, style: 'primary', icon_custom_emoji_id: EID.GAME,
+    }]] },
   });
   return [
-    game('hub', '🎮 Shadow Games', 'All games in one place', HUB_URL, '🎮 Open Games Hub'),
-    game('open-ludo', '🎲 Shadow Games · Ludo', 'Play vs AI or online rooms', LUDO_URL, '🎲 Open Ludo'),
-    game('open-chess', '♟️ Shadow Games · Chess', 'Real rules, online rooms', CHESS_URL, '♟️ Open Chess'),
+    game('hub', 'Shadow Games', 'All games in one place', HUB_URL, 'Open Games Hub'),
+    game('open-ludo', 'Shadow Games · Ludo', 'Play vs AI or online rooms', LUDO_URL, 'Open Ludo'),
+    game('open-chess', 'Shadow Games · Chess', 'Real rules, online rooms', CHESS_URL, 'Open Chess'),
   ];
 }
 
@@ -99,7 +101,7 @@ export async function makeInlineResults(uid, queryText = '') {
       const drawS = STICKERS_OPTIONS.option_draw;
       results.push(drawS
         ? sticker(tag('draw'), drawS, n === 1 ? 'Drawing 1 card' : `Drawing ${n} cards`)
-        : article(tag('draw'), '🎴 Draw', n === 1 ? 'Drawing 1 card' : `Drawing ${n} cards`, `Drawing ${n} card(s)`));
+        : article(tag('draw'), 'Draw', n === 1 ? 'Drawing 1 card' : `Drawing ${n} cards`, `Drawing ${n} card(s)`));
       const passS = STICKERS_OPTIONS.option_pass;
       results.push(passS
         ? sticker(tag('pass'), passS, 'Pass.')

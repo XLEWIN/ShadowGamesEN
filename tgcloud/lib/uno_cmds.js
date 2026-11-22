@@ -6,7 +6,7 @@ import { replyText, escapeHtml } from './msg.js';
 import { E, plain } from './emojis.js';
 import { mention } from './texts.js';
 import {
-  btnPrimary, btnSuccess, btnSwitchInline, buildKeyboard, unoChoiceKeyboard,
+  unoChoiceKeyboard, unoJoinKeyboard, unoStartKeyboard,
 } from './keyboards.js';
 import {
   newGame, addPlayer, startGame, playCard, draw, chooseColor, removePlayer,
@@ -36,10 +36,10 @@ export async function handleUnoCommand(command, args, message, ctx) {
       g.owner = [user.id];
       await saveGame(cid, g);
       return reply(
-        `<blockquote>${E.GAME} <b>UNO game created!</b></blockquote>\n\n${mention(user.id, name)} started a <b>${mode}</b> game.\n\n${E.INFO} Players: /join — Deal: /startuno (min 2 players)`,
-        { parseMode: 'HTML', replyMarkup: buildKeyboard([
-          [btnPrimary('Join Game', 'mm:join', E.ADD), btnSuccess('Deal Cards', 'mm:start', E.PLAY)],
-        ]) });
+        `${E.GAME} <b>Created a new UNO game!</b>\n` +
+        `${E.ADD} Join with /join or the button below.\n` +
+        `${E.PLAY} Start with /startuno once 2+ players joined.`,
+        { parseMode: 'HTML', replyMarkup: unoJoinKeyboard() });
     }
     case 'join': {
       if (isPrivate) return reply(`${E.INFO} Use /join inside the group.`);
@@ -48,7 +48,10 @@ export async function handleUnoCommand(command, args, message, ctx) {
       if (g.started) return reply(`${E.WARNING} The game already started. Wait for the next round.`);
       if (!addPlayer(g, user)) return reply(`${E.WARNING} You are already in the game.`);
       await saveGame(cid, g);
-      return reply(`${E.SUCCESS} ${mention(user.id, name)} joined! Players: ${g.players.length}`, { parseMode: 'HTML' });
+      const startMarkup = g.players.length >= 2 ? unoStartKeyboard() : undefined;
+      return reply(`${E.CHECK} ${mention(user.id, name)} joined the game! (${g.players.length} players)`, {
+        parseMode: 'HTML', replyMarkup: startMarkup,
+      });
     }
     case 'startuno': {
       if (isPrivate) return reply(`${E.INFO} Use /startuno in the game group.`);

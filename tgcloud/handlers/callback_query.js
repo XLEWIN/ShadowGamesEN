@@ -53,7 +53,7 @@ export default async function (query, ctx) {
         await sendText(chatId,
           `${E.GAME} ${mention(user.id, user.first_name || 'Player')} started a <b>${label}</b> mode game!\n\n${E.ARROW} ${mention(user.id, user.first_name || 'Player')} is explaining the word!`,
           { parseMode: 'HTML', replyMarkup: buildKeyboard([
-            [btnSuccess('Change Word', 'sgb:change', E.INFO), btnDefault('Set Word (DM)', 'sgb:setword', E.FOLDER), btnDanger('End Round', 'sgb:drop', E.CROSS)],
+            [btnSuccess('Change Word', 'sgb:change', EID.INFO), btnDefault('Set Word (DM)', 'sgb:setword', EID.FOLDER), btnDanger('End Round', 'sgb:drop', EID.CROSS)],
           ]) });
         await answerCallbackQuery(query.id);
         return;
@@ -91,7 +91,7 @@ export default async function (query, ctx) {
           if (!isLeader) { await answerCallbackQuery(query.id, 'You are not the current leader.'); return; }
           await dropLead(chatId);
           await editText(chatId, msgId, `${E.INFO} A new leader must be selected.`,
-            { parseMode: 'HTML', replyMarkup: buildKeyboard([[btnPrimary('Become Leader', 'sgb:volunteer', E.USER)]]) });
+            { parseMode: 'HTML', replyMarkup: buildKeyboard([[btnPrimary('Become Leader', 'sgb:volunteer', EID.USER)]]) });
           await answerCallbackQuery(query.id, 'No winner this round.');
           return;
         }
@@ -100,7 +100,7 @@ export default async function (query, ctx) {
           if (!result) { await answerCallbackQuery(query.id, 'A leader is already set.'); return; }
           await editText(chatId, msgId, `${E.SUCCESS} ${mention(user.id, user.first_name || 'Player')} is now the leader!`,
             { parseMode: 'HTML', replyMarkup: buildKeyboard([
-              [btnSuccess('Change Word', 'sgb:change', E.INFO), btnDefault('Set Word (DM)', 'sgb:setword', E.FOLDER), btnDanger('End Round', 'sgb:drop', E.CROSS)],
+              [btnSuccess('Change Word', 'sgb:change', EID.INFO), btnDefault('Set Word (DM)', 'sgb:setword', EID.FOLDER), btnDanger('End Round', 'sgb:drop', EID.CROSS)],
             ]) });
           await answerCallbackQuery(query.id);
           return;
