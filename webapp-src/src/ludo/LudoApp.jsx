@@ -6,6 +6,8 @@ import {
 } from './engine.js';
 import { tg, tgReady, tgName, haptic, backButton } from '../shared/telegram.js';
 import { createSfx } from '../shared/audio.js';
+import { callServer, inviteFriends, spectateCode } from '../shared/lobby.js';
+import SpectateView from '../shared/SpectateView.jsx';
 
 const AVATARS = { red: 'assets/petey.webp', yellow: 'assets/bomby.webp', green: 'assets/bruno.webp', blue: 'assets/bulby.webp' };
 const avatarFor = (p) => (p && p.isBot) ? (AVATARS[p.color] || 'assets/guest.webp') : 'assets/guest.webp';
@@ -91,6 +93,15 @@ export default function LudoApp() {
     const t = setTimeout(() => setToast(''), 2600);
     return () => clearTimeout(t);
   }, [toast]);
+
+  const spectate = spectateCode();
+  if (spectate) {
+    return (
+      <div className="fixed inset-0 sg-bg">
+        <SpectateView code={spectate} game="ludo" onJoin={() => { window.location.href = `./?room=${encodeURIComponent(spectate)}`; }} />
+      </div>
+    );
+  }
 
   /* ── Helpers ───────────────────────────────────── */
   const announce = (msg) => setToast(msg);
@@ -301,8 +312,11 @@ export default function LudoApp() {
     if (typeof Peer === 'undefined') { announce('Online unavailable. Try bots!'); return; }
     const code = makeRoomCode();
     const peer = new Peer(PEER_PREFIX + code, { debug: 1, config: { iceServers: ICE_SERVERS } });
-    onlineRef.current = { isHost: true, code, peer, conns: [], myColor: 'red', mySeat: 0, players: [{ name: myName(), color: 'red' }], started: false };
-    peer.on('open', () => bump());
+    onlineRef.current = { isHost: true, code, peer, conns: [], spectators: [], myColor: 'red', mySeat: 0, players: [{ name: myName(), color: 'red' }], started: false };
+    peer.on('open', () => {
+      callServer('lobbyCreate', { code, game: 'ludo', maxPlayers: 4 });
+      bump();
+    });
     peer.on('connection', conn => {
       if ((onlineRef.current.conns || []).length >= 3) { conn.close(); return; }
       conn.on('open', () => {
@@ -335,10 +349,22 @@ export default function LudoApp() {
     if (code.length !== 5) { announce('Room code must be 5 characters.'); return; }
     const peer = new Peer(undefined, { debug: 1, config: { iceServers: ICE_SERVERS } });
     onlineRef.current = { isHost: false, code, peer, conn: null, myColor: null, started: false };
+    // If nobody is hosting yet, the first player to open an invite becomes host.
+    const promoteTimer = setTimeout(() => {
+      const o = onlineRef.current;
+      if (o && !o.isHost && !o.conn?.open) {
+        try { o.peer.destroy(); } catch (e) { /* ignore */ }
+        createRoom(code);
+      }
+    }, 1800);
     peer.on('open', () => {
       const conn = peer.connect(PEER_PREFIX + code, { reliable: true });
       onlineRef.current.conn = conn;
-      conn.on('open', () => { conn.send({ type: 'hello', name: myName() }); });
+      conn.on('open', () => {
+        clearTimeout(promoteTimer);
+        conn.send({ type: 'hello', name: myName() });
+        callServer('lobbyJoin', { code });
+      });
       conn.on('data', d => {
         if (d.type === 'room') { onlineRef.current.players = d.players; setScreen('room'); bump(); }
         else if (d.type === 'start') {
@@ -482,8 +508,7 @@ export default function LudoApp() {
             <button className="btn btn-dark text-[12px] px-4 py-2" onClick={() => { try { navigator.clipboard.writeText(o?.code || ''); announce('Code copied'); } catch (e) { } }}>📋 Copy</button>
             <button className="btn btn-gold text-[11px] px-4 py-2" onClick={() => {
               const code = o?.code || '';
-              const tgw = window.Telegram && window.Telegram.WebApp;
-              if (tgw) { try { tgw.openTelegramLink(`https://t.me/ShadowGameEnBot?inline=${encodeURIComponent('ludo ' + code)}`); return; } catch (e) { } }
+              if (inviteFriends('ludo', code)) return;
               const link = new URL(`./?room=${encodeURIComponent(code)}`, window.location.href).href;
               try { navigator.clipboard.writeText(link); announce('Invite link copied'); } catch (e) { announce(link); }
             }}>🔗 Invite friends</button>

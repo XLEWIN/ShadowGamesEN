@@ -210,6 +210,24 @@ export const botState = table('bot_state', {
   updatedAt: integer('updated_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
 });
 
+// Webapp game lobbies (Ludo / Chess) created from inline invites or the Mini App
+export const webappLobbies = table('webapp_lobbies', {
+  code: text('code').primaryKey(),
+  game: text('game').notNull(),          // 'ludo' | 'chess'
+  maxPlayers: integer('max_players').notNull().default(2),
+  creatorId: integer('creator_id').notNull(),
+  chatId: text('chat_id'),
+  messageId: integer('message_id'),
+  players: json('players').notNull().default([]),
+  spectators: json('spectators').notNull().default([]),
+  status: text('status').notNull().default('open'), // open | live | ended
+  createdAt: text('created_at').default(sql`(datetime('now'))`),
+  updatedAt: text('updated_at').default(sql`(datetime('now'))`),
+}, (t) => ({
+  byChat: index('idx_webapp_lobbies_chat').on(t.chatId),
+  byStatus: index('idx_webapp_lobbies_status').on(t.status),
+}));
+
 // UNO (mau mau) statistics
 export const unoStats = table('uno_stats', {
   userId: integer('user_id').primaryKey(),

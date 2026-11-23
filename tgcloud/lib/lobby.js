@@ -1,0 +1,124 @@
+// Webapp game lobbies (Ludo/Chess) — shared by bot handlers and Mini App endpoints.
+// One open lobby per chat+game; codes are 5 chars, same alphabet as the webapp.
+
+import { db, eq, and, sql } from './db.js';
+import { webappLobbies } from '../schema.js';
+import { E, EID } from './emojis.js';
+import { mention } from './texts.js';
+import { btnSuccess, btnPrimary, btnWebApp, buildKeyboard } from './keyboards.js';
+
+const ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+export const WEBAPP_BASE = 'https://app8670418995.tgcloud.ai/';
+
+export function generateCode() {
+  let code = '';
+  for (let i = 0; i < 5; i++) code += ALPHABET[Math.floor(Math.random() * ALPHABET.length)];
+  return code;
+}
+
+export function roomUrl(game, code, spectate = false) {
+  const base = `${WEBAPP_BASE}${game}/`;
+  return spectate ? `${base}?spectate=${encodeURIComponent(code)}` : `${base}?room=${encodeURIComponent(code)}`;
+}
+
+export function maxPlayersFor(game, requested) {
+  const n = Number(requested);
+  if (game === 'chess') return 2;
+  if (game === 'ludo') return [2, 3, 4].includes(n) ? n : 4;
+  return 2;
+}
+
+export async function getLobby(code) {
+  if (!code) return null;
+  return (await db.select().from(webappLobbies)
+    .where(eq(webappLobbies.code, String(code).toUpperCase())).get()) || null;
+}
+
+export async function getOpenLobby(chatId, game) {
+  return (await db.select().from(webappLobbies)
+    .where(and(
+      eq(webappLobbies.chatId, String(chatId)),
+      eq(webappLobbies.game, game),
+      eq(webappLobbies.status, 'open'),
+    )).all())[0] || null;
+}
+
+export async function createLobby({ game, creatorId, creatorName = 'Player', maxPlayers, chatId = null, messageId = null, code = null }) {
+  code = code ? String(code).toUpperCase() : generateCode();
+  const max = maxPlayersFor(game, maxPlayers);
+  const now = new Date().toISOString();
+  await db.insert(webappLobbies).values({
+    code, game, maxPlayers: max,
+    creatorId: Number(creatorId), chatId: chatId === null ? null : String(chatId),
+    messageId: messageId ?? null,
+    players: [{ userId: Number(creatorId), name: creatorName }],
+    spectators: [], status: 'open', createdAt: now, updatedAt: now,
+  }).run();
+  return getLobby(code);
+}
+
+export async function saveLobby(lobby) {
+  await db.update(webappLobbies).set({
+    players: lobby.players || [],
+    spectators: lobby.spectators || [],
+    status: lobby.status || 'open',
+    messageId: lobby.messageId ?? null,
+    updatedAt: new Date().toISOString(),
+  }).where(eq(webappLobbies.code, lobby.code)).run();
+  return lobby;
+}
+
+export async function setLobbyStatus(code, status) {
+  await db.update(webappLobbies).set({ status, updatedAt: new Date().toISOString() })
+    .where(eq(webappLobbies.code, code)).run();
+}
+
+export async function deleteLobby(code) {
+  await db.delete(webappLobbies).where(eq(webappLobbies.code, code)).run();
+}
+
+export function joinLobby(lobby, user) {
+  const players = Array.isArray(lobby.players) ? [...lobby.players] : [];
+  if (players.some(p => Number(p.userId) === Number(user.id))) {
+    return { ok: false, already: true, lobby };
+  }
+  if (lobby.status !== 'open') return { ok: false, full: true, lobby };
+  if (players.length >= lobby.maxPlayers) return { ok: false, full: true, lobby };
+  players.push({ userId: Number(user.id), name: user.first_name || user.username || 'Player' });
+  lobby.players = players;
+  return { ok: true, lobby };
+}
+
+export function addSpectator(lobby, user) {
+  const spectators = Array.isArray(lobby.spectators) ? [...lobby.spectators] : [];
+  if (!spectators.some(s => Number(s.userId) === Number(user.id))) {
+    spectators.push({ userId: Number(user.id), name: user.first_name || user.username || 'Spectator' });
+  }
+  lobby.spectators = spectators;
+  return lobby;
+}
+
+export function isFull(lobby) {
+  return (lobby.players?.length || 0) >= lobby.maxPlayers;
+}
+
+export function lobbyKeyboard(lobby) {
+  return buildKeyboard([
+    [
+      btnSuccess('Join the game', `lobby:join:${lobby.code}`, EID.PLAY),
+      btnPrimary('Spectate', `lobby:spectate:${lobby.code}`, EID.WATCH),
+    ],
+    [btnWebApp('Open table', roomUrl(lobby.game, lobby.code), EID.GAME, 'primary')],
+  ]);
+}
+
+export function inviteText(lobby, inviterName = 'Player', inviterId = 0) {
+  const players = Array.isArray(lobby.players) ? lobby.players : [];
+  const roster = players.map((p, i) => `${i + 1}. ${p.name}`).join('\n');
+  return `${E.SPARKLE} <b>SANSAD SHOWDOWN</b>\n\n` +
+    `${E.ARROW} <b>VS FRIEND</b> challenge from ${mention(inviterId, inviterName)}\n\n` +
+    `${E.INFO} Law says satta impossible. Reality says fight.\n\n` +
+    `${E.GAME} <b>${lobby.game.toUpperCase()}</b> · ${players.length}/${lobby.maxPlayers} players` +
+    (roster ? `\n\n${E.USER} <b>Table</b>\n${roster}` : '') +
+    `\n\n${E.WATCH} Spectators are welcome — tap below to join or watch.`;
+}

@@ -31,6 +31,7 @@ import {
 import { getWordOfTheDay, getGameDate } from '../lib/daily.js';
 import { handleAdminCommand } from '../lib/admin.js';
 import { handleUnoCommand } from '../lib/uno_cmds.js';
+import { createLobby, getOpenLobby, inviteText, lobbyKeyboard, roomUrl, saveLobby } from '../lib/lobby.js';
 
 configurePipeline({ api, chatId: LOG_CHANNEL_ID });
 
@@ -64,6 +65,7 @@ export default async function (message, ctx) {
       case 'help': await cmdHelp(message, isPrivate); break;
       case 'rules': await cmdRules(message); break;
       case 'id': await cmdId(message); break;
+      case 'challenge': case 'invite': case 'sansad': await cmdChallenge(message, args, isPrivate, user); break;
       case 'ludo': await cmdWebApp(message, 'Ludo', 'Play vs AI, 1v1 or online rooms', LUDO_URL); break;
       case 'chess': await cmdWebApp(message, 'Chess', 'Real rules — vs AI, 1v1, online rooms with clocks', CHESS_URL); break;
       case 'games': await cmdWebApp(message, 'Games Hub', 'All games in one place', HUB_URL); break;
@@ -162,6 +164,39 @@ async function cmdWebApp(message, name, desc, url) {
 async function cmdId(message) {
   const u = message.from;
   await replyText(message, `<b>▸ User Information</b>\n<blockquote><b>User ID:</b> <code>${u.id}</code>\n<b>Name:</b> ${escapeHtml(u.first_name || '')}</blockquote>`, { parseMode: 'HTML' });
+}
+
+// ── Webapp lobby invitations ────────────────────
+async function cmdChallenge(message, args, isPrivate, user) {
+  if (isPrivate) {
+    await replyText(message, `${E.WARNING} Open this in a group — challenges are for playing with friends.`, { parseMode: 'HTML' });
+    return;
+  }
+  const parts = (args || '').trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const game = parts[0] === 'ludo' ? 'ludo' : (parts[0] === 'chess' ? 'chess' : 'chess');
+  const requested = parts[1] || (game === 'ludo' ? '4' : '2');
+  const open = await getOpenLobby(message.chat.id, game);
+  if (open && !parts.includes('new')) {
+    await replyText(message, `${E.INFO} There is already an open <b>${game.toUpperCase()}</b> table in this chat.`, {
+      parseMode: 'HTML',
+      replyMarkup: buildKeyboard([[btnWebApp('Open table', roomUrl(game, open.code), EID.GAME, 'primary')]]),
+    });
+    return;
+  }
+  try {
+    const lobby = await createLobby({
+      game, creatorId: user.id, creatorName: user.first_name || user.username || 'Player',
+      maxPlayers: requested, chatId: message.chat.id,
+    });
+    const sent = await replyText(message, inviteText(lobby, user.first_name || 'Player', user.id), {
+      parseMode: 'HTML',
+      replyMarkup: lobbyKeyboard(lobby),
+    });
+    if (sent?.message_id) { lobby.messageId = sent.message_id; await saveLobby(lobby); }
+  } catch (err) {
+    await reportHandlerError(err, { where: 'cmdChallenge' });
+    await replyText(message, `${E.ERROR} Could not open the table. Please try again.`, { parseMode: 'HTML' });
+  }
 }
 
 // ── WordSeek ────────────────────────────────────

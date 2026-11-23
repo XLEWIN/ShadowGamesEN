@@ -3,6 +3,8 @@ import { Chess } from './vendor/chess.js';
 import { chooseAiMove, AI_INFO } from './ai.js';
 import { tg, tgReady, tgName, haptic, backButton } from '../shared/telegram.js';
 import { createSfx } from '../shared/audio.js';
+import { callServer, inviteFriends, spectateCode } from '../shared/lobby.js';
+import SpectateView from '../shared/SpectateView.jsx';
 
 const PIECES = {
   wp: 'assets/chessSetDefault_PawnWhite_160.webp',
@@ -108,6 +110,15 @@ export default function ChessApp() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [screen, G.current.game.fen(), G.current.over]);
+
+  const spectate = spectateCode();
+  if (spectate) {
+    return (
+      <div className="fixed inset-0 sg-bg">
+        <SpectateView code={spectate} game="chess" onJoin={() => { window.location.href = `./?room=${encodeURIComponent(spectate)}`; }} />
+      </div>
+    );
+  }
 
   function resetClock(seconds, inc) {
     G.current.clock = { w: seconds, b: seconds, inc, active: true, last: performance.now() };
@@ -249,7 +260,10 @@ export default function ChessApp() {
     const code = (() => { const a = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; let s = ''; for (let i = 0; i < 5; i++) s += a[Math.floor(Math.random() * a.length)]; return s; })();
     const peer = new Peer(PEER_PREFIX + code, { debug: 1, config: { iceServers: ICE_SERVERS } });
     onlineRef.current = { isHost: true, code, peer, conn: null, started: false };
-    peer.on('open', () => bump());
+    peer.on('open', () => {
+      callServer('lobbyCreate', { code, game: 'chess', maxPlayers: 2 });
+      bump();
+    });
     peer.on('connection', conn => {
       if (onlineRef.current.conn) { conn.close(); return; }
       onlineRef.current.conn = conn;
@@ -298,10 +312,22 @@ export default function ChessApp() {
     if (code.length !== 5) { setToast('Room code must be 5 characters.'); return; }
     const peer = new Peer(undefined, { debug: 1, config: { iceServers: ICE_SERVERS } });
     onlineRef.current = { isHost: false, code, peer, conn: null, started: false };
+    // First player to open an invite with no host present becomes the host.
+    const promoteTimer = setTimeout(() => {
+      const o = onlineRef.current;
+      if (o && !o.isHost && !o.conn?.open) {
+        try { o.peer.destroy(); } catch (e) { /* ignore */ }
+        createRoom(code);
+      }
+    }, 1800);
     peer.on('open', () => {
       const conn = peer.connect(PEER_PREFIX + code, { reliable: true });
       onlineRef.current.conn = conn;
-      conn.on('open', () => { conn.send({ type: 'hello', name: tgName() || 'You' }); });
+      conn.on('open', () => {
+        clearTimeout(promoteTimer);
+        conn.send({ type: 'hello', name: tgName() || 'You' });
+        callServer('lobbyJoin', { code });
+      });
       conn.on('data', d => {
         if (d.type === 'room') { onlineRef.current.players = d.players; setScreen('room'); bump(); }
         else if (d.type === 'start') {
@@ -485,8 +511,7 @@ export default function ChessApp() {
             <button className="btn btn-dark text-[12px] px-4 py-2" onClick={() => { try { navigator.clipboard.writeText(o?.code || ''); setToast('Code copied'); } catch (e) { } }}>📋 Copy</button>
             <button className="btn btn-gold text-[11px] px-4 py-2" onClick={() => {
               const code = o?.code || '';
-              const tgw = window.Telegram && window.Telegram.WebApp;
-              if (tgw) { try { tgw.openTelegramLink(`https://t.me/ShadowGameEnBot?inline=${encodeURIComponent('chess ' + code)}`); return; } catch (e) { } }
+              if (inviteFriends('chess', code)) return;
               const link = new URL(`./?room=${encodeURIComponent(code)}`, window.location.href).href;
               try { navigator.clipboard.writeText(link); setToast('Invite link copied'); } catch (e) { setToast(link); }
             }}>🔗 Invite friends</button>
