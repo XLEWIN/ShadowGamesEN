@@ -64,26 +64,36 @@ export default function HubApp() {
   useEffect(() => {
     (async () => {
       try {
-        const payload = (window.Telegram?.WebApp?.startParam || '').trim();
+        const tg = window.Telegram?.WebApp;
+        tg?.ready?.();
+        const initData = new URLSearchParams(tg?.initData || '');
+        const qs = new URLSearchParams(window.location.search);
+        const payload = (tg?.startParam
+          || initData.get('start_param')
+          || qs.get('startapp')
+          || qs.get('start_param')
+          || '').trim();
         if (!payload) return;
         const parts = payload.split('-');
         const watching = parts[0] === 'watch';
         const game = watching ? parts[1] : parts[0];
         const code = normalizeRoomCode(watching ? parts[2] : parts[1]);
         if (!['ludo', 'chess'].includes(game) || !/^[A-Z0-9]{5}$/.test(code)) return;
+
+        const go = (spectate) => { window.location.href = roomPageUrl(game, code, spectate); };
         if (watching) {
-          await callServer('lobbySpectate', { code });
-          window.location.href = roomPageUrl(game, code, true);
+          callServer('lobbySpectate', { code });
+          go(true);
           return;
         }
-        await callServer('lobbyCreate', { code, game, maxPlayers: game === 'chess' ? 2 : 4 });
-        const joined = await callServer('lobbyJoin', { code });
-        // Full (or ended) tables drop the player into spectator mode instead.
-        if (joined && (joined.full || joined.ok === false)) {
-          window.location.href = roomPageUrl(game, code, true);
-          return;
-        }
-        window.location.href = roomPageUrl(game, code);
+        // Register in the background; never let a slow endpoint strand the
+        // user on the hub menu. A short race keeps the full-table check.
+        callServer('lobbyCreate', { code, game, maxPlayers: game === 'chess' ? 2 : 4 });
+        const joined = await Promise.race([
+          callServer('lobbyJoin', { code }),
+          new Promise((resolve) => setTimeout(() => resolve(null), 500)),
+        ]);
+        go(!!(joined && (joined.full || joined.ok === false)));
       } catch (e) { /* stay on hub */ }
     })();
   }, []);
