@@ -3,7 +3,7 @@ import { db, eq } from 'sdk/db';
 import { botState } from '../schema.js';
 
 const KEY = (code) => `lobby:host:${code}`;
-const TTL_MS = 10 * 60 * 1000;
+const TTL_MS = 2 * 60 * 1000;
 
 export default async function (input = {}, ctx = {}) {
   const user = ctx?.initData?.user;

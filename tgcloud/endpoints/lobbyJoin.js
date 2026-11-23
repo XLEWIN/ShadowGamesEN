@@ -6,6 +6,7 @@ export default async function (input = {}, ctx = {}) {
   if (!user) return { ok: false, error: 'Open this from Telegram.' };
   const lobby = await getLobby(input.code);
   if (!lobby) return { ok: false, error: 'Room not found.' };
+  if (lobby.status === 'expired') return { ok: false, expired: true, error: 'Session expired. Ask for a new invite.' };
   const result = joinLobby(lobby, user);
   if (result.ok) await saveLobby(lobby);
   return {

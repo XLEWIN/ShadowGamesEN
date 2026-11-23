@@ -93,6 +93,10 @@ export default function HubApp() {
           callServer('lobbyJoin', { code }),
           new Promise((resolve) => setTimeout(() => resolve(null), 500)),
         ]);
+        if (joined?.expired) {
+          setToast(joined.error || 'Session expired — ask for a new invite.');
+          return;
+        }
         go(!!(joined && (joined.full || joined.ok === false)));
       } catch (e) { /* stay on hub */ }
     })();

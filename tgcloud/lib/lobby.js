@@ -1,7 +1,7 @@
 // Webapp game lobbies (Ludo/Chess) — shared by bot handlers and Mini App endpoints.
 // One open lobby per chat+game; codes are 5 chars, same alphabet as the webapp.
 
-import { db, eq, and, sql } from './db.js';
+import { db, eq, and, sql, deleteState } from './db.js';
 import { webappLobbies } from '../schema.js';
 import { E, EID } from './emojis.js';
 import { mention } from './texts.js';
@@ -9,6 +9,7 @@ import { btnUrl, buildKeyboard } from './keyboards.js';
 
 const ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 export const WEBAPP_BASE = 'https://app8670418995.tgcloud.ai/';
+export const SESSION_MS = 2 * 60 * 1000; // unstarted join sessions expire after 2 min
 
 export function generateCode() {
   let code = '';
@@ -28,19 +29,38 @@ export function maxPlayersFor(game, requested) {
   return 2;
 }
 
+export function isStale(createdAt) {
+  const t = Date.parse(createdAt);
+  return Number.isFinite(t) && Date.now() - t > SESSION_MS;
+}
+
+// Lazy expiry: any read of an old unstarted lobby marks it expired.
+export async function expireIfStale(lobby) {
+  if (!lobby || lobby.status !== 'open' || !isStale(lobby.createdAt)) return lobby;
+  await db.update(webappLobbies)
+    .set({ status: 'expired', updatedAt: new Date().toISOString() })
+    .where(eq(webappLobbies.code, lobby.code)).run();
+  await deleteState(`lobby:host:${lobby.code}`);
+  lobby.status = 'expired';
+  return lobby;
+}
+
 export async function getLobby(code) {
   if (!code) return null;
-  return (await db.select().from(webappLobbies)
+  const row = (await db.select().from(webappLobbies)
     .where(eq(webappLobbies.code, String(code).toUpperCase())).get()) || null;
+  return expireIfStale(row);
 }
 
 export async function getOpenLobby(chatId, game) {
-  return (await db.select().from(webappLobbies)
+  const rows = await db.select().from(webappLobbies)
     .where(and(
       eq(webappLobbies.chatId, String(chatId)),
       eq(webappLobbies.game, game),
       eq(webappLobbies.status, 'open'),
-    )).all())[0] || null;
+    )).all();
+  for (const row of rows) await expireIfStale(row);
+  return rows.find(r => r.status === 'open') || null;
 }
 
 export async function createLobby({ game, creatorId, creatorName = 'Player', creatorPhoto = null, maxPlayers, chatId = null, messageId = null, code = null }) {
