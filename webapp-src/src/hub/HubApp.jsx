@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import hqLogo from '../assets/shadow-hq-logo.png';
+import hqLogo from '../assets/spiky-code-council-emblem.png';
 import { callServer } from '../shared/lobby.js';
 import { normalizeRoomCode, roomPageUrl } from '../shared/room.js';
 import './HubHome.css';
@@ -131,7 +131,7 @@ export default function HubApp() {
             </div>
           </div>
           <div className="sg-hero-art">
-            <img className="sg-hq-logo" src={hqLogo} alt="Shadow HQ" />
+            <img className="sg-hq-logo" src={hqLogo} alt="Code Council" />
             <div className="sg-art-label">STRATEGY · CHANCE · FRIENDSHIP</div>
           </div>
         </section>
