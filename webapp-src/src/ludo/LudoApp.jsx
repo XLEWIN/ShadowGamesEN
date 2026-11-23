@@ -57,6 +57,7 @@ export default function LudoApp() {
   const [, setTick] = useState(0);
   const [spectatorLive, setSpectatorLive] = useState(false);
   const [sessionDead, setSessionDead] = useState(false);
+  const [lobbyMax, setLobbyMax] = useState(4);
   const sfx = useMemo(() => createSfx(), []);
   const sessionRef = useRef(0);
   const onlineRef = useRef(null); // PeerJS session { isHost, code, peer, conn, myColor, mySeat, started, conns }
@@ -173,6 +174,7 @@ export default function LudoApp() {
     setRolling(false);
     bump();
     scheduleBotIfNeeded();
+    if (G.current.mode === 'online' && onlineRef.current?.isHost) broadcastState();
   }
   const scheduleBotIfNeeded = () => {
     const p = currentPlayer();
@@ -187,6 +189,11 @@ export default function LudoApp() {
     if (G.current.over || G.current.busy || G.current.dice !== null) return;
     const p = currentPlayer();
     if (!p || p.isRemote) return;
+    if (G.current.mode === 'online' && !onlineRef.current?.isHost) {
+      // Guests ask the host to roll; the host owns the authoritative state.
+      try { onlineRef.current?.conn?.send({ type: 'roll' }); } catch (e) { /* ignore */ }
+      return;
+    }
     const dice = 1 + Math.floor(Math.random() * 6);
     G.current.busy = true;
     setRolling(true);
@@ -246,6 +253,10 @@ export default function LudoApp() {
     if (!G.current.awaitingMove) return;
     const moves = legalMoves(G.current.tokens, color, dice);
     if (!moves.includes(idx)) { sfx.illegal(); return; }
+    if (G.current.mode === 'online' && !onlineRef.current?.isHost) {
+      try { onlineRef.current?.conn?.send({ type: 'move', token: idx }); } catch (e) { /* ignore */ }
+      return;
+    }
     G.current.awaitingMove = false;
     G.current.highlight = [];
     const events = applyMove(G.current.tokens, color, idx, dice);
@@ -340,13 +351,13 @@ export default function LudoApp() {
       o.spectators = o.spectators || [];
       if (!o.spectators.includes(conn)) o.spectators.push(conn);
       if (o.started) sendStateTo(conn);
-      else try { conn.send({ type: 'room', code: o.code, players: o.players || [{ name: myName(), color: 'red' }] }); } catch (e) { }
+      else try { conn.send({ type: 'room', code: o.code, players: o.players || [{ name: myName(), color: 'red' }], maxPlayers: o.maxPlayers || lobbyMax }); } catch (e) { }
       return;
     }
     if (data.type === 'hello' && !conn._name) {
       conn._name = String(data.name || 'Player').slice(0, 24);
       conn._photo = data.photo || null;
-      if ((o.conns || []).length >= 3) { conn.close(); return; }
+      if ((o.conns || []).length >= ((o.maxPlayers || lobbyMax) - 1)) { conn.close(); return; }
       o.conns = [...(o.conns || []), conn];
       refreshRoomLobby();
       return;
@@ -374,7 +385,7 @@ export default function LudoApp() {
     o.players = players;
     bump();
     for (const c of (o.conns || [])) {
-      try { c.send({ type: 'room', code: o.code, players }); } catch (e) { }
+      try { c.send({ type: 'room', code: o.code, players, maxPlayers: o.maxPlayers || lobbyMax }); } catch (e) { }
     }
   }
 
@@ -382,9 +393,9 @@ export default function LudoApp() {
     if (typeof Peer === 'undefined') { announce('Online unavailable. Try bots!'); return; }
     const code = normalizeRoomCode(forcedCode) || makeRoomCode();
     const peer = new Peer(PEER_PREFIX + code, { debug: 1, config: { iceServers: ICE_SERVERS } });
-    onlineRef.current = { isHost: true, code, peer, conns: [], spectators: [], myColor: 'red', mySeat: 0, players: [{ name: myName(), photo: tgPhoto(), color: 'red' }], started: false };
+    onlineRef.current = { isHost: true, code, peer, conns: [], spectators: [], maxPlayers: lobbyMax, myColor: 'red', mySeat: 0, players: [{ name: myName(), photo: tgPhoto(), color: 'red' }], started: false };
     peer.on('open', () => {
-      callServer('lobbyCreate', { code, game: 'ludo', maxPlayers: 4 });
+      callServer('lobbyCreate', { code, game: 'ludo', maxPlayers: lobbyMax });
       bump();
     });
     peer.on('connection', conn => {
@@ -429,11 +440,16 @@ export default function LudoApp() {
         callServer('lobbyJoin', { code });
       });
       conn.on('data', d => {
-        if (d.type === 'room') { onlineRef.current.players = d.players; setScreen('room'); bump(); }
+        if (d.type === 'room') {
+          onlineRef.current.players = d.players;
+          onlineRef.current.maxPlayers = d.maxPlayers || 4;
+          if (d.maxPlayers) setLobbyMax(d.maxPlayers);
+          setScreen('room'); bump();
+        }
         else if (d.type === 'start') {
           onlineRef.current.myColor = ORDER[d.yourSeat];
           onlineRef.current.mySeat = d.yourSeat;
-          const players = d.players.map((p, i) => ({ color: ORDER[i], name: p.name + (i === d.yourSeat ? ' (You)' : ''), photo: p.photo || null, isLocal: i === d.yourSeat, isRemote: i !== d.yourSeat }));
+          const players = d.players.map((p, i) => ({ color: ORDER[i], name: p.name + (i === d.yourSeat && !p.name.includes('(You)') ? ' (You)' : ''), photo: p.photo || null, isLocal: i === d.yourSeat, isRemote: i !== d.yourSeat }));
           onlineRef.current.players = players;
           startGame(players, 'online');
         }
@@ -597,6 +613,24 @@ export default function LudoApp() {
             }}>🔗 Invite friends</button>
           </div>
         </div>
+        {o?.isHost && !o?.started && (
+          <div>
+            <label className="text-[#a99e86] text-[10px] tracking-[3px] font-bold">PLAYERS IN LOBBY</label>
+            <div className="flex gap-2" id="lobby-size">
+              {[2, 3, 4].map(n => (
+                <SegBtn key={n} selected={(o?.maxPlayers || lobbyMax) === n} onClick={() => {
+                  const o2 = onlineRef.current;
+                  o2.maxPlayers = n;
+                  setLobbyMax(n);
+                  callServer('lobbyCreate', { code: o2.code, game: 'ludo', maxPlayers: n });
+                  refreshRoomLobby();
+                  announce(`Lobby set to ${n} players`);
+                }}>{n} PLAYERS</SegBtn>
+              ))}
+            </div>
+          </div>
+        )}
+        <div className="text-[10px] tracking-[2px] text-[#a99e86] font-bold">{players.length}/{o?.maxPlayers || lobbyMax} PLAYERS</div>
         <div className="flex flex-col gap-2">
           {players.map((p, i) => (
             <div key={i} className="flex items-center gap-3 rounded-2xl bg-[#131a33] border border-white/10 px-4 py-3">
@@ -634,7 +668,7 @@ export default function LudoApp() {
         <button className="iconbtn w-12 h-12 rounded-2xl border border-[rgba(227,183,91,.22)] bg-[#131a33] text-[#e3b75b] text-[19px]" onClick={() => setScreen('menu')} aria-label="Back to menu">←</button>
         <div className="flex items-center gap-2.5 rounded-full border border-[rgba(227,183,91,.22)] bg-[#131a33] px-5 py-2.5 text-[12px] font-extrabold tracking-[2px]">
           <span className="w-3 h-3 rounded-full" style={{ background: myPlayer.color ? COLORS[myPlayer.color].hex : '#e3b75b', boxShadow: `0 0 12px ${myPlayer.color ? COLORS[myPlayer.color].hex : '#e3b75b'}` }} />
-          {spectate ? 'SPECTATING' : (g.over ? 'GAME OVER' : (myPlayer.isBot ? `${myPlayer.name} to move` : 'Your turn'))}
+          {spectate ? 'SPECTATING' : (g.over ? 'GAME OVER' : (myPlayer.isRemote ? `${myPlayer.name} to move` : (myPlayer.isBot ? `${myPlayer.name} to move` : 'Your turn')))}
         </div>
         <button className="iconbtn w-12 h-12 rounded-2xl border border-[rgba(227,183,91,.22)] bg-[#131a33] text-[19px]" onClick={() => sfx.toggle()} aria-label="Sound">{sfx.mutedRef.current ? '🔇' : '🔊'}</button>
       </div>
