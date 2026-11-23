@@ -19,6 +19,15 @@ export function tgName() {
   }
 }
 
+export function tgPhoto() {
+  try {
+    const u = tg && tg.initDataUnsafe && tg.initDataUnsafe.user;
+    return (u && u.photo_url) || null;
+  } catch (e) {
+    return null;
+  }
+}
+
 export function haptic(kind) {
   try { tg && tg.HapticFeedback && tg.HapticFeedback.impactOccurred(kind || 'light'); } catch (e) { }
 }

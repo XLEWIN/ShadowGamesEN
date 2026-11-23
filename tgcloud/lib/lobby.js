@@ -43,7 +43,7 @@ export async function getOpenLobby(chatId, game) {
     )).all())[0] || null;
 }
 
-export async function createLobby({ game, creatorId, creatorName = 'Player', maxPlayers, chatId = null, messageId = null, code = null }) {
+export async function createLobby({ game, creatorId, creatorName = 'Player', creatorPhoto = null, maxPlayers, chatId = null, messageId = null, code = null }) {
   code = code ? String(code).toUpperCase() : generateCode();
   const max = maxPlayersFor(game, maxPlayers);
   const now = new Date().toISOString();
@@ -51,7 +51,7 @@ export async function createLobby({ game, creatorId, creatorName = 'Player', max
     code, game, maxPlayers: max,
     creatorId: Number(creatorId), chatId: chatId === null ? null : String(chatId),
     messageId: messageId ?? null,
-    players: [{ userId: Number(creatorId), name: creatorName }],
+    players: [{ userId: Number(creatorId), name: creatorName, photoUrl: creatorPhoto || null }],
     spectators: [], status: 'open', createdAt: now, updatedAt: now,
   }).run();
   return getLobby(code);
@@ -84,7 +84,11 @@ export function joinLobby(lobby, user) {
   }
   if (lobby.status !== 'open') return { ok: false, full: true, lobby };
   if (players.length >= lobby.maxPlayers) return { ok: false, full: true, lobby };
-  players.push({ userId: Number(user.id), name: user.first_name || user.username || 'Player' });
+  players.push({
+    userId: Number(user.id),
+    name: user.first_name || user.username || 'Player',
+    photoUrl: user.photo_url || user.photoUrl || null,
+  });
   lobby.players = players;
   return { ok: true, lobby };
 }

@@ -4,14 +4,14 @@ import {
   freshTokens, legalMoves, applyMove, aiPickMove, tokenXY,
   PEER_PREFIX, ICE_SERVERS, cellKey,
 } from './engine.js';
-import { tg, tgReady, tgName, haptic, backButton } from '../shared/telegram.js';
+import { tg, tgReady, tgName, tgPhoto, haptic, backButton } from '../shared/telegram.js';
 import { createSfx } from '../shared/audio.js';
 import { callServer, inviteFriends, spectateCode, botDeepLink } from '../shared/lobby.js';
 import { makeRoomCode, normalizeRoomCode, promoteToHost, cancelPromote } from '../shared/room.js';
 import SpectateView from '../shared/SpectateView.jsx';
 
 const AVATARS = { red: 'assets/petey.webp', yellow: 'assets/bomby.webp', green: 'assets/bruno.webp', blue: 'assets/bulby.webp' };
-const avatarFor = (p) => (p && p.isBot) ? (AVATARS[p.color] || 'assets/guest.webp') : 'assets/guest.webp';
+const avatarFor = (p) => (p && p.photo) ? p.photo : ((p && p.isBot) ? (AVATARS[p.color] || 'assets/guest.webp') : 'assets/guest.webp');
 const PIP_LAYOUTS = { 1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] };
 const PIECES = { red: 'assets/pieces_red.svg', blue: 'assets/pieces_blue.svg', green: 'assets/pieces_green.svg', yellow: 'assets/pieces_yellow.svg' };
 
@@ -279,7 +279,7 @@ export default function LudoApp() {
       dice: G.current.dice,
       over: G.current.over,
       winner: G.current.winner,
-      players: G.current.players.map(p => ({ color: p.color, name: p.name })),
+      players: G.current.players.map(p => ({ color: p.color, name: p.name, photo: p.photo || null })),
     };
     const conns = [...(o.conns || []), ...(o.spectators || [])];
     for (const c of conns) { try { c.send(payload); } catch (e) { /* closed */ } }
@@ -291,7 +291,7 @@ export default function LudoApp() {
         type: 'state', tokens: G.current.tokens, turnIdx: G.current.turnIdx,
         sixes: G.current.sixes, dice: G.current.dice, over: G.current.over,
         winner: G.current.winner,
-        players: G.current.players.map(p => ({ color: p.color, name: p.name })),
+        players: G.current.players.map(p => ({ color: p.color, name: p.name, photo: p.photo || null })),
       });
     } catch (e) { /* ignore */ }
   }
@@ -327,6 +327,7 @@ export default function LudoApp() {
     }
     if (data.type === 'hello' && !conn._name) {
       conn._name = String(data.name || 'Player').slice(0, 24);
+      conn._photo = data.photo || null;
       if ((o.conns || []).length >= 3) { conn.close(); return; }
       o.conns = [...(o.conns || []), conn];
       refreshRoomLobby();
@@ -350,7 +351,8 @@ export default function LudoApp() {
     const o = onlineRef.current;
     if (!o || !o.isHost) return;
     const names = [myName(), ...(o.conns || []).map(c => c._name || 'Player')];
-    const players = names.map((name, i) => ({ color: ORDER[i], name }));
+    const photos = [tgPhoto(), ...(o.conns || []).map(c => c._photo || null)];
+    const players = names.map((name, i) => ({ color: ORDER[i], name, photo: photos[i] || null }));
     o.players = players;
     bump();
     for (const c of (o.conns || [])) {
@@ -362,7 +364,7 @@ export default function LudoApp() {
     if (typeof Peer === 'undefined') { announce('Online unavailable. Try bots!'); return; }
     const code = normalizeRoomCode(forcedCode) || makeRoomCode();
     const peer = new Peer(PEER_PREFIX + code, { debug: 1, config: { iceServers: ICE_SERVERS } });
-    onlineRef.current = { isHost: true, code, peer, conns: [], spectators: [], myColor: 'red', mySeat: 0, players: [{ name: myName(), color: 'red' }], started: false };
+    onlineRef.current = { isHost: true, code, peer, conns: [], spectators: [], myColor: 'red', mySeat: 0, players: [{ name: myName(), photo: tgPhoto(), color: 'red' }], started: false };
     peer.on('open', () => {
       callServer('lobbyCreate', { code, game: 'ludo', maxPlayers: 4 });
       bump();
@@ -408,7 +410,7 @@ export default function LudoApp() {
       onlineRef.current.conn = conn;
       conn.on('open', () => {
         cancelPromote(promoteTimer);
-        conn.send({ type: 'hello', name: myName() });
+        conn.send({ type: 'hello', name: myName(), photo: tgPhoto() });
         callServer('lobbyJoin', { code });
       });
       conn.on('data', d => {
@@ -416,7 +418,7 @@ export default function LudoApp() {
         else if (d.type === 'start') {
           onlineRef.current.myColor = ORDER[d.yourSeat];
           onlineRef.current.mySeat = d.yourSeat;
-          const players = d.players.map((p, i) => ({ color: ORDER[i], name: p.name + (i === d.yourSeat ? ' (You)' : ''), isLocal: i === d.yourSeat, isRemote: i !== d.yourSeat }));
+          const players = d.players.map((p, i) => ({ color: ORDER[i], name: p.name + (i === d.yourSeat ? ' (You)' : ''), photo: p.photo || null, isLocal: i === d.yourSeat, isRemote: i !== d.yourSeat }));
           onlineRef.current.players = players;
           startGame(players, 'online');
         }
@@ -571,7 +573,7 @@ export default function LudoApp() {
         <div className="flex flex-col gap-2">
           {players.map((p, i) => (
             <div key={i} className="flex items-center gap-3 rounded-2xl bg-[#131a33] border border-white/10 px-4 py-3">
-              <img src={AVATARS[p.color]} alt="" className="w-9 h-9 rounded-full border border-[#8a6b2f]" />
+              <img src={p.photo || AVATARS[p.color]} alt="" className="w-9 h-9 rounded-full object-cover border border-[#8a6b2f]" />
               <span className="font-bold">{p.name}{i === 0 && o?.isHost ? ' (You)' : ''}</span>
               <span className="ml-auto text-[10px] tracking-[2px] text-[#a99e86] font-bold">{i === 0 ? 'HOST' : 'JOINED'}</span>
             </div>
@@ -690,7 +692,7 @@ export default function LudoApp() {
             const active = i === g.turnIdx && !g.over;
             return (
               <div key={i} className={`flex items-center gap-2.5 rounded-2xl border px-2 py-1.5 ${active ? 'border-[#e3b75b] bg-[#e3b75b]/10 shadow-[0_0_18px_rgba(227,183,91,.25)]' : 'border-white/10 bg-[#131a33]/80'}`}>
-                <img src={avatarFor(p)} alt="" className="w-8 h-8 rounded-full border border-[#8a6b2f]" draggable="false" />
+                <img src={avatarFor(p)} alt="" className="w-8 h-8 rounded-full object-cover border border-[#8a6b2f]" draggable="false" />
                 <span className="min-w-0 flex-1">
                   <span className="block font-extrabold text-[12px] truncate" style={{ color: COLORS[p.color]?.light }}>{p.name}</span>
                   <span className="block text-[8px] tracking-[2px] text-[#a99e86]">{p.isBot ? 'AI' : 'YOU'} · {COLORS[p.color]?.name?.toUpperCase()}</span>

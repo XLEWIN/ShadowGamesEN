@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Chess } from './vendor/chess.js';
 import { chooseAiMove, AI_INFO } from './ai.js';
-import { tg, tgReady, tgName, haptic, backButton } from '../shared/telegram.js';
+import { tg, tgReady, tgName, tgPhoto, haptic, backButton } from '../shared/telegram.js';
 import { createSfx } from '../shared/audio.js';
 import { callServer, inviteFriends, spectateCode, botDeepLink } from '../shared/lobby.js';
 import { makeRoomCode, normalizeRoomCode, promoteToHost, cancelPromote } from '../shared/room.js';
@@ -57,6 +57,7 @@ export default function ChessApp() {
   const [toast, setToast] = useState('');
   const [, setTick] = useState(0);
   const [spectatorLive, setSpectatorLive] = useState(false);
+  const [roomClock, setRoomClock] = useState({ seconds: 300, inc: 3 });
   const sfx = useRef(createSfx());
   const onlineRef = useRef(null);
   const lastTapRef = useRef({ t: 0, square: '' });
@@ -126,11 +127,11 @@ export default function ChessApp() {
       conn.on('data', (d) => {
         if (!alive) return;
         if (d.type === 'roster') {
-          G.current.players = (d.players || []).map((p, i) => ({ name: p.name, color: i === 0 ? 'w' : 'b' }));
+          G.current.players = (d.players || []).map((p, i) => ({ name: p.name, photo: p.photo || null, color: i === 0 ? 'w' : 'b' }));
           bump();
         } else if (d.type === 'state') {
           applyRemoteState(d);
-          if (d.players) G.current.players = d.players.map((p, i) => ({ name: p.name, color: i === 0 ? 'w' : 'b' }));
+          if (d.players) G.current.players = d.players.map((p, i) => ({ name: p.name, photo: p.photo || null, color: i === 0 ? 'w' : 'b' }));
           G.current.mode = 'online';
           G.current.orientation = 'w';
           setSpectatorLive(true);
@@ -268,7 +269,7 @@ export default function ChessApp() {
   }
   function sendStateTo(conn) {
     const payload = statePayload();
-    payload.players = (onlineRef.current?.players || G.current.players).map(p => ({ name: p.name }));
+    payload.players = (onlineRef.current?.players || G.current.players).map(p => ({ name: p.name, photo: p.photo || null }));
     try { conn.send(payload); } catch (e) { }
   }
   function broadcastState() {
@@ -294,7 +295,10 @@ export default function ChessApp() {
     if (typeof Peer === 'undefined') { setToast('Online unavailable. Try vs AI!'); return; }
     const code = normalizeRoomCode(forcedCode) || makeRoomCode();
     const peer = new Peer(PEER_PREFIX + code, { debug: 1, config: { iceServers: ICE_SERVERS } });
-    onlineRef.current = { isHost: true, code, peer, conn: null, spectators: [], started: false };
+    onlineRef.current = {
+      isHost: true, code, peer, conn: null, spectators: [], started: false,
+      players: [{ name: tgName() || 'You', photo: tgPhoto(), color: 'w' }],
+    };
     peer.on('open', () => {
       callServer('lobbyCreate', { code, game: 'chess', maxPlayers: 2 });
       bump();
@@ -318,8 +322,9 @@ export default function ChessApp() {
     const o = onlineRef.current;
     if (!o || !o.isHost) return;
     const names = [tgName() || 'You', o.conn?._name || 'Opponent'];
+    const photos = [tgPhoto(), o.conn?._photo || null];
     // The host's own view must use the same roster it sends to the guest.
-    o.players = names.map(n => ({ name: n }));
+    o.players = names.map((name, i) => ({ name, photo: photos[i] || null, color: i === 0 ? 'w' : 'b' }));
     bump();
     try { o.conn?.send({ type: 'room', players: o.players }); } catch (e) { }
     for (const s of (o.spectators || [])) { try { s.send({ type: 'roster', players: o.players }); } catch (e) { } }
@@ -338,6 +343,7 @@ export default function ChessApp() {
     if (data.type === 'hello' && !o.conn) {
       o.conn = conn;
       conn._name = String(data.name || 'Opponent').slice(0, 24);
+      conn._photo = data.photo || null;
       refreshLobby(); return;
     }
     if (data.type === 'move' && !G.current.over) {
@@ -376,7 +382,7 @@ export default function ChessApp() {
       onlineRef.current.conn = conn;
       conn.on('open', () => {
         cancelPromote(promoteTimer);
-        conn.send({ type: 'hello', name: tgName() || 'You' });
+        conn.send({ type: 'hello', name: tgName() || 'You', photo: tgPhoto() });
         callServer('lobbyJoin', { code });
       });
       conn.on('data', d => {
@@ -384,7 +390,7 @@ export default function ChessApp() {
         else if (d.type === 'start') {
           onlineRef.current.started = true;
           onlineRef.current.myColor = 'b';
-          const players = d.players.map((p, i) => ({ color: i === 0 ? 'w' : 'b', name: p.name, isLocal: i === 1, isRemote: i === 0, avatar: AVATARS.you }));
+          const players = d.players.map((p, i) => ({ color: i === 0 ? 'w' : 'b', name: p.name, photo: p.photo || null, isLocal: i === 1, isRemote: i === 0, avatar: AVATARS.you }));
           startMatch(players, 'online', { seconds: d.clockSeconds || 300, inc: d.inc || 3 }, 'b');
         }
         else if (d.type === 'state') applyRemoteState(d);
@@ -576,23 +582,30 @@ export default function ChessApp() {
             }}>🔗 Invite friends</button>
           </div>
         </div>
-        <div className="flex flex-col gap-2">{players.map((p, i) => (<div key={i} className="flex items-center gap-3 rounded-2xl bg-[#131a33] border border-white/10 px-4 py-3"><img src={AVATARS.you} alt="" className="w-9 h-9 rounded-full border border-[#8a6b2f]" /><span className="font-bold">{p.name}{i === 0 && o?.isHost ? ' (You)' : ''}</span><span className="ml-auto text-[10px] tracking-[2px] text-[#a99e86] font-bold">{i === 0 ? 'HOST' : 'JOINED'}</span></div>))}</div>
+        <div className="flex flex-col gap-2">{players.map((p, i) => (<div key={i} className="flex items-center gap-3 rounded-2xl bg-[#131a33] border border-white/10 px-4 py-3"><img src={p.photo || AVATARS.you} alt="" className="w-9 h-9 rounded-full object-cover border border-[#8a6b2f]" /><span className="font-bold">{p.name}{i === 0 && o?.isHost ? ' (You)' : ''}</span><span className="ml-auto text-[10px] tracking-[2px] text-[#a99e86] font-bold">{i === 0 ? 'HOST' : 'JOINED'}</span></div>))}</div>
         {o?.isHost
           ? <button className="btn btn-gold w-full py-[17px] text-[17px]" disabled={!full} onClick={() => {
               const o2 = onlineRef.current;
               const names = [tgName() || 'You', o2.conn?._name || 'Opponent'];
-              const tSel = document.querySelector('#time-room .seg-btn.selected');
-              const clockSeconds = +(tSel?.dataset.t || 300);
-              const inc = +(tSel?.dataset.inc || 3);
+              const clockSeconds = roomClock.seconds;
+              const inc = roomClock.inc;
               o2.started = true;
               try { o2.conn?.send({ type: 'start', players: names.map(n => ({ name: n })), clockSeconds, inc }); } catch (e) { }
-              startMatch([{ name: names[0], color: 'w', isBot: false, isLocal: true, avatar: AVATARS.you }, { name: names[1], color: 'b', isBot: false, isLocal: false, isRemote: true, avatar: AVATARS.you }], 'online', { seconds: clockSeconds, inc }, 'w');
+              startMatch(o2.players.map((p, i) => ({
+                name: p.name, photo: p.photo || null, color: i === 0 ? 'w' : 'b',
+                isBot: false, isLocal: i === 0, isRemote: i !== 0, avatar: AVATARS.you,
+              })), 'online', { seconds: clockSeconds, inc }, 'w');
               o2.syncInterval = setInterval(() => { if (G.current.over) { clearInterval(o2.syncInterval); return; } broadcastState(); }, 2000);
             }}>{full ? `START GAME (${players.length})` : 'WAITING FOR OPPONENT…'}</button>
           : <div className="text-[#a99e86] text-[13px] text-center">Waiting for the host to start the game…</div>}
         <div id="time-room" className={`${o?.isHost ? '' : 'hidden'}`}>
           <label className="text-[#a99e86] text-[10px] tracking-[3px] font-bold">TIME CONTROL</label>
-          <SegRow id="seg-time-room"><SegBtn dataV="60" inc="0">1+0</SegBtn><SegBtn dataV="180" inc="2">3+2</SegBtn><SegBtn dataV="300" inc="3" selected>5+3</SegBtn><SegBtn dataV="600" inc="5">10+5</SegBtn></SegRow>
+          <div id="seg-time-room" className="flex gap-2">
+            <SegBtn dataV="60" inc="0" selected={roomClock.seconds === 60} onClick={() => setRoomClock({ seconds: 60, inc: 0 })}>1+0</SegBtn>
+            <SegBtn dataV="180" inc="2" selected={roomClock.seconds === 180} onClick={() => setRoomClock({ seconds: 180, inc: 2 })}>3+2</SegBtn>
+            <SegBtn dataV="300" inc="3" selected={roomClock.seconds === 300} onClick={() => setRoomClock({ seconds: 300, inc: 3 })}>5+3</SegBtn>
+            <SegBtn dataV="600" inc="5" selected={roomClock.seconds === 600} onClick={() => setRoomClock({ seconds: 600, inc: 5 })}>10+5</SegBtn>
+          </div>
         </div>
       </SetupShell>
     );
@@ -687,7 +700,7 @@ export default function ChessApp() {
             const low = clockSec <= 10 && clockSec > 0;
             return (
               <div key={i} className={`flex items-center gap-1.5 rounded-2xl border px-2 py-1.5 ${active ? 'border-[#e3b75b] shadow-[0_0_18px_rgba(227,183,91,.25)]' : 'border-white/10'} bg-[#131a33]/80`}>
-                <img src={AVATARS[p.isBot ? p.name.split(' ')[0].toLowerCase() : 'you'] || AVATARS.you} alt="" className="w-8 h-8 rounded-full border border-[#8a6b2f]" />
+                <img src={p.photo || AVATARS[p.isBot ? p.name.split(' ')[0].toLowerCase() : 'you'] || AVATARS.you} alt="" className="w-8 h-8 rounded-full object-cover border border-[#8a6b2f]" />
                 <span className="flex flex-col leading-tight">
                   <span className="text-[11px] font-extrabold max-w-[84px] truncate">{p.name}</span>
                   <span className="text-[8px] tracking-[2px] text-[#a99e86]">{p.color === 'w' ? 'WHITE' : 'BLACK'}</span>

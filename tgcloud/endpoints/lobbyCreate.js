@@ -14,6 +14,7 @@ export default async function (input = {}, ctx = {}) {
     lobby = await createLobby({
       code, game, creatorId: user.id,
       creatorName: user.first_name || user.username || 'Player',
+      creatorPhoto: user.photo_url || null,
       maxPlayers,
     });
   } else {
