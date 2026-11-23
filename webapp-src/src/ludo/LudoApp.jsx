@@ -55,6 +55,7 @@ export default function LudoApp() {
   const [diceN, setDiceN] = useState(5);
   const [rolling, setRolling] = useState(false);
   const [, setTick] = useState(0);
+  const [spectatorLive, setSpectatorLive] = useState(false);
   const sfx = useMemo(() => createSfx(), []);
   const sessionRef = useRef(0);
   const onlineRef = useRef(null); // PeerJS session { isHost, code, peer, conn, myColor, mySeat, started, conns }
@@ -95,14 +96,34 @@ export default function LudoApp() {
     return () => clearTimeout(t);
   }, [toast]);
 
+  // Live spectator: receive board state from the host as a watch-only peer.
+  useEffect(() => {
+    const code = spectateCode();
+    if (!code || typeof Peer === 'undefined') return;
+    let alive = true;
+    callServer('lobbySpectate', { code });
+    const peer = new Peer(undefined, { debug: 0, config: { iceServers: ICE_SERVERS } });
+    peer.on('open', () => {
+      const conn = peer.connect(PEER_PREFIX + code, { reliable: true });
+      conn.on('open', () => conn.send({ type: 'spectate' }));
+      conn.on('data', (d) => {
+        if (!alive) return;
+        if (d.type === 'state') {
+          clientState(d);
+          G.current.mode = 'online';
+          setSpectatorLive(true);
+          setScreen('game');
+          setDiceN(d.dice || 1);
+          bump();
+        }
+      });
+    });
+    peer.on('error', () => { /* host not live yet */ });
+    return () => { alive = false; try { peer.destroy(); } catch (e) { /* ignore */ } };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const spectate = spectateCode();
-  if (spectate) {
-    return (
-      <div className="fixed inset-0 sg-bg">
-        <SpectateView code={spectate} game="ludo" onJoin={() => { window.location.href = `./?room=${encodeURIComponent(spectate)}`; }} />
-      </div>
-    );
-  }
 
   /* ── Helpers ───────────────────────────────────── */
   const announce = (msg) => setToast(msg);
@@ -144,6 +165,7 @@ export default function LudoApp() {
   };
 
   function rollDice() {
+    if (spectate) return;
     if (G.current.over || G.current.busy || G.current.dice !== null) return;
     const p = currentPlayer();
     if (!p || p.isRemote) return;
@@ -200,6 +222,7 @@ export default function LudoApp() {
   }
 
   function doMove(idx) {
+    if (spectate) return;
     const color = currentColor();
     const dice = G.current.dice;
     if (!G.current.awaitingMove) return;
@@ -258,8 +281,19 @@ export default function LudoApp() {
       winner: G.current.winner,
       players: G.current.players.map(p => ({ color: p.color, name: p.name })),
     };
-    const conns = o.conns || (o.conn ? [o.conn] : []);
+    const conns = [...(o.conns || []), ...(o.spectators || [])];
     for (const c of conns) { try { c.send(payload); } catch (e) { /* closed */ } }
+  }
+
+  function sendStateTo(conn) {
+    try {
+      conn.send({
+        type: 'state', tokens: G.current.tokens, turnIdx: G.current.turnIdx,
+        sixes: G.current.sixes, dice: G.current.dice, over: G.current.over,
+        winner: G.current.winner,
+        players: G.current.players.map(p => ({ color: p.color, name: p.name })),
+      });
+    } catch (e) { /* ignore */ }
   }
 
   function clientState(data) {
@@ -282,7 +316,22 @@ export default function LudoApp() {
 
   function hostOnData(conn, data) {
     if (!data || typeof data !== 'object') return;
-    if (data.type === 'hello') { conn._name = String(data.name || 'Player').slice(0, 24); refreshRoomLobby(); return; }
+    const o = onlineRef.current;
+    if (!o) return;
+    if (data.type === 'spectate') {
+      o.spectators = o.spectators || [];
+      if (!o.spectators.includes(conn)) o.spectators.push(conn);
+      if (o.started) sendStateTo(conn);
+      else try { conn.send({ type: 'room', code: o.code, players: o.players || [{ name: myName(), color: 'red' }] }); } catch (e) { }
+      return;
+    }
+    if (data.type === 'hello' && !conn._name) {
+      conn._name = String(data.name || 'Player').slice(0, 24);
+      if ((o.conns || []).length >= 3) { conn.close(); return; }
+      o.conns = [...(o.conns || []), conn];
+      refreshRoomLobby();
+      return;
+    }
     if (data.type === 'roll') {
       const p = currentPlayer();
       const seat = (onlineRef.current.conns.indexOf(conn) + 1);
@@ -319,12 +368,14 @@ export default function LudoApp() {
       bump();
     });
     peer.on('connection', conn => {
-      if ((onlineRef.current.conns || []).length >= 3) { conn.close(); return; }
       conn.on('open', () => {
-        onlineRef.current.conns = [...(onlineRef.current.conns || []), conn];
         conn.on('data', d => hostOnData(conn, d));
-        conn.on('close', () => hostOnLeave(conn));
-        refreshRoomLobby();
+        conn.on('close', () => {
+          const o = onlineRef.current;
+          if (!o) return;
+          if ((o.conns || []).includes(conn)) { hostOnLeave(conn); return; }
+          o.spectators = (o.spectators || []).filter(c => c !== conn);
+        });
       });
     });
     peer.on('error', () => announce('Room error — try again.'));
@@ -534,6 +585,14 @@ export default function LudoApp() {
     );
   }
 
+  if (spectate && !spectatorLive) {
+    return (
+      <div className="fixed inset-0 sg-bg">
+        <SpectateView code={spectate} game="ludo" onJoin={() => { window.location.href = `./?room=${encodeURIComponent(spectate)}`; }} />
+      </div>
+    );
+  }
+
   /* ═══ GAME SCREEN ═══ */
   const g = G.current;
   const myPlayer = cur || {};
@@ -546,7 +605,7 @@ export default function LudoApp() {
         <button className="iconbtn w-12 h-12 rounded-2xl border border-[rgba(227,183,91,.22)] bg-[#131a33] text-[#e3b75b] text-[19px]" onClick={() => setScreen('menu')} aria-label="Back to menu">←</button>
         <div className="flex items-center gap-2.5 rounded-full border border-[rgba(227,183,91,.22)] bg-[#131a33] px-5 py-2.5 text-[12px] font-extrabold tracking-[2px]">
           <span className="w-3 h-3 rounded-full" style={{ background: myPlayer.color ? COLORS[myPlayer.color].hex : '#e3b75b', boxShadow: `0 0 12px ${myPlayer.color ? COLORS[myPlayer.color].hex : '#e3b75b'}` }} />
-          {g.over ? 'GAME OVER' : (myPlayer.isBot ? `${myPlayer.name} to move` : 'Your turn')}
+          {spectate ? 'SPECTATING' : (g.over ? 'GAME OVER' : (myPlayer.isBot ? `${myPlayer.name} to move` : 'Your turn'))}
         </div>
         <button className="iconbtn w-12 h-12 rounded-2xl border border-[rgba(227,183,91,.22)] bg-[#131a33] text-[19px]" onClick={() => sfx.toggle()} aria-label="Sound">{sfx.mutedRef.current ? '🔇' : '🔊'}</button>
       </div>
@@ -619,7 +678,7 @@ export default function LudoApp() {
       <div className="flex items-end justify-between w-full max-w-[740px] gap-3 px-3 pb-3 z-10">
         <div className="flex flex-col items-center gap-1.5">
           <div className="rounded-xl bg-[#e3b75b] text-[#241a04] text-[10px] font-black tracking-[2px] px-4 py-1.5 whitespace-nowrap" style={{ boxShadow: '0 3px 0 #8a6b2f' }}>
-            {canRoll ? 'ROLL THE DICE!' : (g.over ? 'GAME OVER' : 'PICK A PAWN')}
+            {spectate ? 'WATCHING LIVE' : (canRoll ? 'ROLL THE DICE!' : (g.over ? 'GAME OVER' : 'PICK A PAWN'))}
           </div>
           <button id="dice-btn" disabled={!canRoll} onClick={() => { haptic(); rollDice(); }} aria-label="Roll dice" className="disabled:opacity-85">
             <DiceFace n={diceN} rolling={rolling} />

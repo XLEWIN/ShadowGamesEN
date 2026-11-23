@@ -56,6 +56,7 @@ export default function ChessApp() {
   const [screen, setScreen] = useState('menu');
   const [toast, setToast] = useState('');
   const [, setTick] = useState(0);
+  const [spectatorLive, setSpectatorLive] = useState(false);
   const sfx = useRef(createSfx());
   const onlineRef = useRef(null);
   const lastTapRef = useRef({ t: 0, square: '' });
@@ -112,14 +113,38 @@ export default function ChessApp() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [screen, G.current.game.fen(), G.current.over]);
 
+  // Live spectator: connect to the host as a watch-only peer.
+  useEffect(() => {
+    const code = spectateCode();
+    if (!code || typeof Peer === 'undefined') return;
+    let alive = true;
+    callServer('lobbySpectate', { code });
+    const peer = new Peer(undefined, { debug: 0, config: { iceServers: ICE_SERVERS } });
+    peer.on('open', () => {
+      const conn = peer.connect(PEER_PREFIX + code, { reliable: true });
+      conn.on('open', () => conn.send({ type: 'spectate' }));
+      conn.on('data', (d) => {
+        if (!alive) return;
+        if (d.type === 'roster') {
+          G.current.players = (d.players || []).map((p, i) => ({ name: p.name, color: i === 0 ? 'w' : 'b' }));
+          bump();
+        } else if (d.type === 'state') {
+          applyRemoteState(d);
+          if (d.players) G.current.players = d.players.map((p, i) => ({ name: p.name, color: i === 0 ? 'w' : 'b' }));
+          G.current.mode = 'online';
+          G.current.orientation = 'w';
+          setSpectatorLive(true);
+          setScreen('game');
+          bump();
+        }
+      });
+    });
+    peer.on('error', () => { /* host not live yet — spectator view keeps polling */ });
+    return () => { alive = false; try { peer.destroy(); } catch (e) { /* ignore */ } };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const spectate = spectateCode();
-  if (spectate) {
-    return (
-      <div className="fixed inset-0 sg-bg">
-        <SpectateView code={spectate} game="chess" onJoin={() => { window.location.href = `./?room=${encodeURIComponent(spectate)}`; }} />
-      </div>
-    );
-  }
 
   function resetClock(seconds, inc) {
     G.current.clock = { w: seconds, b: seconds, inc, active: true, last: performance.now() };
@@ -158,7 +183,7 @@ export default function ChessApp() {
   }
 
   function tapSquare(square) {
-    if (G.current.over) return;
+    if (G.current.over || spectate) return;
     const p = G.current.players.find(p => p.isLocal);
     if (G.current.mode !== 'local' && !p) return;
     if (G.current.mode !== 'local' && p && p.color !== G.current.game.turn()) return;
@@ -230,10 +255,8 @@ export default function ChessApp() {
   }
 
   /* ── Online (PeerJS) ────────────────────────── */
-  function broadcastState() {
-    const o = onlineRef.current;
-    if (!o || !o.isHost || !o.conn) return;
-    const payload = {
+  function statePayload() {
+    return {
       type: 'state',
       fen: G.current.game.fen(),
       history: G.current.game.history(),
@@ -242,7 +265,18 @@ export default function ChessApp() {
       winner: G.current.winner,
       clock: { w: G.current.clock.w, b: G.current.clock.b, inc: G.current.clock.inc },
     };
-    try { o.conn.send(payload); } catch (e) { }
+  }
+  function sendStateTo(conn) {
+    const payload = statePayload();
+    payload.players = (onlineRef.current?.players || G.current.players).map(p => ({ name: p.name }));
+    try { conn.send(payload); } catch (e) { }
+  }
+  function broadcastState() {
+    const o = onlineRef.current;
+    if (!o || !o.isHost) return;
+    const payload = statePayload();
+    if (o.conn) { try { o.conn.send(payload); } catch (e) { } }
+    for (const s of (o.spectators || [])) { try { s.send(payload); } catch (e) { } }
   }
 
   function applyRemoteState(data) {
@@ -260,16 +294,22 @@ export default function ChessApp() {
     if (typeof Peer === 'undefined') { setToast('Online unavailable. Try vs AI!'); return; }
     const code = normalizeRoomCode(forcedCode) || makeRoomCode();
     const peer = new Peer(PEER_PREFIX + code, { debug: 1, config: { iceServers: ICE_SERVERS } });
-    onlineRef.current = { isHost: true, code, peer, conn: null, started: false };
+    onlineRef.current = { isHost: true, code, peer, conn: null, spectators: [], started: false };
     peer.on('open', () => {
       callServer('lobbyCreate', { code, game: 'chess', maxPlayers: 2 });
       bump();
     });
     peer.on('connection', conn => {
-      if (onlineRef.current.conn) { conn.close(); return; }
-      onlineRef.current.conn = conn;
       conn._name = null;
-      conn.on('open', () => { conn.on('data', d => hostOnData(d)); conn.on('close', () => { announceLeft(); }); refreshLobby(); });
+      conn.on('open', () => {
+        conn.on('data', d => hostOnData(conn, d));
+        conn.on('close', () => {
+          const o = onlineRef.current;
+          if (!o) return;
+          if (o.conn === conn) { announceLeft(); return; }
+          o.spectators = (o.spectators || []).filter(c => c !== conn);
+        });
+      });
     });
     peer.on('error', () => setToast('Room error — try again.'));
     setScreen('room');
@@ -282,10 +322,24 @@ export default function ChessApp() {
     o.players = names.map(n => ({ name: n }));
     bump();
     try { o.conn?.send({ type: 'room', players: o.players }); } catch (e) { }
+    for (const s of (o.spectators || [])) { try { s.send({ type: 'roster', players: o.players }); } catch (e) { } }
   }
-  function hostOnData(data) {
+  function hostOnData(conn, data) {
     if (!data || typeof data !== 'object') return;
-    if (data.type === 'hello') { onlineRef.current.conn._name = String(data.name || 'Opponent').slice(0, 24); refreshLobby(); return; }
+    const o = onlineRef.current;
+    if (!o) return;
+    if (data.type === 'spectate') {
+      o.spectators = o.spectators || [];
+      if (!o.spectators.includes(conn)) o.spectators.push(conn);
+      if (o.started) sendStateTo(conn);
+      else try { conn.send({ type: 'roster', players: o.players || [{ name: tgName() || 'You' }] }); } catch (e) { }
+      return;
+    }
+    if (data.type === 'hello' && !o.conn) {
+      o.conn = conn;
+      conn._name = String(data.name || 'Opponent').slice(0, 24);
+      refreshLobby(); return;
+    }
     if (data.type === 'move' && !G.current.over) {
       const move = { from: data.from, to: data.to, promotion: data.promotion };
       let m;
@@ -541,6 +595,14 @@ export default function ChessApp() {
           <SegRow id="seg-time-room"><SegBtn dataV="60" inc="0">1+0</SegBtn><SegBtn dataV="180" inc="2">3+2</SegBtn><SegBtn dataV="300" inc="3" selected>5+3</SegBtn><SegBtn dataV="600" inc="5">10+5</SegBtn></SegRow>
         </div>
       </SetupShell>
+    );
+  }
+
+  if (spectate && !spectatorLive) {
+    return (
+      <div className="fixed inset-0 sg-bg">
+        <SpectateView code={spectate} game="chess" onJoin={() => { window.location.href = `./?room=${encodeURIComponent(spectate)}`; }} />
+      </div>
     );
   }
 
