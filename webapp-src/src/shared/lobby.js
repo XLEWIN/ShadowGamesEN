@@ -18,7 +18,7 @@ export function inviteFriends(game, code) {
   const tgw = window.Telegram?.WebApp;
   if (!tgw?.switchInlineQuery) return false;
   try {
-    tgw.switchInlineQuery(`invite ${game} ${code}`, ['groups', 'supergroups', 'all_chats']);
+    tgw.switchInlineQuery(`invite ${game} ${code}`, ['groups', 'all_chats']);
     return true;
   } catch (e) {
     return false;
