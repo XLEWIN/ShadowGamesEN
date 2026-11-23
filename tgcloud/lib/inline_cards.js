@@ -1,7 +1,7 @@
 // Shared inline-result cards for Shadow Games, Ludo and Chess.
 // Uses the real game icons hosted on the Mini App — no legacy emoji cards.
 
-import { E, EID } from './emojis.js';
+import { EID } from './emojis.js';
 import { btnUrl, buildKeyboard } from './keyboards.js';
 import { HUB_URL, LUDO_URL, CHESS_URL } from './texts.js';
 
@@ -16,10 +16,9 @@ export function gameArticle(id, title, description, url, label, iconUrl) {
     type: 'article', id, title, description,
     thumbnail_url: iconUrl,
     input_message_content: {
-      message_text:
-        `${E.SPARKLE} <b>${title}</b>\n\n` +
-        `${E.GAME} Open the table and play with friends.\n` +
-        `${E.INFO} Powered by @ShadowGameEnBot`,
+      // Custom emoji entities are stripped from inline-posted messages by
+      // Telegram, so keep this text free of plain-emoji fallbacks.
+      message_text: `<b>${title}</b>\n\nOpen the table and play with friends.\nPowered by @ShadowGameEnBot`,
       parse_mode: 'HTML',
     },
     reply_markup: buildKeyboard([[{

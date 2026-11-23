@@ -6,7 +6,7 @@ import {
 } from './engine.js';
 import { tg, tgReady, tgName, tgPhoto, haptic, backButton } from '../shared/telegram.js';
 import { createSfx } from '../shared/audio.js';
-import { callServer, inviteFriends, spectateCode, botDeepLink, claimHost } from '../shared/lobby.js';
+import { callServer, inviteFriends, spectateCode, botDeepLink, claimHost, sessionState } from '../shared/lobby.js';
 import { makeRoomCode, normalizeRoomCode, promoteToHost, cancelPromote } from '../shared/room.js';
 import SpectateView from '../shared/SpectateView.jsx';
 
@@ -56,6 +56,7 @@ export default function LudoApp() {
   const [rolling, setRolling] = useState(false);
   const [, setTick] = useState(0);
   const [spectatorLive, setSpectatorLive] = useState(false);
+  const [sessionDead, setSessionDead] = useState(false);
   const sfx = useMemo(() => createSfx(), []);
   const sessionRef = useRef(0);
   const onlineRef = useRef(null); // PeerJS session { isHost, code, peer, conn, myColor, mySeat, started, conns }
@@ -83,14 +84,28 @@ export default function LudoApp() {
       const room = (params.get('room') || '').trim().toUpperCase();
       if (/^[A-Z0-9]{5}$/.test(room)) {
         setScreen('online');
-        claimHost(room).then((claim) => {
-          if (claim?.isHost) createRoom(room);
-          else joinRoom(room, 0, claim === null); // fallback only outside Telegram
+        sessionState(room).then((state) => {
+          if (state === 'expired') { setSessionDead(true); return; }
+          claimHost(room).then((claim) => {
+            if (claim?.expired) { setSessionDead(true); return; }
+            if (claim?.isHost) createRoom(room);
+            else joinRoom(room, 0, claim === null); // fallback only outside Telegram
+          });
         });
       }
     } catch (e) { /* ignore */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (screen !== 'room') return;
+    const code = (new URLSearchParams(window.location.search).get('room') || '').toUpperCase();
+    if (!code) return;
+    const id = setInterval(async () => {
+      if ((await sessionState(code)) === 'expired') setSessionDead(true);
+    }, 15000);
+    return () => clearInterval(id);
+  }, [screen]);
 
   useEffect(() => {
     if (!toast) return;
@@ -441,9 +456,10 @@ export default function LudoApp() {
     });
   }
 
-  function hostStartOnline() {
+  async function hostStartOnline() {
     const o = onlineRef.current;
     if (!o || !o.isHost || !o.conns?.length) return;
+    if ((await sessionState(o.code)) === 'expired') { setSessionDead(true); announce('Session expired — ask for a new invite.'); return; }
     const names = [myName(), ...o.conns.map(c => c._name || 'Player')];
     o.started = true;
     callServer('lobbyStart', { code: o.code });
@@ -480,6 +496,16 @@ export default function LudoApp() {
   const canRoll = !G.current.over && !G.current.busy && G.current.dice === null && cur && !cur.isBot && !cur.isRemote;
 
   /* ═══ RENDER ═══ */
+  if (sessionDead) {
+    return (
+      <div className="fixed inset-0 sg-bg flex flex-col items-center justify-center gap-4 px-6 text-center">
+        <div className="text-[11px] tracking-[5px] font-extrabold text-[#e3b75b]">SESSION ENDED</div>
+        <h1 className="game-title-word text-[36px] font-black">This invite expired.</h1>
+        <p className="text-[#a99e86] text-[13px]">Unstarted tables close after 2 minutes. Ask your friend for a new invite.</p>
+        <button className="btn btn-gold w-full max-w-[320px] py-4 text-[15px]" onClick={() => { window.location.href = './'; }}>BACK TO GAMES</button>
+      </div>
+    );
+  }
   if (screen === 'menu') {
     return (
       <div className="sg-bg min-h-full flex flex-col items-center justify-center px-5 py-8">

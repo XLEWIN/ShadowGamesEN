@@ -30,6 +30,17 @@ export function claimHost(code) {
   return callServer('lobbyClaimHost', { code });
 }
 
+// 'alive' | 'expired' | 'unknown' — unknown fails open if the endpoint is slow.
+export async function sessionState(code) {
+  const state = await Promise.race([
+    callServer('lobbyState', { code }),
+    new Promise((resolve) => setTimeout(() => resolve(undefined), 2500)),
+  ]);
+  if (!state) return 'unknown';
+  if (!state.ok || state.status === 'expired' || state.status === 'ended') return 'expired';
+  return 'alive';
+}
+
 export function spectateCode() {
   return roomParams().spectate;
 }

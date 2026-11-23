@@ -3,7 +3,7 @@ import { Chess } from './vendor/chess.js';
 import { chooseAiMove, AI_INFO } from './ai.js';
 import { tg, tgReady, tgName, tgPhoto, haptic, backButton } from '../shared/telegram.js';
 import { createSfx } from '../shared/audio.js';
-import { callServer, inviteFriends, spectateCode, botDeepLink, claimHost } from '../shared/lobby.js';
+import { callServer, inviteFriends, spectateCode, botDeepLink, claimHost, sessionState } from '../shared/lobby.js';
 import { makeRoomCode, normalizeRoomCode, promoteToHost, cancelPromote } from '../shared/room.js';
 import SpectateView from '../shared/SpectateView.jsx';
 
@@ -58,6 +58,7 @@ export default function ChessApp() {
   const [, setTick] = useState(0);
   const [spectatorLive, setSpectatorLive] = useState(false);
   const [roomClock, setRoomClock] = useState({ seconds: 300, inc: 3 });
+  const [sessionDead, setSessionDead] = useState(false);
   const sfx = useRef(createSfx());
   const onlineRef = useRef(null);
   const lastTapRef = useRef({ t: 0, square: '' });
@@ -76,8 +77,10 @@ export default function ChessApp() {
       const room = (new URLSearchParams(window.location.search).get('room') || '').trim().toUpperCase();
       if (!/^[A-Z0-9]{5}$/.test(room)) return;
       setScreen('online');
+      if ((await sessionState(room)) === 'expired') { if (alive) setSessionDead(true); return; }
       const claim = await claimHost(room);
       if (!alive) return;
+      if (claim?.expired) { setSessionDead(true); return; }
       if (claim?.isHost) { createRoom(room); return; }
       // claim===null only outside Telegram: keep the legacy promote fallback.
       joinRoom(room, 0, claim === null);
@@ -85,6 +88,17 @@ export default function ChessApp() {
     return () => { alive = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Keep checking while waiting in the room; expire the session if it lapses.
+  useEffect(() => {
+    if (screen !== 'room') return;
+    const code = (new URLSearchParams(window.location.search).get('room') || '').toUpperCase();
+    if (!code) return;
+    const id = setInterval(async () => {
+      if ((await sessionState(code)) === 'expired') setSessionDead(true);
+    }, 15000);
+    return () => clearInterval(id);
+  }, [screen]);
 
   useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(''), 2600); return () => clearTimeout(t); }, [toast]);
 
@@ -502,6 +516,16 @@ export default function ChessApp() {
   const oppLow = G.current.clock[myColor === 'w' ? 'b' : 'w'] <= 10 && G.current.clock[myColor === 'w' ? 'b' : 'w'] > 0;
 
   /* ═══ RENDER ═══ */
+  if (sessionDead) {
+    return (
+      <div className="fixed inset-0 sg-bg flex flex-col items-center justify-center gap-4 px-6 text-center">
+        <div className="text-[11px] tracking-[5px] font-extrabold text-[#e3b75b]">SESSION ENDED</div>
+        <h1 className="game-title-word text-[36px] font-black">This invite expired.</h1>
+        <p className="text-[#a99e86] text-[13px]">Unstarted tables close after 2 minutes. Ask your friend for a new invite.</p>
+        <button className="btn btn-gold w-full max-w-[320px] py-4 text-[15px]" onClick={() => { window.location.href = './'; }}>BACK TO GAMES</button>
+      </div>
+    );
+  }
   if (screen === 'menu') {
     return (
       <div className="sg-bg min-h-full flex flex-col items-center justify-center px-5 py-8">
@@ -587,8 +611,9 @@ export default function ChessApp() {
         </div>
         <div className="flex flex-col gap-2">{players.map((p, i) => (<div key={i} className="flex items-center gap-3 rounded-2xl bg-[#131a33] border border-white/10 px-4 py-3"><img src={p.photo || AVATARS.you} alt="" className="w-9 h-9 rounded-full object-cover border border-[#8a6b2f]" /><span className="font-bold">{p.name}{i === 0 && o?.isHost ? ' (You)' : ''}</span><span className="ml-auto text-[10px] tracking-[2px] text-[#a99e86] font-bold">{i === 0 ? 'HOST' : 'JOINED'}</span></div>))}</div>
         {o?.isHost
-          ? <button className="btn btn-gold w-full py-[17px] text-[17px]" disabled={!full} onClick={() => {
+          ? <button className="btn btn-gold w-full py-[17px] text-[17px]" disabled={!full} onClick={async () => {
               const o2 = onlineRef.current;
+              if ((await sessionState(o2.code)) === 'expired') { setSessionDead(true); setToast('Session expired — ask for a new invite.'); return; }
               const names = [tgName() || 'You', o2.conn?._name || 'Opponent'];
               const clockSeconds = roomClock.seconds;
               const inc = roomClock.inc;

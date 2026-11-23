@@ -1,5 +1,4 @@
 // Inline "Shadow Games" challenge articles — available on every inline query.
-import { E } from './emojis.js';
 import { mention } from './texts.js';
 import { btnUrl, buildKeyboard } from './keyboards.js';
 import { generateCode, startAppLink, TAGLINE, getLobby, isFull } from './lobby.js';
@@ -20,10 +19,10 @@ export function inviteArticle(game, user, code = null, full = false) {
     thumbnail_url: gameIcon(game),
     input_message_content: {
       message_text:
-        `${E.SPARKLE} <b>Shadow Games</b>\n\n` +
-        `${E.ARROW} <b>VS FRIEND</b> challenge from ${mention(user.id, name)}\n\n` +
-        `${E.INFO} ${TAGLINE}\n\n` +
-        `${E.GAME} <b>${game.toUpperCase()}</b> · ${game === 'chess' ? '1v1' : '2–4 players'}`,
+        `<b>Shadow Games</b>\n\n` +
+        `<b>VS FRIEND</b> challenge from ${mention(user.id, name)}\n\n` +
+        `${TAGLINE}\n\n` +
+        `<b>${game.toUpperCase()}</b> · ${game === 'chess' ? '1v1' : '2–4 players'}`,
       parse_mode: 'HTML',
     },
     reply_markup: full
