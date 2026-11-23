@@ -102,11 +102,10 @@ export function isFull(lobby) {
   return (lobby.players?.length || 0) >= lobby.maxPlayers;
 }
 
-// Deep link to the bot. The bot replies with a WebApp button that opens the
-// room directly (startapp needs a Main Web App, which this bot does not have).
+// Direct Mini App launch — the bot now has a registered Main Web App.
 export function startAppLink(game, code, spectate = false) {
   const payload = spectate ? `watch-${game}-${code}` : `${game}-${code}`;
-  return `https://t.me/ShadowGameEnBot?start=${payload}`;
+  return `https://t.me/ShadowGameEnBot?startapp=${payload}`;
 }
 
 export function parseStartPayload(payload) {
