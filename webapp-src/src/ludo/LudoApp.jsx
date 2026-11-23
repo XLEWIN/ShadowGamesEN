@@ -6,7 +6,7 @@ import {
 } from './engine.js';
 import { tg, tgReady, tgName, tgPhoto, haptic, backButton } from '../shared/telegram.js';
 import { createSfx } from '../shared/audio.js';
-import { callServer, inviteFriends, spectateCode, botDeepLink } from '../shared/lobby.js';
+import { callServer, inviteFriends, spectateCode, botDeepLink, claimHost } from '../shared/lobby.js';
 import { makeRoomCode, normalizeRoomCode, promoteToHost, cancelPromote } from '../shared/room.js';
 import SpectateView from '../shared/SpectateView.jsx';
 
@@ -83,8 +83,10 @@ export default function LudoApp() {
       const room = (params.get('room') || '').trim().toUpperCase();
       if (/^[A-Z0-9]{5}$/.test(room)) {
         setScreen('online');
-        const t = setTimeout(() => joinRoom(room), 300);
-        return () => clearTimeout(t);
+        claimHost(room).then((claim) => {
+          if (claim?.isHost) createRoom(room);
+          else joinRoom(room, 0, claim === null); // fallback only outside Telegram
+        });
       }
     } catch (e) { /* ignore */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -397,14 +399,13 @@ export default function LudoApp() {
     scheduleBotIfNeeded();
   }
 
-  function joinRoom(code) {
+  function joinRoom(code, attempt = 0, allowPromote = false) {
     if (typeof Peer === 'undefined') { announce('Online unavailable.'); return; }
     code = normalizeRoomCode(code);
     if (!/^[A-Z0-9]{5}$/.test(code)) { announce('Room code must be 5 characters.'); return; }
     const peer = new Peer(undefined, { debug: 1, config: { iceServers: ICE_SERVERS } });
     onlineRef.current = { isHost: false, code, peer, conn: null, myColor: null, started: false };
-    // If nobody is hosting yet, the first player to open an invite becomes host.
-    const promoteTimer = promoteToHost(onlineRef, code, createRoom);
+    const promoteTimer = allowPromote ? promoteToHost(onlineRef, code, createRoom) : null;
     peer.on('open', () => {
       const conn = peer.connect(PEER_PREFIX + code, { reliable: true });
       onlineRef.current.conn = conn;
@@ -429,10 +430,11 @@ export default function LudoApp() {
       bump();
     });
     peer.on('error', (err) => {
-      const o = onlineRef.current;
-      if (err?.type === 'peer-unavailable' && o && !o.isHost && !o.conn?.open) {
-        cancelPromote(promoteTimer);
-        createRoom(code);
+      if (err?.type === 'peer-unavailable') {
+        try { peer.destroy(); } catch (e) { /* ignore */ }
+        if (allowPromote && attempt === 0) { createRoom(code); return; }
+        if (attempt < 10) setTimeout(() => joinRoom(code, attempt + 1, allowPromote), 1200);
+        else announce('Host is not online yet — please try again shortly.');
         return;
       }
       announce('Connection failed — is the code right?');

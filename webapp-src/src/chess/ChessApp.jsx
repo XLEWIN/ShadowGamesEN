@@ -3,7 +3,7 @@ import { Chess } from './vendor/chess.js';
 import { chooseAiMove, AI_INFO } from './ai.js';
 import { tg, tgReady, tgName, tgPhoto, haptic, backButton } from '../shared/telegram.js';
 import { createSfx } from '../shared/audio.js';
-import { callServer, inviteFriends, spectateCode, botDeepLink } from '../shared/lobby.js';
+import { callServer, inviteFriends, spectateCode, botDeepLink, claimHost } from '../shared/lobby.js';
 import { makeRoomCode, normalizeRoomCode, promoteToHost, cancelPromote } from '../shared/room.js';
 import SpectateView from '../shared/SpectateView.jsx';
 
@@ -69,17 +69,20 @@ export default function ChessApp() {
 
   useEffect(() => { tgReady(); backButton(() => setScreen('menu'), screen !== 'menu'); }, [screen]);
 
-  // Auto-join from invite link (?room=CODE)
+  // Auto-enter from invite link: one atomic claim decides who hosts.
   useEffect(() => {
-    try {
-      const params = new URLSearchParams(window.location.search);
-      const room = (params.get('room') || '').trim().toUpperCase();
-      if (/^[A-Z0-9]{5}$/.test(room)) {
-        setScreen('online');
-        const t = setTimeout(() => joinRoom(room), 300);
-        return () => clearTimeout(t);
-      }
-    } catch (e) { /* ignore */ }
+    let alive = true;
+    (async () => {
+      const room = (new URLSearchParams(window.location.search).get('room') || '').trim().toUpperCase();
+      if (!/^[A-Z0-9]{5}$/.test(room)) return;
+      setScreen('online');
+      const claim = await claimHost(room);
+      if (!alive) return;
+      if (claim?.isHost) { createRoom(room); return; }
+      // claim===null only outside Telegram: keep the legacy promote fallback.
+      joinRoom(room, 0, claim === null);
+    })();
+    return () => { alive = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -369,14 +372,13 @@ export default function ChessApp() {
     bump();
   }
   function announceLeft() { setToast('Opponent disconnected.'); setScreen('menu'); }
-  function joinRoom(code) {
+  function joinRoom(code, attempt = 0, allowPromote = false) {
     if (typeof Peer === 'undefined') { setToast('Online unavailable.'); return; }
     code = normalizeRoomCode(code);
     if (!/^[A-Z0-9]{5}$/.test(code)) { setToast('Room code must be 5 characters.'); return; }
     const peer = new Peer(undefined, { debug: 1, config: { iceServers: ICE_SERVERS } });
     onlineRef.current = { isHost: false, code, peer, conn: null, started: false };
-    // First player to open an invite with no host present becomes the host.
-    const promoteTimer = promoteToHost(onlineRef, code, createRoom);
+    const promoteTimer = allowPromote ? promoteToHost(onlineRef, code, createRoom) : null;
     peer.on('open', () => {
       const conn = peer.connect(PEER_PREFIX + code, { reliable: true });
       onlineRef.current.conn = conn;
@@ -400,10 +402,11 @@ export default function ChessApp() {
       setScreen('room');
     });
     peer.on('error', (err) => {
-      const o = onlineRef.current;
-      if (err?.type === 'peer-unavailable' && o && !o.isHost && !o.conn?.open) {
-        cancelPromote(promoteTimer);
-        createRoom(code);
+      if (err?.type === 'peer-unavailable') {
+        try { peer.destroy(); } catch (e) { /* ignore */ }
+        if (allowPromote && attempt === 0) { createRoom(code); return; }
+        if (attempt < 10) setTimeout(() => joinRoom(code, attempt + 1, allowPromote), 1200);
+        else setToast('Host is not online yet — please try again shortly.');
         return;
       }
       setToast('Connection failed — is the code right?');

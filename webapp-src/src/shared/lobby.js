@@ -25,6 +25,11 @@ export function inviteFriends(game, code) {
   }
 }
 
+// Returns { ok, isHost } — null when the endpoint is unavailable.
+export function claimHost(code) {
+  return callServer('lobbyClaimHost', { code });
+}
+
 export function spectateCode() {
   return roomParams().spectate;
 }
