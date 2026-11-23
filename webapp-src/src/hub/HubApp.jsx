@@ -62,23 +62,30 @@ export default function HubApp() {
 
   // Deep link from inline Join/Spectate buttons: open the right table directly.
   useEffect(() => {
-    try {
-      const payload = (window.Telegram?.WebApp?.startParam || '').trim();
-      if (!payload) return;
-      const parts = payload.split('-');
-      const watching = parts[0] === 'watch';
-      const game = watching ? parts[1] : parts[0];
-      const code = normalizeRoomCode(watching ? parts[2] : parts[1]);
-      if (!['ludo', 'chess'].includes(game) || !/^[A-Z0-9]{5}$/.test(code)) return;
-      if (watching) {
-        callServer('lobbySpectate', { code });
-        window.location.href = roomPageUrl(game, code, true);
-      } else {
-        callServer('lobbyCreate', { code, game, maxPlayers: game === 'chess' ? 2 : 4 });
-        callServer('lobbyJoin', { code });
+    (async () => {
+      try {
+        const payload = (window.Telegram?.WebApp?.startParam || '').trim();
+        if (!payload) return;
+        const parts = payload.split('-');
+        const watching = parts[0] === 'watch';
+        const game = watching ? parts[1] : parts[0];
+        const code = normalizeRoomCode(watching ? parts[2] : parts[1]);
+        if (!['ludo', 'chess'].includes(game) || !/^[A-Z0-9]{5}$/.test(code)) return;
+        if (watching) {
+          await callServer('lobbySpectate', { code });
+          window.location.href = roomPageUrl(game, code, true);
+          return;
+        }
+        await callServer('lobbyCreate', { code, game, maxPlayers: game === 'chess' ? 2 : 4 });
+        const joined = await callServer('lobbyJoin', { code });
+        // Full (or ended) tables drop the player into spectator mode instead.
+        if (joined && (joined.full || joined.ok === false)) {
+          window.location.href = roomPageUrl(game, code, true);
+          return;
+        }
         window.location.href = roomPageUrl(game, code);
-      }
-    } catch (e) { /* stay on hub */ }
+      } catch (e) { /* stay on hub */ }
+    })();
   }, []);
 
   function notify(msg) {

@@ -22,7 +22,7 @@ export default async function (query, ctx) {
       const candidate = parts[parts.length - 1].toUpperCase();
       if (/^[A-Z0-9]{5}$/.test(candidate) && !['chess', 'ludo'].includes(candidate.toLowerCase())) code = candidate;
     }
-    const invites = inviteResults(query.from, code);
+    const invites = await inviteResults(query.from, code);
     if (/^(invite|challenge|shadow|vs)/.test(text)) {
       await api.answerInlineQuery({ inline_query_id: query.id, results: invites, cache_time: 0, is_personal: true });
       return;

@@ -777,6 +777,6 @@ function SegRow({ id, children }) {
 }
 
 function SegBtn({ dataV, inc, selected, children, onClick }) {
-  return <button className={`flex-1 py-3 text-[15px] font-extrabold rounded-2xl border-2 transition-all ${selected ? 'border-[#e3b75b] text-[#ffd97a] bg-[#e3b75b]/10' : 'border-white/10 text-[#a99e86] bg-[#1a2243]'}`}
+  return <button className={`seg-btn flex-1 py-3 text-[15px] font-extrabold rounded-2xl border-2 transition-all ${selected ? 'selected border-[#e3b75b] text-[#ffd97a] bg-[#e3b75b]/10' : 'border-white/10 text-[#a99e86] bg-[#1a2243]'}`}
     data-t={dataV} data-inc={inc} data-v={dataV} onClick={onClick}>{children}</button>;
 }

@@ -3,9 +3,10 @@
 
 import { api } from 'sdk';
 import { getState, setState, deleteState } from './db.js';
-import { E, EID } from './emojis.js';
-import { mention, HUB_URL, LUDO_URL, CHESS_URL } from './texts.js';
+import { E } from './emojis.js';
+import { mention } from './texts.js';
 import { unoChoiceKeyboard } from './keyboards.js';
+import { hubArticles } from './inline_cards.js';
 import { STICKERS, STICKERS_GREY, STICKERS_OPTIONS } from './uno_stickers.js';
 import {
   cardKey, cardDisplay, displayColor, playableCards, playCard, draw,
@@ -42,21 +43,6 @@ const sticker = (id, fileId, messageText) => ({
   type: 'sticker', id, sticker_file_id: fileId,
   ...(messageText ? { input_message_content: { message_text: messageText } } : {}),
 });
-
-function hubArticles() {
-  const game = (id, title, desc, url, label) => ({
-    ...article(id, title, desc, `${title} — @ShadowGameEnBot`),
-    thumbnail_url: `${url}assets/icon.webp`,
-    reply_markup: { inline_keyboard: [[{
-      text: label, url, style: 'primary', icon_custom_emoji_id: EID.GAME,
-    }]] },
-  });
-  return [
-    game('hub', 'Shadow Games', 'All games in one place', HUB_URL, 'Open Games Hub'),
-    game('open-ludo', 'Shadow Games · Ludo', 'Play vs AI or online rooms', LUDO_URL, 'Open Ludo'),
-    game('open-chess', 'Shadow Games · Chess', 'Real rules, online rooms', CHESS_URL, 'Open Chess'),
-  ];
-}
 
 // Async because game state lives in the DB.
 export async function makeInlineResults(uid, queryText = '') {
