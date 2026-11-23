@@ -375,7 +375,15 @@ export default function LudoApp() {
       setScreen('room');
       bump();
     });
-    peer.on('error', () => announce('Connection failed — is the code right?'));
+    peer.on('error', (err) => {
+      const o = onlineRef.current;
+      if (err?.type === 'peer-unavailable' && o && !o.isHost && !o.conn?.open) {
+        cancelPromote(promoteTimer);
+        createRoom(code);
+        return;
+      }
+      announce('Connection failed — is the code right?');
+    });
   }
 
   function hostStartOnline() {

@@ -278,8 +278,10 @@ export default function ChessApp() {
     const o = onlineRef.current;
     if (!o || !o.isHost) return;
     const names = [tgName() || 'You', o.conn?._name || 'Opponent'];
+    // The host's own view must use the same roster it sends to the guest.
+    o.players = names.map(n => ({ name: n }));
     bump();
-    try { o.conn?.send({ type: 'room', players: names.map(n => ({ name: n })) }); } catch (e) { }
+    try { o.conn?.send({ type: 'room', players: o.players }); } catch (e) { }
   }
   function hostOnData(data) {
     if (!data || typeof data !== 'object') return;
@@ -337,7 +339,15 @@ export default function ChessApp() {
       conn.on('close', () => { setToast('Host disconnected.'); setScreen('menu'); });
       setScreen('room');
     });
-    peer.on('error', () => setToast('Connection failed — is the code right?'));
+    peer.on('error', (err) => {
+      const o = onlineRef.current;
+      if (err?.type === 'peer-unavailable' && o && !o.isHost && !o.conn?.open) {
+        cancelPromote(promoteTimer);
+        createRoom(code);
+        return;
+      }
+      setToast('Connection failed — is the code right?');
+    });
   }
 
   function resetOnlineMatch() {
@@ -525,7 +535,7 @@ export default function ChessApp() {
               startMatch([{ name: names[0], color: 'w', isBot: false, isLocal: true, avatar: AVATARS.you }, { name: names[1], color: 'b', isBot: false, isLocal: false, isRemote: true, avatar: AVATARS.you }], 'online', { seconds: clockSeconds, inc }, 'w');
               o2.syncInterval = setInterval(() => { if (G.current.over) { clearInterval(o2.syncInterval); return; } broadcastState(); }, 2000);
             }}>{full ? `START GAME (${players.length})` : 'WAITING FOR OPPONENT…'}</button>
-          : <div className="text-[#a99e86] text-[13px] text-center">Waiting for host…</div>}
+          : <div className="text-[#a99e86] text-[13px] text-center">Waiting for the host to start the game…</div>}
         <div id="time-room" className={`${o?.isHost ? '' : 'hidden'}`}>
           <label className="text-[#a99e86] text-[10px] tracking-[3px] font-bold">TIME CONTROL</label>
           <SegRow id="seg-time-room"><SegBtn dataV="60" inc="0">1+0</SegBtn><SegBtn dataV="180" inc="2">3+2</SegBtn><SegBtn dataV="300" inc="3" selected>5+3</SegBtn><SegBtn dataV="600" inc="5">10+5</SegBtn></SegRow>

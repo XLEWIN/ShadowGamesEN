@@ -32,7 +32,7 @@ export function botDeepLink(game, code, spectate = false) {
 
 // A player opening an invite before the host arrives takes over hosting,
 // keeping the SAME code the invite was issued with.
-export function promoteToHost(onlineRef, code, createRoom, delay = 1800) {
+export function promoteToHost(onlineRef, code, createRoom, delay = 6000) {
   return setTimeout(() => {
     const o = onlineRef.current;
     if (o && !o.isHost && !o.conn?.open) {
