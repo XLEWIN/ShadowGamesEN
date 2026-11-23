@@ -88,16 +88,19 @@ export default function HubApp() {
         }
         // Register in the background; never let a slow endpoint strand the
         // user on the hub menu. A short race keeps the full-table check.
-        callServer('lobbyCreate', { code, game, maxPlayers: game === 'chess' ? 2 : 4 });
         const joined = await Promise.race([
-          callServer('lobbyJoin', { code }),
+          callServer('lobbyJoin', { code, game }),
           new Promise((resolve) => setTimeout(() => resolve(null), 500)),
         ]);
         if (joined?.expired) {
           setToast(joined.error || 'Session expired — ask for a new invite.');
           return;
         }
-        go(!!(joined && (joined.full || joined.ok === false)));
+        if (joined && joined.ok === false && !joined.full) {
+          setToast(joined.error || 'Invite is no longer valid — ask for a new one.');
+          return;
+        }
+        go(!!(joined && joined.full));
       } catch (e) { /* stay on hub */ }
     })();
   }, []);

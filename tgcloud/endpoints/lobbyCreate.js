@@ -17,6 +17,8 @@ export default async function (input = {}, ctx = {}) {
       creatorPhoto: user.photo_url || null,
       maxPlayers,
     });
+  } else if (lobby.status === 'expired') {
+    return { ok: false, expired: true, error: 'Session expired. Ask for a new invite.' };
   } else {
     lobby.game = game;
     lobby.maxPlayers = maxPlayers;
