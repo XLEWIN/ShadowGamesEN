@@ -5,7 +5,7 @@ import { db, eq, and, sql } from './db.js';
 import { webappLobbies } from '../schema.js';
 import { E, EID } from './emojis.js';
 import { mention } from './texts.js';
-import { btnSuccess, btnPrimary, btnWebApp, buildKeyboard } from './keyboards.js';
+import { btnUrl, buildKeyboard } from './keyboards.js';
 
 const ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 export const WEBAPP_BASE = 'https://app8670418995.tgcloud.ai/';
@@ -102,22 +102,29 @@ export function isFull(lobby) {
   return (lobby.players?.length || 0) >= lobby.maxPlayers;
 }
 
+// Tapping these opens the Mini App directly (startapp payload is read by the hub).
+export function startAppLink(game, code, spectate = false) {
+  const payload = spectate ? `watch-${game}-${code}` : `${game}-${code}`;
+  return `https://t.me/ShadowGameEnBot?startapp=${payload}`;
+}
+
 export function lobbyKeyboard(lobby) {
   return buildKeyboard([
     [
-      btnSuccess('Join the game', `lobby:join:${lobby.code}`, EID.PLAY),
-      btnPrimary('Spectate', `lobby:spectate:${lobby.code}`, EID.WATCH),
+      btnUrl('Join the game', startAppLink(lobby.game, lobby.code), EID.PLAY, 'success'),
+      btnUrl('Spectate', startAppLink(lobby.game, lobby.code, true), EID.WATCH, 'primary'),
     ],
-    [btnWebApp('Open table', roomUrl(lobby.game, lobby.code), EID.GAME, 'primary')],
   ]);
 }
+
+export const TAGLINE = 'A little competition never hurt. Pick a table and bring your friends.';
 
 export function inviteText(lobby, inviterName = 'Player', inviterId = 0) {
   const players = Array.isArray(lobby.players) ? lobby.players : [];
   const roster = players.map((p, i) => `${i + 1}. ${p.name}`).join('\n');
-  return `${E.SPARKLE} <b>SANSAD SHOWDOWN</b>\n\n` +
+  return `${E.SPARKLE} <b>Shadow Games</b>\n\n` +
     `${E.ARROW} <b>VS FRIEND</b> challenge from ${mention(inviterId, inviterName)}\n\n` +
-    `${E.INFO} Law says satta impossible. Reality says fight.\n\n` +
+    `${E.INFO} ${TAGLINE}\n\n` +
     `${E.GAME} <b>${lobby.game.toUpperCase()}</b> · ${players.length}/${lobby.maxPlayers} players` +
     (roster ? `\n\n${E.USER} <b>Table</b>\n${roster}` : '') +
     `\n\n${E.WATCH} Spectators are welcome — tap below to join or watch.`;

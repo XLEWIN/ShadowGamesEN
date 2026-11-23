@@ -1,11 +1,11 @@
 // Callback actions for webapp lobby invites (join / spectate / open).
 import { api } from 'sdk';
 import { sendText, editText, escapeHtml } from './msg.js';
-import { E, EID, plain } from './emojis.js';
-import { btnWebApp, buildKeyboard } from './keyboards.js';
+import { E, plain } from './emojis.js';
+import { btnUrl, buildKeyboard } from './keyboards.js';
 import {
   getLobby, getOpenLobby, createLobby, joinLobby, addSpectator,
-  saveLobby, inviteText, lobbyKeyboard, roomUrl, isFull,
+  saveLobby, inviteText, lobbyKeyboard, startAppLink, isFull,
 } from './lobby.js';
 
 async function answer(query, text, alert = false) {
@@ -19,9 +19,9 @@ async function answer(query, text, alert = false) {
 }
 
 function openKeyboard(lobby, spectate = false) {
-  return buildKeyboard([[btnWebApp(
+  return buildKeyboard([[btnUrl(
     spectate ? 'Watch the table' : 'Open table',
-    roomUrl(lobby.game, lobby.code, spectate), EID.GAME, 'primary',
+    startAppLink(lobby.game, lobby.code, spectate), undefined, 'primary',
   )]]);
 }
 

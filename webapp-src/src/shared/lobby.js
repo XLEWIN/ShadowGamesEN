@@ -12,7 +12,7 @@ export function callServer(name, input = {}) {
   });
 }
 
-// Open inline mode in a group with the branded SANSAD SHOWDOWN invite.
+// Open inline mode in a group with the branded Shadow Games challenge.
 export function inviteFriends(game, code) {
   const tgw = window.Telegram?.WebApp;
   if (!tgw?.switchInlineQuery) return false;
