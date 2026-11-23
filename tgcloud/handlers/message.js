@@ -31,7 +31,10 @@ import {
 import { getWordOfTheDay, getGameDate } from '../lib/daily.js';
 import { handleAdminCommand } from '../lib/admin.js';
 import { handleUnoCommand } from '../lib/uno_cmds.js';
-import { createLobby, getOpenLobby, inviteText, lobbyKeyboard, roomUrl, saveLobby } from '../lib/lobby.js';
+import {
+  createLobby, getLobby, getOpenLobby, joinLobby, addSpectator,
+  inviteText, lobbyKeyboard, roomUrl, saveLobby, parseStartPayload,
+} from '../lib/lobby.js';
 
 configurePipeline({ api, chatId: LOG_CHANNEL_ID });
 
@@ -115,6 +118,11 @@ async function hasStarted(userId) {
 }
 
 async function cmdStart(message, args, isPrivate, userId, user) {
+  const target = isPrivate ? parseStartPayload(args) : null;
+  if (target) {
+    await handleLobbyDeepLink(message, userId, user, target);
+    return;
+  }
   if (!isPrivate) {
     await replyText(message, `${E.GAME} ${mention(userId, user.first_name || 'Player')} <b>started a new game!</b>\n\n${E.SPARKLE} Choose the word mode for this game:`, {
       parseMode: 'HTML',
@@ -129,6 +137,35 @@ async function cmdStart(message, args, isPrivate, userId, user) {
   await deleteMessage(chatIdOf(message), message.message_id);
   await db.insert(userStartedBot).values({ userId: Number(userId), startedAt: new Date().toISOString() }).onConflictDoNothing().run();
   await sendText(LOG_CHANNEL_ID, `🆕 New user started bot: ${plain(user.first_name || 'User')} (${userId})`);
+}
+
+async function handleLobbyDeepLink(message, userId, user, target) {
+  let lobby = await getLobby(target.code);
+  if (!lobby && !target.spectate) {
+    lobby = await createLobby({
+      code: target.code, game: target.game, creatorId: userId,
+      creatorName: user.first_name || user.username || 'Player',
+    });
+  }
+  if (!lobby) {
+    await replyText(message, `${E.WARNING} This table has already ended. Ask for a new invite.`, { parseMode: 'HTML' });
+    return;
+  }
+  if (target.spectate) {
+    addSpectator(lobby, user);
+  } else {
+    const result = joinLobby(lobby, user);
+    if (!result.ok && !result.already && !result.full) { /* no-op */ }
+  }
+  await saveLobby(lobby);
+  const label = target.spectate ? 'Watch table' : 'Join table';
+  await replyText(message,
+    `${E.SPARKLE} <b>Shadow Games</b>\n\n${E.GAME} <b>${target.game.toUpperCase()}</b> · table <code>${escapeHtml(target.code)}</code>\n` +
+    `${E.INFO} ${target.spectate ? 'You are spectating this table.' : `Players in this table: ${lobby.players.length}/${lobby.maxPlayers}`}`,
+    {
+      parseMode: 'HTML',
+      replyMarkup: buildKeyboard([[btnWebApp(label, roomUrl(target.game, target.code, target.spectate), EID.GAME, 'primary')]]),
+    });
 }
 
 async function cmdHelp(message, isPrivate) {

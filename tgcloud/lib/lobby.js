@@ -102,10 +102,21 @@ export function isFull(lobby) {
   return (lobby.players?.length || 0) >= lobby.maxPlayers;
 }
 
-// Tapping these opens the Mini App directly (startapp payload is read by the hub).
+// Deep link to the bot. The bot replies with a WebApp button that opens the
+// room directly (startapp needs a Main Web App, which this bot does not have).
 export function startAppLink(game, code, spectate = false) {
   const payload = spectate ? `watch-${game}-${code}` : `${game}-${code}`;
-  return `https://t.me/ShadowGameEnBot?startapp=${payload}`;
+  return `https://t.me/ShadowGameEnBot?start=${payload}`;
+}
+
+export function parseStartPayload(payload) {
+  const parts = String(payload || '').trim().split('-');
+  if (!parts.length) return null;
+  const watching = parts[0] === 'watch';
+  const game = watching ? parts[1] : parts[0];
+  const code = (watching ? parts[2] : parts[1] || '').toUpperCase();
+  if (!['ludo', 'chess'].includes(game) || !/^[A-Z0-9]{5}$/.test(code)) return null;
+  return { game, code, spectate: watching };
 }
 
 export function lobbyKeyboard(lobby) {
