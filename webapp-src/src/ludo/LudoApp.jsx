@@ -446,7 +446,8 @@ export default function LudoApp() {
     if (!o || !o.isHost || !o.conns?.length) return;
     const names = [myName(), ...o.conns.map(c => c._name || 'Player')];
     o.started = true;
-    const players = names.map((name, i) => ({ color: ORDER[i], name, isLocal: i === 0, isRemote: i !== 0 }));
+    callServer('lobbyStart', { code: o.code });
+    const players = names.map((name, i) => ({ color: ORDER[i], name, photo: o.players?.[i]?.photo || null, isLocal: i === 0, isRemote: i !== 0 }));
     o.conns.forEach((c, i) => c.send({ type: 'start', yourSeat: i + 1, players: names.map(n => ({ name: n })) }));
     startGame(players, 'online');
   }

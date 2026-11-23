@@ -593,6 +593,7 @@ export default function ChessApp() {
               const clockSeconds = roomClock.seconds;
               const inc = roomClock.inc;
               o2.started = true;
+              callServer('lobbyStart', { code: o2.code });
               try { o2.conn?.send({ type: 'start', players: names.map(n => ({ name: n })), clockSeconds, inc }); } catch (e) { }
               startMatch(o2.players.map((p, i) => ({
                 name: p.name, photo: p.photo || null, color: i === 0 ? 'w' : 'b',

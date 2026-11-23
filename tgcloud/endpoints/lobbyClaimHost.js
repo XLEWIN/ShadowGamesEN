@@ -1,6 +1,7 @@
 // Atomic host claim for a room code. Exactly one caller becomes the host.
 import { db, eq } from 'sdk/db';
 import { botState } from '../schema.js';
+import { getLobby } from '../lib/lobby.js';
 
 const KEY = (code) => `lobby:host:${code}`;
 const TTL_MS = 2 * 60 * 1000;
@@ -10,6 +11,8 @@ export default async function (input = {}, ctx = {}) {
   if (!user) return { ok: false, error: 'Open from Telegram.' };
   const code = String(input.code || '').toUpperCase();
   if (!/^[A-Z0-9]{5}$/.test(code)) return { ok: false, error: 'Invalid code.' };
+  const lobby = await getLobby(code);
+  if (lobby?.status === 'expired') return { ok: false, expired: true, error: 'Session expired. Ask for a new invite.' };
   const key = KEY(code);
   const uid = Number(user.id);
 
