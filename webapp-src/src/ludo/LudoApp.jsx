@@ -90,7 +90,13 @@ export default function LudoApp() {
           claimHost(room).then((claim) => {
             if (claim?.expired) { setSessionDead(true); return; }
             if (!claim || claim.ok === false) { announce('Could not verify the room — reopen the invite.'); return; }
-            if (claim.isHost) createRoom(room);
+            if (claim.isHost) {
+              callServer('lobbyState', { code: room }).then((s) => {
+                const max = s?.ok && [2, 3, 4].includes(s.maxPlayers) ? s.maxPlayers : 4;
+                setLobbyMax(max);
+                createRoom(room, max);
+              });
+            }
             else joinRoom(room); // server decided host; never promote locally
           });
         });
@@ -172,6 +178,7 @@ export default function LudoApp() {
     G.current.highlight = [];
     G.current.turnIdx = (G.current.turnIdx + 1) % G.current.players.length;
     setRolling(false);
+    setDiceN(1);
     bump();
     scheduleBotIfNeeded();
     if (G.current.mode === 'online' && onlineRef.current?.isHost) broadcastState();
@@ -184,11 +191,11 @@ export default function LudoApp() {
     }
   };
 
-  function rollDice() {
+  function rollDice(fromRemote = false) {
     if (spectate) return;
     if (G.current.over || G.current.busy || G.current.dice !== null) return;
     const p = currentPlayer();
-    if (!p || p.isRemote) return;
+    if (!p || (p.isRemote && !fromRemote)) return;
     if (G.current.mode === 'online' && !onlineRef.current?.isHost) {
       // Guests ask the host to roll; the host owns the authoritative state.
       try { onlineRef.current?.conn?.send({ type: 'roll' }); } catch (e) { /* ignore */ }
@@ -365,7 +372,7 @@ export default function LudoApp() {
     if (data.type === 'roll') {
       const p = currentPlayer();
       const seat = (onlineRef.current.conns.indexOf(conn) + 1);
-      if (p && G.current.players[G.current.turnIdx] === G.current.players[seat]) rollDice();
+      if (p && G.current.players[G.current.turnIdx] === G.current.players[seat]) rollDice(true);
       return;
     }
     if (data.type === 'move' && G.current.awaitingMove) {
@@ -389,13 +396,14 @@ export default function LudoApp() {
     }
   }
 
-  function createRoom(forcedCode) {
+  function createRoom(forcedCode, forcedMax) {
     if (typeof Peer === 'undefined') { announce('Online unavailable. Try bots!'); return; }
     const code = normalizeRoomCode(forcedCode) || makeRoomCode();
+    const roomMax = [2, 3, 4].includes(forcedMax) ? forcedMax : lobbyMax;
     const peer = new Peer(PEER_PREFIX + code, { debug: 1, config: { iceServers: ICE_SERVERS } });
-    onlineRef.current = { isHost: true, code, peer, conns: [], spectators: [], maxPlayers: lobbyMax, myColor: 'red', mySeat: 0, players: [{ name: myName(), photo: tgPhoto(), color: 'red' }], started: false };
+    onlineRef.current = { isHost: true, code, peer, conns: [], spectators: [], maxPlayers: roomMax, myColor: 'red', mySeat: 0, players: [{ name: myName(), photo: tgPhoto(), color: 'red' }], started: false };
     peer.on('open', () => {
-      callServer('lobbyCreate', { code, game: 'ludo', maxPlayers: lobbyMax });
+      callServer('lobbyCreate', { code, game: 'ludo', maxPlayers: roomMax });
       bump();
     });
     peer.on('connection', conn => {
