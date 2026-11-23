@@ -14,7 +14,15 @@ export default async function (query, ctx) {
   try {
     if (!query?.from || typeof query.id !== 'string') return;
     const text = (query.query || '').trim().toLowerCase();
-    const invites = inviteResults(query.from);
+    // "invite chess ABCDE" must keep the host's room code so both players land
+    // in the same room. A bare query gets a fresh code for a new table.
+    const parts = text.split(/\s+/).filter(Boolean);
+    let code = null;
+    if (parts.length >= 2) {
+      const candidate = parts[parts.length - 1].toUpperCase();
+      if (/^[A-Z0-9]{5}$/.test(candidate) && !['chess', 'ludo'].includes(candidate.toLowerCase())) code = candidate;
+    }
+    const invites = inviteResults(query.from, code);
     if (/^(invite|challenge|shadow|vs)/.test(text)) {
       await api.answerInlineQuery({ inline_query_id: query.id, results: invites, cache_time: 0, is_personal: true });
       return;

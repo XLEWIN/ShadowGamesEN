@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import hqLogo from '../assets/shadow-hq-logo.png';
 import { callServer } from '../shared/lobby.js';
+import { normalizeRoomCode, roomPageUrl } from '../shared/room.js';
 import './HubHome.css';
 
 const BOT_LINK = 'https://t.me/ShadowGameEnBot';
@@ -67,15 +68,15 @@ export default function HubApp() {
       const parts = payload.split('-');
       const watching = parts[0] === 'watch';
       const game = watching ? parts[1] : parts[0];
-      const code = (watching ? parts[2] : parts[1] || '').toUpperCase();
+      const code = normalizeRoomCode(watching ? parts[2] : parts[1]);
       if (!['ludo', 'chess'].includes(game) || !/^[A-Z0-9]{5}$/.test(code)) return;
       if (watching) {
         callServer('lobbySpectate', { code });
-        window.location.href = `./${game}/?spectate=${encodeURIComponent(code)}`;
+        window.location.href = roomPageUrl(game, code, true);
       } else {
         callServer('lobbyCreate', { code, game, maxPlayers: game === 'chess' ? 2 : 4 });
         callServer('lobbyJoin', { code });
-        window.location.href = `./${game}/?room=${encodeURIComponent(code)}`;
+        window.location.href = roomPageUrl(game, code);
       }
     } catch (e) { /* stay on hub */ }
   }, []);

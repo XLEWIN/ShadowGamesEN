@@ -1,4 +1,5 @@
 // Bridge between the Mini App and tgcloud endpoints for live lobbies.
+import { botDeepLink, roomParams } from './room.js';
 
 export function callServer(name, input = {}) {
   return new Promise((resolve) => {
@@ -25,9 +26,11 @@ export function inviteFriends(game, code) {
 }
 
 export function spectateCode() {
-  return new URLSearchParams(window.location.search).get('spectate') || '';
+  return roomParams().spectate;
 }
 
 export function roomCode() {
-  return new URLSearchParams(window.location.search).get('room') || '';
+  return roomParams().room;
 }
+
+export { botDeepLink };

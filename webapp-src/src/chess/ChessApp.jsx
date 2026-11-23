@@ -3,7 +3,8 @@ import { Chess } from './vendor/chess.js';
 import { chooseAiMove, AI_INFO } from './ai.js';
 import { tg, tgReady, tgName, haptic, backButton } from '../shared/telegram.js';
 import { createSfx } from '../shared/audio.js';
-import { callServer, inviteFriends, spectateCode } from '../shared/lobby.js';
+import { callServer, inviteFriends, spectateCode, botDeepLink } from '../shared/lobby.js';
+import { makeRoomCode, normalizeRoomCode, promoteToHost, cancelPromote } from '../shared/room.js';
 import SpectateView from '../shared/SpectateView.jsx';
 
 const PIECES = {
@@ -255,9 +256,9 @@ export default function ChessApp() {
     bump();
   }
 
-  function createRoom() {
+  function createRoom(forcedCode) {
     if (typeof Peer === 'undefined') { setToast('Online unavailable. Try vs AI!'); return; }
-    const code = (() => { const a = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; let s = ''; for (let i = 0; i < 5; i++) s += a[Math.floor(Math.random() * a.length)]; return s; })();
+    const code = normalizeRoomCode(forcedCode) || makeRoomCode();
     const peer = new Peer(PEER_PREFIX + code, { debug: 1, config: { iceServers: ICE_SERVERS } });
     onlineRef.current = { isHost: true, code, peer, conn: null, started: false };
     peer.on('open', () => {
@@ -308,23 +309,17 @@ export default function ChessApp() {
   function announceLeft() { setToast('Opponent disconnected.'); setScreen('menu'); }
   function joinRoom(code) {
     if (typeof Peer === 'undefined') { setToast('Online unavailable.'); return; }
-    code = (code || '').trim().toUpperCase();
-    if (code.length !== 5) { setToast('Room code must be 5 characters.'); return; }
+    code = normalizeRoomCode(code);
+    if (!/^[A-Z0-9]{5}$/.test(code)) { setToast('Room code must be 5 characters.'); return; }
     const peer = new Peer(undefined, { debug: 1, config: { iceServers: ICE_SERVERS } });
     onlineRef.current = { isHost: false, code, peer, conn: null, started: false };
     // First player to open an invite with no host present becomes the host.
-    const promoteTimer = setTimeout(() => {
-      const o = onlineRef.current;
-      if (o && !o.isHost && !o.conn?.open) {
-        try { o.peer.destroy(); } catch (e) { /* ignore */ }
-        createRoom(code);
-      }
-    }, 1800);
+    const promoteTimer = promoteToHost(onlineRef, code, createRoom);
     peer.on('open', () => {
       const conn = peer.connect(PEER_PREFIX + code, { reliable: true });
       onlineRef.current.conn = conn;
       conn.on('open', () => {
-        clearTimeout(promoteTimer);
+        cancelPromote(promoteTimer);
         conn.send({ type: 'hello', name: tgName() || 'You' });
         callServer('lobbyJoin', { code });
       });
@@ -487,7 +482,7 @@ export default function ChessApp() {
   if (screen === 'online') {
     return (
       <SetupShell title="Online Room" onBack={() => setScreen('menu')}>
-        <button className="btn btn-gold w-full py-[17px] text-[17px]" onClick={createRoom}>➕ CREATE ROOM</button>
+        <button className="btn btn-gold w-full py-[17px] text-[17px]" onClick={() => createRoom()}>➕ CREATE ROOM</button>
         <div className="flex items-center gap-3 text-[#a99e86] text-[12px]"><span className="flex-1 h-px bg-white/10" /><span>or</span><span className="flex-1 h-px bg-white/10" /></div>
         <label className="text-[#a99e86] text-[10px] tracking-[3px] font-bold">JOIN BY CODE</label>
         <div className="flex gap-2">
@@ -511,8 +506,8 @@ export default function ChessApp() {
             <button className="btn btn-dark text-[12px] px-4 py-2" onClick={() => { try { navigator.clipboard.writeText(o?.code || ''); setToast('Code copied'); } catch (e) { } }}>📋 Copy</button>
             <button className="btn btn-gold text-[11px] px-4 py-2" onClick={() => {
               const code = o?.code || '';
+              const link = botDeepLink('chess', code);
               if (inviteFriends('chess', code)) return;
-              const link = new URL(`./?room=${encodeURIComponent(code)}`, window.location.href).href;
               try { navigator.clipboard.writeText(link); setToast('Invite link copied'); } catch (e) { setToast(link); }
             }}>🔗 Invite friends</button>
           </div>

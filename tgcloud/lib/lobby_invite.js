@@ -4,8 +4,8 @@ import { mention } from './texts.js';
 import { btnUrl, buildKeyboard } from './keyboards.js';
 import { generateCode, startAppLink, TAGLINE } from './lobby.js';
 
-export function inviteArticle(game, user) {
-  const code = generateCode();
+export function inviteArticle(game, user, code = null) {
+  code = code ? String(code).toUpperCase() : generateCode();
   const name = user.first_name || user.username || 'Player';
   return {
     type: 'article',
@@ -29,6 +29,6 @@ export function inviteArticle(game, user) {
   };
 }
 
-export function inviteResults(user) {
-  return [inviteArticle('chess', user), inviteArticle('ludo', user)];
+export function inviteResults(user, code = null) {
+  return [inviteArticle('chess', user, code), inviteArticle('ludo', user, code)];
 }

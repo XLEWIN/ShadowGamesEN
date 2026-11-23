@@ -1,12 +1,13 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ORDER, COLORS, MAIN_PATH, SAFE, HOME_PATH, MAIN_PATH_INDEX, HOME_LOOKUP, ARM_FILL,
-  freshTokens, legalMoves, applyMove, aiPickMove, tokenXY, makeRoomCode,
+  freshTokens, legalMoves, applyMove, aiPickMove, tokenXY,
   PEER_PREFIX, ICE_SERVERS, cellKey,
 } from './engine.js';
 import { tg, tgReady, tgName, haptic, backButton } from '../shared/telegram.js';
 import { createSfx } from '../shared/audio.js';
-import { callServer, inviteFriends, spectateCode } from '../shared/lobby.js';
+import { callServer, inviteFriends, spectateCode, botDeepLink } from '../shared/lobby.js';
+import { makeRoomCode, normalizeRoomCode, promoteToHost, cancelPromote } from '../shared/room.js';
 import SpectateView from '../shared/SpectateView.jsx';
 
 const AVATARS = { red: 'assets/petey.webp', yellow: 'assets/bomby.webp', green: 'assets/bruno.webp', blue: 'assets/bulby.webp' };
@@ -308,9 +309,9 @@ export default function LudoApp() {
     }
   }
 
-  function createRoom() {
+  function createRoom(forcedCode) {
     if (typeof Peer === 'undefined') { announce('Online unavailable. Try bots!'); return; }
-    const code = makeRoomCode();
+    const code = normalizeRoomCode(forcedCode) || makeRoomCode();
     const peer = new Peer(PEER_PREFIX + code, { debug: 1, config: { iceServers: ICE_SERVERS } });
     onlineRef.current = { isHost: true, code, peer, conns: [], spectators: [], myColor: 'red', mySeat: 0, players: [{ name: myName(), color: 'red' }], started: false };
     peer.on('open', () => {
@@ -345,23 +346,17 @@ export default function LudoApp() {
 
   function joinRoom(code) {
     if (typeof Peer === 'undefined') { announce('Online unavailable.'); return; }
-    code = (code || '').trim().toUpperCase();
-    if (code.length !== 5) { announce('Room code must be 5 characters.'); return; }
+    code = normalizeRoomCode(code);
+    if (!/^[A-Z0-9]{5}$/.test(code)) { announce('Room code must be 5 characters.'); return; }
     const peer = new Peer(undefined, { debug: 1, config: { iceServers: ICE_SERVERS } });
     onlineRef.current = { isHost: false, code, peer, conn: null, myColor: null, started: false };
     // If nobody is hosting yet, the first player to open an invite becomes host.
-    const promoteTimer = setTimeout(() => {
-      const o = onlineRef.current;
-      if (o && !o.isHost && !o.conn?.open) {
-        try { o.peer.destroy(); } catch (e) { /* ignore */ }
-        createRoom(code);
-      }
-    }, 1800);
+    const promoteTimer = promoteToHost(onlineRef, code, createRoom);
     peer.on('open', () => {
       const conn = peer.connect(PEER_PREFIX + code, { reliable: true });
       onlineRef.current.conn = conn;
       conn.on('open', () => {
-        clearTimeout(promoteTimer);
+        cancelPromote(promoteTimer);
         conn.send({ type: 'hello', name: myName() });
         callServer('lobbyJoin', { code });
       });
@@ -482,7 +477,7 @@ export default function LudoApp() {
   if (screen === 'online') {
     return (
       <SetupShell title="Online Room" onBack={() => setScreen('menu')}>
-        <button className="btn btn-dark w-full py-[17px] text-[17px]" onClick={createRoom}>➕ CREATE ROOM</button>
+        <button className="btn btn-dark w-full py-[17px] text-[17px]" onClick={() => createRoom()}>➕ CREATE ROOM</button>
         <div className="flex items-center gap-3 text-[#a99e86] text-[12px]"><span className="flex-1 h-px bg-white/10" /><span>or</span><span className="flex-1 h-px bg-white/10" /></div>
         <label className="text-[#a99e86] text-[10px] tracking-[3px] font-bold">JOIN BY CODE</label>
         <div className="flex gap-2">
@@ -508,8 +503,8 @@ export default function LudoApp() {
             <button className="btn btn-dark text-[12px] px-4 py-2" onClick={() => { try { navigator.clipboard.writeText(o?.code || ''); announce('Code copied'); } catch (e) { } }}>📋 Copy</button>
             <button className="btn btn-gold text-[11px] px-4 py-2" onClick={() => {
               const code = o?.code || '';
+              const link = botDeepLink('ludo', code);
               if (inviteFriends('ludo', code)) return;
-              const link = new URL(`./?room=${encodeURIComponent(code)}`, window.location.href).href;
               try { navigator.clipboard.writeText(link); announce('Invite link copied'); } catch (e) { announce(link); }
             }}>🔗 Invite friends</button>
           </div>
