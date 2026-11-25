@@ -22,7 +22,7 @@ import { userStartedBot, gbannedUsers, games, gamePlayers, wsDailyWords, wsDaily
 import {
   VALID_WORD_RE, MAX_REGULAR_GUESSES, MAX_DAILY_ATTEMPTS, MODE_LABEL, getFeedback, toFancyText,
   getWsGame, getAnyWsGame, createWsGame, deleteWsGame, deleteWsGameByChat,
-  addGuess, getGuesses, guessExists, upsertWsUser, addScore, getRandomWord, LISTS,
+  addGuess, getGuesses, guessExists, upsertWsUser, addScore, getRandomWord, LISTS, getMeaning,
 } from '../lib/wordseek.js';
 import {
   getActiveGame, startNewGame, handleGuess as handleShadowGuess, endGame,
@@ -275,7 +275,7 @@ async function cmdDaily(message, isPrivate, userId) {
   const guesses = await db.select().from(wsDailyGuesses).where(and(eq(wsDailyGuesses.userId, uid), eq(wsDailyGuesses.dailyWordId, row.id))).all();
   await db.insert(wsUserStats).values({ userId: uid }).onConflictDoNothing().run();
   if (guesses.some(g => g.guess === row.word)) {
-    await replyText(message, `${E.SUCCESS} You've already completed today's WordSeek! You got it in ${guesses.length} ${guesses.length === 1 ? 'try' : 'tries'}. Come back tomorrow!`, { parseMode: 'HTML' });
+    await replyText(message, `${E.SUCCESS} You've already completed today's WordSeek! You got it in ${guesses.length} ${guesses.length === 1 ? 'try' : 'tries'}. Come back tomorrow!${await meaningLine(row.word)}`, { parseMode: 'HTML' });
     return;
   }
   await setState(`daily:${uid}`, { dailyWordId: row.id, date });
@@ -413,17 +413,22 @@ async function handleDailyGuess(message, guess, daily) {
   const all = await db.select().from(wsDailyGuesses).where(and(eq(wsDailyGuesses.userId, uid), eq(wsDailyGuesses.dailyWordId, wordRow.id))).all();
   if (guess === wordRow.word) {
     await deleteState(`daily:${uid}`);
-    await replyText(message, `${E.SUCCESS} Congratulations! You guessed it in ${all.length} tries!`, { parseMode: 'HTML' });
+    await replyText(message, `${E.SUCCESS} Congratulations! You guessed it in ${all.length} tries!${await meaningLine(wordRow.word)}`, { parseMode: 'HTML' });
     return;
   }
   if (all.length >= MAX_DAILY_ATTEMPTS) {
     await deleteState(`daily:${uid}`);
-    await replyText(message, `${E.GAME} Game Over! The word was: <b>${wordRow.word.toUpperCase()}</b>`, { parseMode: 'HTML' });
+    await replyText(message, `${E.GAME} Game Over! The word was: <b>${wordRow.word.toUpperCase()}</b>${await meaningLine(wordRow.word)}`, { parseMode: 'HTML' });
     return;
   }
   const grid = getFeedback(all.map(g => ({ guess: g.guess })), wordRow.word);
   const left = MAX_DAILY_ATTEMPTS - all.length;
   await replyText(message, `<i>Daily WordSeek · ${all.length}/${MAX_DAILY_ATTEMPTS}</i>\n\n${toFancyText(grid)}\n\n${left} ${left === 1 ? 'attempt' : 'attempts'} remaining`, { parseMode: 'HTML' });
+}
+
+async function meaningLine(word) {
+  const def = await getMeaning(word);
+  return def ? `\n\n${E.INFO} <b>Meaning:</b> ${escapeHtml(def)}` : '';
 }
 
 async function handleWordSeekGuess(message) {
@@ -433,10 +438,7 @@ async function handleWordSeekGuess(message) {
   const topicId = message.message_thread_id ? String(message.message_thread_id) : 'general';
   // Guesses can arrive with a different message_thread_id than /new used.
   const game = (await getWsGame(chatId, topicId)) || (await getAnyWsGame(chatId));
-  if (!game) {
-    await replyText(message, `${E.INFO} No WordSeek game is running here — start one with <code>/new5</code> (or /new4, /new6).`, { parseMode: 'HTML' });
-    return;
-  }
+  if (!game) return; // stay silent — words are not commands
   const len = game.word.length;
   if (text.length !== len) {
     await replyText(message, `${E.WARNING} This round uses ${len}-letter words — try a word with ${len} letters.`, { parseMode: 'HTML' });
@@ -451,7 +453,7 @@ async function handleWordSeekGuess(message) {
     const uid = String(message.from.id);
     await upsertWsUser(uid, message.from.first_name || 'User', message.from.username);
     await addScore(uid, chatId, score, String(len));
-    await replyText(message, `<blockquote>${E.SUCCESS} Congrats! You guessed it correctly.\nCorrect Word: <b>${text}</b>\nAdded ${score} to the leaderboard.</blockquote>\nStart with /new${len}`, { parseMode: 'HTML' });
+    await replyText(message, `<blockquote>${E.SUCCESS} Congrats! You guessed it correctly.\nCorrect Word: <b>${text}</b>\nAdded ${score} to the leaderboard.</blockquote>\nStart with /new${len}${await meaningLine(game.word)}`, { parseMode: 'HTML' });
     await deleteWsGame(game.id);
     return;
   }
@@ -459,7 +461,7 @@ async function handleWordSeekGuess(message) {
   const all = await getGuesses(game.id);
   if (all.length >= MAX_REGULAR_GUESSES) {
     await deleteWsGame(game.id);
-    await replyText(message, `${E.GAME} Game Over! The word was <b>${game.word.toUpperCase()}</b>\nYou can start a new game with /new${len}`, { parseMode: 'HTML' });
+    await replyText(message, `${E.GAME} Game Over! The word was <b>${game.word.toUpperCase()}</b>\nYou can start a new game with /new${len}${await meaningLine(game.word)}`, { parseMode: 'HTML' });
     return;
   }
   const response = `<i>${MODE_LABEL[len] || `${len}-letter mode`} · ${all.length}/${MAX_REGULAR_GUESSES}</i>\n\n` + toFancyText(getFeedback(all.map(g => ({ guess: g.guess })), game.word));

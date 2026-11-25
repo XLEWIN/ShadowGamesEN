@@ -1,5 +1,6 @@
 // WordSeek game logic + DB helpers (ported from db/wordseek.py + utils/word_selector.py + ws_messages.py)
 
+import { fetch } from 'sdk';
 import { db, eq, and, sql, desc, asc } from 'sdk/db';
 import {
   wsGames, wsGuesses, wsLeaderboard, wsUsers, wsUserStats, wsDailyWords, wsDailyGuesses, wsWordHistory,
@@ -51,6 +52,19 @@ export function getFeedback(rows, solution) {
     const states = tileStates(r.guess, solution);
     return states.map(s => tiles[s]).join(' ') + ' ' + r.guess.toUpperCase();
   }).join('\n');
+}
+
+// Look up a short dictionary definition for the revealed word.
+export async function getMeaning(word) {
+  try {
+    const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    const definition = data?.[0]?.meanings?.[0]?.definitions?.[0]?.definition;
+    return definition ? String(definition).slice(0, 280) : null;
+  } catch (e) {
+    return null;
+  }
 }
 
 // ── DB helpers ────────────────────────────────────────────────
