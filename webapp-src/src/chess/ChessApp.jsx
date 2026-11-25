@@ -58,6 +58,8 @@ export default function ChessApp() {
   const [, setTick] = useState(0);
   const [spectatorLive, setSpectatorLive] = useState(false);
   const [roomClock, setRoomClock] = useState({ seconds: 300, inc: 3 });
+  const [aiSetup, setAiSetup] = useState({ seconds: 300, inc: 3, diff: 'tactician', color: 'w' });
+  const [localClock, setLocalClock] = useState({ seconds: 300, inc: 3 });
   const [sessionDead, setSessionDead] = useState(false);
   const sfx = useRef(createSfx());
   const onlineRef = useRef(null);
@@ -448,26 +450,23 @@ export default function ChessApp() {
   }
 
   function startAiGame() {
-    const diff = document.querySelector('#seg-difficulty .seg-btn.selected')?.dataset.v || 'tactician';
-    const choice = document.querySelector('#ai-setup .piece-pick button.selected')?.dataset.v || 'w';
+    const { seconds, inc, diff, color: choice } = aiSetup;
     const myColor = choice === 'random' ? (Math.random() < 0.5 ? 'w' : 'b') : choice;
-    const info = AI_INFO[diff];
+    const info = AI_INFO[diff] || AI_INFO.tactician;
     const aiName = info.name + ' (AI)';
     const players = [
       { name: tgName() || 'You', color: myColor, isBot: false, isLocal: true, avatar: AVATARS.you },
       { name: aiName, color: myColor === 'w' ? 'b' : 'w', isBot: true, isLocal: false, isRemote: false, difficulty: diff, avatar: AVATARS[info.name.toLowerCase()] || AVATARS.bulby },
     ].sort((a, b) => (a.color === 'w' ? -1 : 1) - (b.color === 'w' ? -1 : 1));
-    const tSel = document.querySelector('#seg-time-ai .seg-btn.selected');
-    startMatch(players, 'ai', { seconds: +(tSel?.dataset.t || 300), inc: +(tSel?.dataset.inc || 3) }, myColor);
+    startMatch(players, 'ai', { seconds, inc }, myColor);
     if (myColor === 'b') setTimeout(() => aiMove(), 600);
   }
 
   function startLocalGame() {
-    const tSel = document.querySelector('#seg-time-local .seg-btn.selected');
     startMatch([
       { name: 'Player 1', color: 'w', isBot: false, isLocal: true, avatar: AVATARS.you },
       { name: 'Player 2', color: 'b', isBot: false, isLocal: true, avatar: AVATARS.petey },
-    ], 'local', { seconds: +(tSel?.dataset.t || 300), inc: +(tSel?.dataset.inc || 3) }, 'w');
+    ], 'local', { seconds: localClock.seconds, inc: localClock.inc }, 'w');
   }
 
   /* ── Render helpers ────────────────────────── */
@@ -549,15 +548,30 @@ export default function ChessApp() {
       <SetupShell id="ai-setup" title="Play vs AI" onBack={() => setScreen('menu')}>
         <label className="text-[#a99e86] text-[10px] tracking-[3px] font-bold">TIME CONTROL</label>
         <SegRow id="seg-time-ai">
-          <SegBtn dataV="60" inc="0">1+0</SegBtn><SegBtn dataV="180" inc="2">3+2</SegBtn><SegBtn dataV="300" inc="3" selected>5+3</SegBtn><SegBtn dataV="600" inc="5">10+5</SegBtn>
+          {[[60, 0, '1+0'], [180, 2, '3+2'], [300, 3, '5+3'], [600, 5, '10+5']].map(([secs, inc, label]) => (
+            <SegBtn key={secs} dataV={String(secs)} inc={inc} selected={aiSetup.seconds === secs}
+              onClick={() => { setAiSetup(s => ({ ...s, seconds: secs, inc })); haptic('light'); }}>{label}</SegBtn>
+          ))}
         </SegRow>
         <label className="text-[#a99e86] text-[10px] tracking-[3px] font-bold">DIFFICULTY</label>
-        <SegRow id="seg-difficulty"><SegBtn dataV="casual">Casual</SegBtn><SegBtn dataV="tactician" selected>Tactician</SegBtn><SegBtn dataV="master">Master</SegBtn></SegRow>
+        <SegRow id="seg-difficulty">
+          {[['casual', 'Casual'], ['tactician', 'Tactician'], ['master', 'Master']].map(([key, label]) => (
+            <SegBtn key={key} dataV={key} selected={aiSetup.diff === key}
+              onClick={() => { setAiSetup(s => ({ ...s, diff: key })); haptic('light'); }}>{label}</SegBtn>
+          ))}
+        </SegRow>
         <label className="text-[#a99e86] text-[10px] tracking-[3px] font-bold">YOUR COLOUR</label>
         <div className="piece-pick flex gap-3 justify-center">
-          <button className="selected" data-v="w" onClick={pickColor}><img src="assets/chessSetDefault_KingWhite_160.webp" alt="White" className="w-13 h-13 w-[52px] h-[52px]" /><span className="text-[9px] tracking-[1.5px] font-extrabold text-[#a99e86]">WHITE</span></button>
-          <button data-v="random" onClick={pickColor}><img src="assets/chessSetDefault_QueenBlack_160.webp" alt="Random" className="w-[52px] h-[52px]" /><span className="text-[9px] tracking-[1.5px] font-extrabold text-[#a99e86]">RANDOM</span></button>
-          <button data-v="b" onClick={pickColor}><img src="assets/chessSetDefault_KingBlack_160.webp" alt="Black" className="w-[52px] h-[52px]" /><span className="text-[9px] tracking-[1.5px] font-extrabold text-[#a99e86]">BLACK</span></button>
+          {[['w', 'assets/chessSetDefault_KingWhite_160.webp', 'WHITE'],
+            ['random', 'assets/chessSetDefault_QueenBlack_160.webp', 'RANDOM'],
+            ['b', 'assets/chessSetDefault_KingBlack_160.webp', 'BLACK']].map(([v, img, label]) => (
+            <button key={v} data-v={v}
+              className={`flex flex-col items-center gap-1 rounded-2xl border-2 px-3 py-2 transition-all ${aiSetup.color === v ? 'border-[#e3b75b] bg-[#e3b75b]/10 shadow-[0_0_18px_rgba(227,183,91,.2)]' : 'border-white/10 bg-[#1a2243]'}`}
+              onClick={() => { setAiSetup(s => ({ ...s, color: v })); haptic('light'); }}>
+              <img src={img} alt={label} className="w-[52px] h-[52px]" />
+              <span className="text-[9px] tracking-[1.5px] font-extrabold text-[#a99e86]">{label}</span>
+            </button>
+          ))}
         </div>
         <button className="btn btn-gold w-full py-[17px] text-[17px]" onClick={startAiGame}>START GAME</button>
       </SetupShell>
@@ -567,7 +581,12 @@ export default function ChessApp() {
     return (
       <SetupShell title="Play 1v1" onBack={() => setScreen('menu')}>
         <label className="text-[#a99e86] text-[10px] tracking-[3px] font-bold">TIME CONTROL</label>
-        <SegRow id="seg-time-local"><SegBtn dataV="60" inc="0">1+0</SegBtn><SegBtn dataV="180" inc="2">3+2</SegBtn><SegBtn dataV="300" inc="3" selected>5+3</SegBtn><SegBtn dataV="600" inc="5">10+5</SegBtn></SegRow>
+        <SegRow id="seg-time-local">
+          {[[60, 0, '1+0'], [180, 2, '3+2'], [300, 3, '5+3'], [600, 5, '10+5']].map(([secs, inc, label]) => (
+            <SegBtn key={secs} dataV={String(secs)} inc={inc} selected={localClock.seconds === secs}
+              onClick={() => { setLocalClock({ seconds: secs, inc }); haptic('light'); }}>{label}</SegBtn>
+          ))}
+        </SegRow>
         <div className="text-[#a99e86] text-[12px] leading-relaxed">Two players share one device — White moves first. Tap a piece, then tap a highlighted square.</div>
         <button className="btn btn-gold w-full py-[17px] text-[17px]" onClick={startLocalGame}>START GAME</button>
       </SetupShell>
@@ -783,12 +802,6 @@ export default function ChessApp() {
     </div>
   );
 
-  function pickColor(e) {
-    const btn = e.currentTarget.closest('button');
-    const group = btn.parentElement;
-    group.querySelectorAll('button[data-v]').forEach(b => b.classList.remove('selected'));
-    btn.classList.add('selected');
-  }
 }
 
 function SetupShell({ id, title, onBack, children }) {
@@ -804,15 +817,7 @@ function SetupShell({ id, title, onBack, children }) {
 }
 
 function SegRow({ id, children }) {
-  return (
-    <div id={id} className="flex gap-2" onClick={(e) => {
-      const btn = e.target.closest('.seg-btn');
-      if (!btn) return;
-      btn.parentElement.querySelectorAll('.seg-btn').forEach(b => b.classList.remove('selected'));
-      btn.classList.add('selected');
-      haptic('light');
-    }}>{children}</div>
-  );
+  return <div id={id} className="flex gap-2">{children}</div>;
 }
 
 function SegBtn({ dataV, inc, selected, children, onClick }) {
