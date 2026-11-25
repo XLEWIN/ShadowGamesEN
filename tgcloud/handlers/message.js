@@ -431,10 +431,17 @@ async function handleWordSeekGuess(message) {
   if (!text || text.startsWith('/') || !VALID_WORD_RE.test(text)) return;
   const chatId = String(message.chat.id);
   const topicId = message.message_thread_id ? String(message.message_thread_id) : 'general';
-  const game = await getWsGame(chatId, topicId);
-  if (!game) return;
+  // Guesses can arrive with a different message_thread_id than /new used.
+  const game = (await getWsGame(chatId, topicId)) || (await getAnyWsGame(chatId));
+  if (!game) {
+    await replyText(message, `${E.INFO} No WordSeek game is running here — start one with <code>/new5</code> (or /new4, /new6).`, { parseMode: 'HTML' });
+    return;
+  }
   const len = game.word.length;
-  if (text.length !== len) return;
+  if (text.length !== len) {
+    await replyText(message, `${E.WARNING} This round uses ${len}-letter words — try a word with ${len} letters.`, { parseMode: 'HTML' });
+    return;
+  }
   const valid = LISTS[len] || [];
   if (valid.length && !valid.includes(text)) { await replyText(message, `${E.ERROR} ${text} is not a valid ${len}-letter word.`, { parseMode: 'HTML' }); return; }
   if (await guessExists(game.id, text)) { await replyText(message, `${E.WARNING} Someone has already guessed your word. Please try another one!`, { parseMode: 'HTML' }); return; }
