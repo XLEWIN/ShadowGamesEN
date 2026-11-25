@@ -31,9 +31,11 @@ export function tileStates(guess, solution) {
 
 const FANCY = {};
 // bold sans-serif unicode digits/letters (ported from utils/fancy_text.py)
-const FANCY_UP = '𝗔𝗕𝗖𝗗𝗘𝗙𝗚𝗛𝗜𝗝𝗞𝗟𝗠𝗡𝗢𝗣𝗤𝗥𝗦𝗧𝗨𝗩𝗪𝗫𝗬𝗭';
-const FANCY_LO = '𝗮𝗯𝗰𝗱𝗲𝗳𝗴𝗵𝗶𝗷𝗸𝗹𝗺𝗻𝗼𝗽𝗾𝗿𝘀𝘁𝘂𝘃𝘄𝘅𝘆𝘇';
-const FANCY_DIG = '𝟬𝟭𝟮𝟯𝟰𝟱𝟲𝟳𝟴𝟵';
+const FANCY_UP = [...'𝗔𝗕𝗖𝗗𝗘𝗙𝗚𝗛𝗜𝗝𝗞𝗟𝗠𝗡𝗢𝗣𝗤𝗥𝗦𝗧𝗨𝗩𝗪𝗫𝗬𝗭'];
+const FANCY_LO = [...'𝗮𝗯𝗰𝗱𝗲𝗳𝗴𝗵𝗶𝗷𝗸𝗹𝗺𝗻𝗼𝗽𝗾𝗿𝘀𝘁𝘂𝘃𝘄𝘅𝘆𝘇'];
+const FANCY_DIG = [...'𝟬𝟭𝟮𝟯𝟰𝟱𝟲𝟳𝟴𝟵'];
+// These glyphs are surrogate pairs — index by code point, not UTF-16 unit,
+// otherwise the output has lone surrogates and Telegram rejects the message.
 for (let i = 0; i < 26; i++) {
   FANCY[String.fromCharCode(65 + i)] = FANCY_UP[i];
   FANCY[String.fromCharCode(97 + i)] = FANCY_LO[i];
