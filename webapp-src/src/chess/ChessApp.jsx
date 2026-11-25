@@ -548,8 +548,8 @@ export default function ChessApp() {
       <SetupShell id="ai-setup" title="Play vs AI" onBack={() => setScreen('menu')}>
         <label className="text-[#a99e86] text-[10px] tracking-[3px] font-bold">TIME CONTROL</label>
         <SegRow id="seg-time-ai">
-          {[[60, 0, '1+0'], [180, 2, '3+2'], [300, 3, '5+3'], [600, 5, '10+5']].map(([secs, inc, label]) => (
-            <SegBtn key={secs} dataV={String(secs)} inc={inc} selected={aiSetup.seconds === secs}
+          {[[60, 0, '1+0'], [180, 0, '3+0'], [180, 2, '3+2'], [300, 3, '5+3'], [600, 0, '10+0'], [600, 5, '10+5']].map(([secs, inc, label]) => (
+            <SegBtn key={secs} dataV={String(secs)} inc={inc} selected={aiSetup.seconds === secs && aiSetup.inc === inc}
               onClick={() => { setAiSetup(s => ({ ...s, seconds: secs, inc })); haptic('light'); }}>{label}</SegBtn>
           ))}
         </SegRow>
@@ -582,8 +582,8 @@ export default function ChessApp() {
       <SetupShell title="Play 1v1" onBack={() => setScreen('menu')}>
         <label className="text-[#a99e86] text-[10px] tracking-[3px] font-bold">TIME CONTROL</label>
         <SegRow id="seg-time-local">
-          {[[60, 0, '1+0'], [180, 2, '3+2'], [300, 3, '5+3'], [600, 5, '10+5']].map(([secs, inc, label]) => (
-            <SegBtn key={secs} dataV={String(secs)} inc={inc} selected={localClock.seconds === secs}
+          {[[60, 0, '1+0'], [180, 0, '3+0'], [180, 2, '3+2'], [300, 3, '5+3'], [600, 0, '10+0'], [600, 5, '10+5']].map(([secs, inc, label]) => (
+            <SegBtn key={secs} dataV={String(secs)} inc={inc} selected={localClock.seconds === secs && localClock.inc === inc}
               onClick={() => { setLocalClock({ seconds: secs, inc }); haptic('light'); }}>{label}</SegBtn>
           ))}
         </SegRow>
@@ -645,11 +645,12 @@ export default function ChessApp() {
           : <div className="text-[#a99e86] text-[13px] text-center">Waiting for the host to start the game…</div>}
         <div id="time-room" className={`${o?.isHost ? '' : 'hidden'}`}>
           <label className="text-[#a99e86] text-[10px] tracking-[3px] font-bold">TIME CONTROL</label>
-          <div id="seg-time-room" className="flex gap-2">
-            <SegBtn dataV="60" inc="0" selected={roomClock.seconds === 60} onClick={() => setRoomClock({ seconds: 60, inc: 0 })}>1+0</SegBtn>
-            <SegBtn dataV="180" inc="2" selected={roomClock.seconds === 180} onClick={() => setRoomClock({ seconds: 180, inc: 2 })}>3+2</SegBtn>
-            <SegBtn dataV="300" inc="3" selected={roomClock.seconds === 300} onClick={() => setRoomClock({ seconds: 300, inc: 3 })}>5+3</SegBtn>
-            <SegBtn dataV="600" inc="5" selected={roomClock.seconds === 600} onClick={() => setRoomClock({ seconds: 600, inc: 5 })}>10+5</SegBtn>
+          <div id="seg-time-room" className="flex flex-wrap gap-2">
+            {[[60, 0, '1+0'], [180, 0, '3+0'], [180, 2, '3+2'], [300, 3, '5+3'], [600, 0, '10+0'], [600, 5, '10+5']].map(([secs, inc, label]) => (
+              <SegBtn key={`${label}`} dataV={String(secs)} inc={inc}
+                selected={roomClock.seconds === secs && roomClock.inc === inc}
+                onClick={() => setRoomClock({ seconds: secs, inc })}>{label}</SegBtn>
+            ))}
           </div>
         </div>
       </SetupShell>
@@ -817,7 +818,7 @@ function SetupShell({ id, title, onBack, children }) {
 }
 
 function SegRow({ id, children }) {
-  return <div id={id} className="flex gap-2">{children}</div>;
+  return <div id={id} className="flex flex-wrap gap-2">{children}</div>;
 }
 
 function SegBtn({ dataV, inc, selected, children, onClick }) {
