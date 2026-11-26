@@ -101,6 +101,11 @@ body {
   50% { transform: translate(-50%,-58%) translateY(-7%) scale(1.12); }
 }
 
+/* ── Board frames ───────────────────── */
+.ludo-frame:after { content: ""; position: absolute; inset: 3px; border: 1px solid rgba(255,231,179,.55); border-radius: 13px; pointer-events: none; z-index: 5; }
+#dice-btn:disabled { filter: saturate(.7) brightness(.85); cursor: default; }
+#dice-btn:not(:disabled):hover { filter: brightness(1.08); }
+
 /* ── Chess pieces ───────────────────── */
 .chess-piece { position: absolute; width: 12.5%; height: 12.5%; background-size: contain; background-repeat: no-repeat; background-position: center; cursor: pointer; transition: left .16s ease, top .16s ease; filter: drop-shadow(0 2px 2px rgba(0,0,0,.5)); pointer-events: auto; }
 .sq-light { background: rgba(255,254,241,.045); }
@@ -123,6 +128,47 @@ body {
   100% { transform: rotate(360deg) scale(1) translateY(0); }
 }
 .pip-empty { visibility: hidden; }
+
+/* ── Shared interaction + surface polish ─────── */
+:where(button, a, [role='button']):focus-visible {
+  outline: 2px solid var(--gold-bright);
+  outline-offset: 2px;
+}
+.sg-panel {
+  border: 1px solid rgba(227,183,91,.2);
+  background: linear-gradient(180deg, rgba(19,26,51,.92), rgba(13,18,36,.92));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.05), 0 12px 32px rgba(0,0,0,.35);
+}
+.turn-pill {
+  border: 1px solid rgba(227,183,91,.28);
+  background: rgba(13,18,36,.9);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
+}
+.hud-panel {
+  border: 1px solid rgba(255,255,255,.1);
+  background: rgba(13,18,36,.86);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
+}
+.player-card {
+  border: 1px solid rgba(255,255,255,.1);
+  background: rgba(13,18,36,.86);
+  transition: border-color .18s ease, background .18s ease;
+}
+.player-card.is-active {
+  border-color: rgba(227,183,91,.75);
+  background: rgba(227,183,91,.1);
+}
+.modal-backdrop { background: rgba(5,7,15,.86); backdrop-filter: blur(10px); }
+.modal-surface {
+  border: 1px solid rgba(227,183,91,.45);
+  background: linear-gradient(180deg, #151f31, #0d1224);
+  box-shadow: 0 30px 80px rgba(0,0,0,.65), inset 0 1px 0 rgba(255,255,255,.06);
+}
+.toast-surface {
+  border: 1px solid rgba(227,183,91,.32);
+  background: rgba(26,34,67,.96);
+  box-shadow: 0 14px 36px rgba(0,0,0,.5);
+}
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .001s !important; animation-iteration-count: 1 !important; transition-duration: .001s !important; }

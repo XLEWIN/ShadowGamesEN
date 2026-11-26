@@ -13,7 +13,7 @@ import SpectateView from '../shared/SpectateView.jsx';
 const AVATARS = { red: 'assets/petey.webp', yellow: 'assets/bomby.webp', green: 'assets/bruno.webp', blue: 'assets/bulby.webp' };
 const avatarFor = (p) => (p && p.photo) ? p.photo : ((p && p.isBot) ? (AVATARS[p.color] || 'assets/guest.webp') : 'assets/guest.webp');
 const PIP_LAYOUTS = { 1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] };
-const PIECES = { red: 'assets/pieces_red.svg', blue: 'assets/pieces_blue.svg', green: 'assets/pieces_green.svg', yellow: 'assets/pieces_yellow.svg' };
+const PIECES = { red: 'assets/pieces_red.webp', blue: 'assets/pieces_blue.webp', green: 'assets/pieces_green.webp', yellow: 'assets/pieces_yellow.webp' };
 
 /* ── Board cells (module-scope, computed once) ─────────────── */
 const CELLS = (() => {
@@ -683,7 +683,7 @@ export default function LudoApp() {
 
       {/* Board */}
       <div className="flex-1 flex items-center justify-center min-h-0 px-2 z-[1]">
-        <div className="relative rounded-2xl" style={{
+        <div className="ludo-frame relative rounded-2xl" style={{
           width: 'min(94vw, 55vh, 520px)', aspectRatio: '1 / 1',
           border: '3px solid transparent',
           background: 'linear-gradient(160deg,#fdf3d8 0%,#d9b95c 30%,#f7e8b0 48%,#8a6b2f 72%,#f2dc9a 100%) border-box, #1a1408',
@@ -760,13 +760,13 @@ export default function LudoApp() {
             const fin = g.tokens[p.color].filter(t => t.step === 56).length;
             const active = i === g.turnIdx && !g.over;
             return (
-              <div key={i} className={`flex items-center gap-2.5 rounded-2xl border px-2 py-1.5 ${active ? 'border-[#e3b75b] bg-[#e3b75b]/10 shadow-[0_0_18px_rgba(227,183,91,.25)]' : 'border-white/10 bg-[#131a33]/80'}`}>
+              <div key={i} className={`player-card flex items-center gap-2.5 rounded-2xl px-2 py-1.5 ${active ? 'is-active' : ''}`}>
                 <img src={avatarFor(p)} alt="" className="w-8 h-8 rounded-full object-cover border border-[#8a6b2f]" draggable="false" />
                 <span className="min-w-0 flex-1">
                   <span className="block font-extrabold text-[12px] truncate" style={{ color: COLORS[p.color]?.light }}>{p.name}</span>
                   <span className="block text-[8px] tracking-[2px] text-[#a99e86]">{p.isBot ? 'AI' : 'YOU'} · {COLORS[p.color]?.name?.toUpperCase()}</span>
                 </span>
-                <span className="font-mono text-[12px] text-[#ffd97a] font-extrabold">🏠 {fin}/4</span>
+                <span className="font-mono text-[11px] text-[#ffd97a] font-extrabold">HOME {fin}/4</span>
               </div>
             );
           })}
@@ -775,8 +775,8 @@ export default function LudoApp() {
 
       {/* Win overlay */}
       {g.over && (
-        <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/80 backdrop-blur-sm">
-          <div className="relative sg-grad-panel rounded-3xl border border-[#e3b75b] px-8 py-7 text-center w-[min(390px,calc(100vw-48px))] flex flex-col items-center gap-3 shadow-[0_0_80px_rgba(227,183,91,.3)]">
+        <div className="modal-backdrop fixed inset-0 z-20 flex items-center justify-center">
+          <div className="modal-surface relative rounded-3xl px-8 py-7 text-center w-[min(390px,calc(100vw-48px))] flex flex-col items-center gap-3">
             <img className="w-20 h-20 object-contain" src="assets/crown.webp" alt="Crown" />
             <div className="text-[10px] tracking-[6px] text-[#e3b75b] font-extrabold">VICTORY</div>
             <div className="game-title-word text-[32px] font-black">{COLORS[g.winner]?.name} wins!</div>
@@ -788,7 +788,7 @@ export default function LudoApp() {
       )}
 
       {/* Toast */}
-      {toast && <div className="fixed left-1/2 -translate-x-1/2 bottom-6 z-30 rounded-xl border border-[rgba(227,183,91,.3)] bg-[#1a2243] px-5 py-3 text-[13px] text-[#f2ead9] shadow-lg">{toast}</div>}
+      {toast && <div className="toast-surface fixed left-1/2 -translate-x-1/2 bottom-6 z-30 rounded-xl px-5 py-3 text-[13px]">{toast}</div>}
     </div>
   );
 
