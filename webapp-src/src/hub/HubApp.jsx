@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import hqLogo from '../assets/spiky-code-council-emblem.png';
+import chessPreview from '../assets/chess-board-preview.png';
+import ludoPreview from '../assets/ludo-board-preview.png';
 import { callServer } from '../shared/lobby.js';
 import { normalizeRoomCode, roomPageUrl } from '../shared/room.js';
 import './HubHome.css';
@@ -236,11 +238,11 @@ export default function HubApp() {
             <GameCard
               num="01 / STRATEGY" title="CHESS"
               desc="Think a few moves ahead. Original Shadow Games board skin, original sculpted set, and a familiar move layout."
-              detail="REAL PIECE ART · CLICK-TO-MOVE" cta="Enter board" href="./chess/" preview={<ChessPreview />} />
+              detail="REAL PIECE ART · CLICK-TO-MOVE" cta="Enter board" href="./chess/" preview={<img className="sg-preview-img" src={chessPreview} alt="Original Shadow Games chess board" />} />
             <GameCard
               num="02 / RACE" title="LUDO"
               desc="Bring the tokens home. Classic 15×15 race geometry, safe-star spaces, home lanes, and an embossed dice table."
-              detail="TOKEN ART · DICE ANIMATION" cta="Roll in" href="./ludo/" preview={<LudoPreview />} />
+              detail="TOKEN ART · DICE ANIMATION" cta="Roll in" href="./ludo/" preview={<img className="sg-preview-img" src={ludoPreview} alt="Shadow Games Ludo board" />} />
           </div>
         </section>
 

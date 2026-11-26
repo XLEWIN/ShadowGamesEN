@@ -120,6 +120,7 @@
 .sg-detail { font-size: 8px; letter-spacing: 1.5px; color: var(--muted); }
 
 /* Static board previews (presentation only) */
+.sg-preview-img { display: block; width: min(100%, 260px); height: 260px; object-fit: contain; filter: drop-shadow(0 14px 28px rgba(0,0,0,.6)); }
 .sg-chess-preview { position: relative; width: 250px; height: 250px; border-radius: 6px; background-position: center; background-size: cover; background-repeat: no-repeat; box-shadow: 0 12px 28px rgba(0,0,0,.5); }
 .sg-chess-grid { position: absolute; inset: 4.6%; }
 .sg-preview-piece { position: absolute; width: 12.5%; height: 12.5%; object-fit: contain; filter: drop-shadow(0 2px 2px rgba(0,0,0,.5)); }
