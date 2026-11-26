@@ -18,7 +18,10 @@ import {
   START_TITLE_LINE, START_HINT_LINE, BOT_DESCRIPTION,
   URL_ADD_TO_GROUP, URL_OWNER, URL_UPDATES, URL_DISCUSSION,
 } from '../lib/texts.js';
-import { userStartedBot, gbannedUsers, games, gamePlayers, wsDailyWords, wsDailyGuesses } from '../schema.js';
+import {
+  userStartedBot, gbannedUsers, games, gamePlayers,
+  wsDailyWords, wsDailyGuesses, wsLeaderboard, wsUsers,
+} from '../schema.js';
 import {
   VALID_WORD_RE, MAX_REGULAR_GUESSES, MAX_DAILY_ATTEMPTS, MODE_LABEL, getFeedback, toFancyText,
   getWsGame, getAnyWsGame, createWsGame, deleteWsGame, deleteWsGameByChat,
@@ -287,8 +290,32 @@ async function cmdPauseDaily(message, userId) {
   await replyText(message, `${E.SUCCESS} Your WordSeek of the Day game has been paused.`, { parseMode: 'HTML' });
 }
 
-async function cmdLeaderboard(message, args, isPrivate) {
-  const text = `${E.INFO} <b>Leaderboard</b>\n${E.BULLET}\n\nWordSeek scores are tracked per chat and word length. Use /score [global] [week] [5] to filter.\n\nShadow Word rankings use /ranking.`;
+const rankMedal = (i) => [E.MEDAL_1, E.MEDAL_2, E.MEDAL_3][i] || `${i + 1}.`;
+
+async function cmdLeaderboard(message, args) {
+  const parts = String(args || '').toLowerCase().split(/\s+/).filter(Boolean);
+  const global = parts.includes('global');
+  const week = parts.includes('week');
+  const length = ['4', '5', '6'].find(n => parts.includes(n)) || null;
+  let rows = await db.select().from(wsLeaderboard).all();
+  if (!global) rows = rows.filter(r => r.chatId === String(message.chat.id));
+  if (length) rows = rows.filter(r => r.wordLength === length);
+  if (week) rows = rows.filter(r => Date.now() - Date.parse(r.createdAt) < 7 * 86400000);
+
+  const totals = new Map();
+  for (const r of rows) totals.set(r.userId, (totals.get(r.userId) || 0) + r.score);
+  if (!totals.size) {
+    await replyText(message, `${E.INFO} No WordSeek scores yet${global ? '' : ' in this chat'}. Play with /new5 to get on the board.`, { parseMode: 'HTML' });
+    return;
+  }
+  const users = await db.select().from(wsUsers).all();
+  const names = new Map(users.map(u => [u.id, u.name]));
+  const board = [...totals.entries()].sort((a, b) => b[1] - a[1]).slice(0, 25);
+  const scope = [global ? 'Global' : 'This Chat', week ? 'This Week' : 'All Time', length ? `${length}-letter` : null].filter(Boolean).join(' · ');
+  let text = `${E.TROPHY} <b>WordSeek Leaderboard</b>\n${E.BULLET}\n\n${E.INFO} <b>${scope}</b>\n\n`;
+  board.forEach(([uid, score], i) => {
+    text += `${rankMedal(i)} <b>${escapeHtml(names.get(uid) || `Player ${uid}`)}</b>\n   ${E.TROPHY} ${score} Xeons\n\n`;
+  });
   await replyText(message, text, { parseMode: 'HTML' });
 }
 
@@ -319,37 +346,71 @@ async function cmdStop(message, chat, user, isPrivate) {
   await replyText(message, ok ? `${E.SUCCESS} Game stopped! Use /game to start a new game.` : `${E.INFO} No active game to stop.`, { parseMode: 'HTML' });
 }
 
+async function shadowBoard(chatId = null) {
+  const allGames = await db.select().from(games).all();
+  const ids = new Set(
+    allGames.filter(g => chatId === null || String(g.chatId) === String(chatId)).map(g => g.id),
+  );
+  const players = await db.select().from(gamePlayers).all();
+  const totals = new Map();
+  for (const p of players) {
+    if (!ids.has(p.gameId)) continue;
+    const cur = totals.get(p.userId) || { score: 0, words: 0, name: 'Unknown' };
+    cur.score += p.score || 0;
+    cur.words += p.wordsGuessed || 0;
+    if (p.displayName && cur.name === 'Unknown') cur.name = p.displayName;
+    totals.set(p.userId, cur);
+  }
+  return [...totals.entries()]
+    .map(([userId, v]) => ({ userId, ...v }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 25);
+}
+
 async function cmdRanking(message, isPrivate, chatId) {
   if (isPrivate) { await replyText(message, `${E.WARNING} Use this command in a group chat.`, { parseMode: 'HTML' }); return; }
-  const g = await getActiveGame(chatId);
-  if (!g) { await replyText(message, `${E.INFO} No active game. Use /game to start one!`, { parseMode: 'HTML' }); return; }
-  const board = await getScoreboard(chatId);
-  if (!board.length) { await replyText(message, `${E.INFO} No scores yet. Start a game first!`, { parseMode: 'HTML' }); return; }
-  const medals = [E.MEDAL_1, E.MEDAL_2, E.MEDAL_3];
+  const board = await shadowBoard(chatId);
+  if (!board.length) { await replyText(message, `${E.INFO} No Shadow Word scores in this chat yet. Play with /game to get on the board.`, { parseMode: 'HTML' }); return; }
   let text = `${E.TROPHY} <b>Top 25 Players (This Chat)</b>\n${E.BULLET}\n\n`;
-  board.slice(0, 25).forEach((p, i) => {
-    const medal = medals[i] || `  ${i + 1}.`;
-    text += `${medal} <b>${escapeHtml(p.displayName || 'Unknown')}</b>\n   💰 ${p.score} Xeons | 🔤 ${p.wordsGuessed} words\n\n`;
+  board.forEach((p, i) => {
+    text += `${rankMedal(i)} <b>${escapeHtml(p.name)}</b>\n   ${E.TROPHY} ${p.score} Xeons · ${E.GAME} ${p.words} words\n\n`;
   });
   await replyText(message, text, { parseMode: 'HTML' });
 }
 
 async function cmdGlobalRanking(message) {
-  const rows = await db.select().from(gamePlayers).orderBy(desc(gamePlayers.score)).limit(25).all();
-  if (!rows.length) { await replyText(message, `${E.INFO} No scores yet globally.`, { parseMode: 'HTML' }); return; }
-  const medals = [E.MEDAL_1, E.MEDAL_2, E.MEDAL_3];
+  const board = await shadowBoard();
+  if (!board.length) { await replyText(message, `${E.INFO} No Shadow Word scores yet globally.`, { parseMode: 'HTML' }); return; }
   let text = `${E.GLOBE} <b>Top 25 Players (Global)</b>\n${E.BULLET}\n\n`;
-  rows.forEach((p, i) => { text += `${medals[i] || `  ${i + 1}.`} <b>${escapeHtml(p.displayName || 'Unknown')}</b>\n   💰 ${p.score} Xeons\n\n`; });
+  board.forEach((p, i) => {
+    text += `${rankMedal(i)} <b>${escapeHtml(p.name)}</b>\n   ${E.TROPHY} ${p.score} Xeons · ${E.GAME} ${p.words} words\n\n`;
+  });
   await replyText(message, text, { parseMode: 'HTML' });
 }
 
 async function cmdMystats(message, userId, user) {
-  const rows = await db.select().from(gamePlayers).where(eq(gamePlayers.userId, Number(userId))).all();
-  if (!rows.length) { await replyText(message, `${E.INFO} You haven't played any games yet. Use /game to start playing!`, { parseMode: 'HTML' }); return; }
-  const total = rows.reduce((s, r) => s + r.score, 0);
-  const words = rows.reduce((s, r) => s + r.wordsGuessed, 0);
-  const text = `${E.USER} <b>Your Profile</b>\n${E.BULLET}\n\n📝 <b>Name:</b> ${escapeHtml(user.first_name || 'Unknown')}\n💰 <b>Total Xeons:</b> ${total}\n🔤 <b>Words Guessed:</b> ${words}\n🎯 <b>Games Played:</b> ${rows.length}\n\n${E.BULLET}`;
-  await replyText(message, text, { parseMode: 'HTML', replyMarkup: buildKeyboard([[btnPrimary('Check Global Ranking', 'sgb:global_ranking', EID.TROPHY)]]) });
+  const shadow = await db.select().from(gamePlayers).where(eq(gamePlayers.userId, Number(userId))).all();
+  const ws = (await db.select().from(wsLeaderboard).all()).filter(r => String(r.userId) === String(userId));
+  const shadowXeons = shadow.reduce((s, r) => s + (r.score || 0), 0);
+  const wsXeons = ws.reduce((s, r) => s + (r.score || 0), 0);
+  const words = shadow.reduce((s, r) => s + (r.wordsGuessed || 0), 0);
+  if (!shadow.length && !ws.length) {
+    await replyText(message, `${E.INFO} You haven't played yet. Use /new5 for WordSeek or /game for Shadow Word.`, { parseMode: 'HTML' });
+    return;
+  }
+  const text = `${E.USER} <b>Your Profile</b>\n${E.BULLET}\n\n` +
+    `${E.INFO} <b>Name:</b> ${escapeHtml(user.first_name || 'Unknown')}\n` +
+    `${E.TROPHY} <b>Shadow Word Xeons:</b> ${shadowXeons}\n` +
+    `${E.TROPHY} <b>WordSeek Xeons:</b> ${wsXeons}\n` +
+    `${E.TROPHY} <b>Total Xeons:</b> ${shadowXeons + wsXeons}\n` +
+    `${E.GAME} <b>Words Guessed:</b> ${words}\n` +
+    `${E.PLAY} <b>Games Played:</b> ${shadow.length + ws.length}\n\n${E.BULLET}`;
+  await replyText(message, text, {
+    parseMode: 'HTML',
+    replyMarkup: buildKeyboard([
+      [btnPrimary('Global Ranking', 'sgb:global_ranking', EID.TROPHY)],
+    ]),
+  });
 }
 
 async function cmdResetData(message, userId) {

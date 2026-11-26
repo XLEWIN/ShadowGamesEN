@@ -134,11 +134,23 @@ export default async function (query, ctx) {
 }
 
 async function handleGlobalRanking(query) {
-  const rows = await db.select().from(gamePlayers).orderBy(desc(gamePlayers.score)).limit(25).all();
-  if (!rows.length) { await answerCallbackQuery(query.id, 'No scores yet globally.'); return; }
-  let text = `${E.GLOBE} <b>Top 25 Players (Global)</b>\n${E.BULLET}\n\n`;
+  const players = await db.select().from(gamePlayers).all();
+  const totals = new Map();
+  for (const p of players) {
+    const cur = totals.get(p.userId) || { score: 0, words: 0, name: 'Unknown' };
+    cur.score += p.score || 0;
+    cur.words += p.wordsGuessed || 0;
+    if (p.displayName && cur.name === 'Unknown') cur.name = p.displayName;
+    totals.set(p.userId, cur);
+  }
+  const board = [...totals.entries()].map(([userId, v]) => ({ userId, ...v }))
+    .sort((a, b) => b.score - a.score).slice(0, 25);
+  if (!board.length) { await answerCallbackQuery(query.id, 'No scores yet globally.'); return; }
   const medals = [E.MEDAL_1, E.MEDAL_2, E.MEDAL_3];
-  rows.forEach((p, i) => { text += `${medals[i] || `  ${i + 1}.`} <b>${escapeHtml(p.displayName || 'Unknown')}</b>\n   💰 ${p.score} Xeons\n\n`; });
+  let text = `${E.GLOBE} <b>Top 25 Players (Global)</b>\n${E.BULLET}\n\n`;
+  board.forEach((p, i) => {
+    text += `${medals[i] || `${i + 1}.`} <b>${escapeHtml(p.name)}</b>\n   ${E.TROPHY} ${p.score} Xeons · ${E.GAME} ${p.words} words\n\n`;
+  });
   await editText(query.message.chat.id, query.message.message_id, text, { parseMode: 'HTML' });
   await answerCallbackQuery(query.id);
 }
