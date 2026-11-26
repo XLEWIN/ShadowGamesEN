@@ -180,15 +180,16 @@ export default function ChessApp() {
   function timeoutLoser(loser) {
     const winner = loser === 'w' ? 'b' : 'w';
     G.current.over = true; G.current.result = 'timeout'; G.current.winner = winner;
+    premoveRef.current = null;
     stopClock();
-    sfx.current.draw();
+    haptic('heavy');
   }
 
   /* ── Move pipeline ─────────────────────────── */
   function afterMoveApplied(m) {
     addIncrement();
     checkGameOver();
-    if (G.current.over) { stopClock(); bump(); return; }
+    if (G.current.over) { premoveRef.current = null; stopClock(); bump(); return; }
     bump();
     if (G.current.mode === 'online' && onlineRef.current?.isHost) broadcastState();
   }
@@ -203,6 +204,7 @@ export default function ChessApp() {
   }
 
   function tapSquare(square) {
+    if (suppressClickRef.current) { suppressClickRef.current = false; return; }
     if (G.current.over || spectate) return;
     const p = G.current.players.find(p => p.isLocal);
     if (G.current.mode !== 'local' && !p) return;
@@ -232,6 +234,10 @@ export default function ChessApp() {
     return to[1] === lastRank && G.current.game.moves({ square: from, verbose: true }).some(m => m.to === to && m.promotion);
   }
   const [promo, setPromo] = useState(null); // { from, to }
+  const premoveRef = useRef(null);
+  const dragRef = useRef(null);
+  const suppressClickRef = useRef(false);
+  const [dragFrom, setDragFrom] = useState(null);
 
   // Dismiss the promotion chooser without touching live game state.
   useEffect(() => {
@@ -240,6 +246,65 @@ export default function ChessApp() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [promo]);
+
+  // Execute a queued pre-move as soon as it becomes this player's turn.
+  useEffect(() => {
+    const pre = premoveRef.current;
+    if (!pre || G.current.over) return;
+    const me = G.current.players.find(p => p.isLocal);
+    if (G.current.mode !== 'local' && (!me || me.color !== G.current.game.turn())) return;
+    premoveRef.current = null;
+    attemptMove(pre.from, pre.to);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [G.current.game.fen(), G.current.over]);
+
+  // Pointer drag makes tap-to-move work with mouse and touch, and sets premoves.
+  useEffect(() => {
+    if (!dragFrom) return;
+    const move = (e) => {
+      const d = dragRef.current;
+      if (d && Math.hypot(e.clientX - d.x0, e.clientY - d.y0) > 8) d.moved = true;
+    };
+    const up = (e) => {
+      const d = dragRef.current;
+      dragRef.current = null;
+      setDragFrom(null);
+      if (!d?.moved) return;
+      suppressClickRef.current = true;
+      const el = document.elementFromPoint(e.clientX, e.clientY);
+      const to = el?.closest('[data-square]')?.getAttribute('data-square');
+      if (to && to !== d.from) dropMove(d.from, to);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', up);
+    return () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', up);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dragFrom]);
+
+  function dropMove(from, to) {
+    if (G.current.over || spectate) return;
+    const me = G.current.players.find(p => p.isLocal);
+    const myTurn = G.current.mode === 'local' || (me && me.color === G.current.game.turn());
+    if (myTurn) attemptMove(from, to);
+    else {
+      premoveRef.current = { from, to };
+      setToast('Premove set');
+    }
+  }
+
+  function startDrag(e, square, color) {
+    if (G.current.over || spectate) return;
+    const me = G.current.players.find(p => p.isLocal);
+    if (G.current.mode !== 'local' && (!me || me.color !== color)) return;
+    e.preventDefault();
+    dragRef.current = { from: square, x0: e.clientX, y0: e.clientY, moved: false };
+    setDragFrom(square);
+  }
 
   function attemptMove(from, to, promotion) {
     if (!promotion && needsPromotionChoice(from, to)) { setPromo({ from, to }); return; }
@@ -446,6 +511,7 @@ export default function ChessApp() {
   }
 
   function startMatch(players, mode, clockSpec, orientation = 'w') {
+    premoveRef.current = null;
     const seconds = clockSpec?.seconds ?? 300, inc = clockSpec?.inc ?? 3;
     G.current = {
       mode, players, game: new Chess(), orientation,
@@ -685,9 +751,18 @@ export default function ChessApp() {
     <div className="fixed inset-0 flex flex-col" style={{ background: 'radial-gradient(900px 550px at 50% -15%, #141d3a 0%, transparent 55%), #060c1a' }}>
       <div className="flex items-center justify-between w-full max-w-[760px] px-2.5 pt-2.5 gap-2 z-10">
         <button className="iconbtn w-12 h-12 rounded-2xl border border-[rgba(227,183,91,.22)] bg-[#131a33] text-[#e3b75b] text-[19px]" onClick={() => setScreen('menu')} aria-label="Back to menu">←</button>
-        <div className={`turn-pill flex items-center gap-2.5 rounded-full px-5 py-2.5 text-[12px] font-extrabold tracking-[2px] ${turnColor === 'b' ? 'text-[#8fd0ff]' : ''}`}>
-          <span className="w-3 h-3 rounded-full bg-[#f2ead9]" />
-          {g.over ? 'GAME OVER' : `${turnColor === 'w' ? 'WHITE' : 'BLACK'} TO MOVE`}
+        <div className="flex flex-col items-center gap-1">
+          <div className={`turn-pill flex items-center gap-2.5 rounded-full px-5 py-2.5 text-[12px] font-extrabold tracking-[2px] ${turnColor === 'b' ? 'text-[#8fd0ff]' : ''}`}>
+            <span className="w-3 h-3 rounded-full bg-[#f2ead9]" />
+            {g.over ? 'GAME OVER' : `${turnColor === 'w' ? 'WHITE' : 'BLACK'} TO MOVE`}
+          </div>
+          <div className="chess-mobile-clocks flex gap-2">
+            {g.players.map((p) => (
+              <span key={p.color} className={`clock-chip ${turnColor === p.color && !g.over ? 'is-active' : ''} ${g.clock[p.color] <= 10 ? 'is-low' : ''}`}>
+                <i className={`dot-${p.color}`} />{fmtClock(g.clock[p.color])}
+              </span>
+            ))}
+          </div>
         </div>
         <button className="iconbtn w-12 h-12 rounded-2xl border border-[rgba(227,183,91,.22)] bg-[#131a33] text-[19px]" onClick={() => { sfx.current.toggle(); bump(); }} aria-label="Sound">{sfx.current.mutedRef.current ? '🔇' : '🔊'}</button>
       </div>
@@ -722,8 +797,10 @@ export default function ChessApp() {
               const key = p.color + p.type;
               const square = FILES[cIdx] + (8 - rIdx);
               return (
-                <div key={square} className="chess-piece"
-                     style={{ left: `${left}%`, top: `${top}%`, backgroundImage: `url('${PIECES[key]}')` }}
+                <div key={square} data-square={square}
+                     className={`chess-piece ${dragFrom === square ? 'is-dragging' : ''}`}
+                     style={{ left: `${left + 0.45}%`, top: `${top + 0.45}%`, backgroundImage: `url('${PIECES[key]}')` }}
+                     onPointerDown={(e) => startDrag(e, square, p.color)}
                      onClick={() => tapSquare(square)} />
               );
             }))}
@@ -787,9 +864,17 @@ export default function ChessApp() {
         <div className="modal-backdrop fixed inset-0 z-20 flex items-center justify-center">
           <div className="modal-surface relative rounded-3xl px-7 py-7 text-center w-[min(390px,calc(100vw-48px))] flex flex-col items-center gap-3 overflow-hidden">
             <img className="w-20 h-20 object-contain" src="assets/crown.webp" alt="Crown" />
-            <div className="text-[10px] tracking-[6px] text-[#e3b75b] font-extrabold">{g.result === 'checkmate' ? 'VICTORY' : 'DRAW'}</div>
-            <div className="game-title-word text-[30px] font-black">{g.result === 'checkmate' ? 'Checkmate!' : g.result === 'timeout' ? "Flag fall!" : 'Draw'}</div>
-            <div className="text-[#a99e86] text-[13px]">{g.result === 'checkmate' ? (g.winner === myColor ? 'Well played.' : 'Better luck next time.') : 'The game ended in a draw.'}</div>
+            <div className="text-[10px] tracking-[6px] text-[#e3b75b] font-extrabold">
+              {g.winner ? (g.winner === myColor ? 'VICTORY' : 'DEFEAT') : 'DRAW'}
+            </div>
+            <div className="game-title-word text-[30px] font-black">
+              {g.result === 'checkmate' ? 'Checkmate!' : g.result === 'timeout' ? 'Flag fall!' : 'Draw'}
+            </div>
+            <div className="text-[#a99e86] text-[13px]">
+              {g.winner
+                ? (g.winner === myColor ? 'Well played.' : 'Better luck next time.')
+                : 'The game ended in a draw.'}
+            </div>
             <button className="btn btn-gold w-full py-4 text-[16px]" onClick={() => {
               if (g.mode === 'ai') startAiGame(); else if (g.mode === 'local') startLocalGame();
               else if (onlineRef.current?.isHost) { resetOnlineMatch(); } else if (onlineRef.current?.conn) { try { onlineRef.current.conn.send({ type: 'rematch' }); } catch (e) { } }

@@ -107,7 +107,8 @@ body {
 #dice-btn:not(:disabled):hover { filter: brightness(1.08); }
 
 /* ── Chess pieces ───────────────────── */
-.chess-piece { position: absolute; width: 12.5%; height: 12.5%; background-size: contain; background-repeat: no-repeat; background-position: center; cursor: pointer; transition: left .16s ease, top .16s ease; filter: drop-shadow(0 2px 2px rgba(0,0,0,.5)); pointer-events: auto; }
+.chess-piece { position: absolute; width: 11.6%; height: 11.6%; background-size: contain; background-repeat: no-repeat; background-position: center; cursor: grab; touch-action: none; transition: left .16s ease, top .16s ease; filter: drop-shadow(0 2px 2px rgba(0,0,0,.5)); pointer-events: auto; }
+.chess-piece.is-dragging { cursor: grabbing; filter: drop-shadow(0 8px 12px rgba(0,0,0,.8)) brightness(1.15); z-index: 8; }
 .sq-light { background: rgba(255,254,241,.045); }
 .sq-dark { background: rgba(0,0,0,.155); }
 
@@ -158,6 +159,17 @@ body {
   border-color: rgba(227,183,91,.75);
   background: rgba(227,183,91,.1);
 }
+.chess-mobile-clocks { display: none; }
+@media (max-width: 640px) { .chess-mobile-clocks { display: flex; } }
+.clock-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 8px; border-radius: 999px; border: 1px solid rgba(255,255,255,.12);
+  background: rgba(13,18,36,.9); font-family: ui-monospace, monospace; font-size: 11px; font-weight: 800;
+}
+.clock-chip.is-active { border-color: rgba(227,183,91,.7); background: rgba(227,183,91,.12); }
+.clock-chip.is-low { color: #ff9b8d; }
+.clock-chip i { width: 7px; height: 7px; border-radius: 50%; background: #f2ead9; }
+.clock-chip i.dot-b { background: #2f2f36; border: 1px solid rgba(255,255,255,.45); }
 .modal-backdrop { background: rgba(5,7,15,.86); backdrop-filter: blur(10px); }
 .modal-surface {
   border: 1px solid rgba(227,183,91,.45);
