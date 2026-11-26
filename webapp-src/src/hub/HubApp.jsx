@@ -45,20 +45,38 @@ function ChessPreview() {
 
 function LudoPreview() {
   const yards = [
-    ['blue', './ludo/assets/pieces_blue.svg', '1 / 1 / 4 / 4'],
-    ['yellow', './ludo/assets/pieces_yellow.svg', '1 / 11 / 4 / 14'],
-    ['red', './ludo/assets/pieces_red.svg', '11 / 1 / 14 / 4'],
-    ['green', './ludo/assets/pieces_green.svg', '11 / 11 / 14 / 14'],
+    ['blue', '1 / 1 / 6 / 6'], ['yellow', '1 / 10 / 6 / 15'],
+    ['red', '10 / 1 / 15 / 6'], ['green', '10 / 10 / 15 / 15'],
   ];
+  const cells = [];
+  for (let r = 0; r < 15; r++) {
+    for (let c = 0; c < 15; c++) {
+      let cls = 'lcell';
+      if (r >= 6 && r <= 8 && c >= 6 && c <= 8) cls += ' center';
+      else if (r === 7 || c === 7) {
+        cls += ' path';
+        if (r === 7 && c < 6) cls += ' blue';
+        else if (c === 7 && r < 6) cls += ' yellow';
+        else if (r === 7 && c > 8) cls += ' green';
+        else if (c === 7 && r > 8) cls += ' red';
+        if ((r === 7 && c === 1) || (c === 7 && r === 1) ||
+            (r === 7 && c === 13) || (c === 7 && r === 13)) cls += ' safe';
+      }
+      cells.push(<i key={`${r}-${c}`} className={cls} style={{ gridRow: r + 1, gridColumn: c + 1 }} />);
+    }
+  }
   return (
     <div className="sg-ludo-preview" aria-label="Ludo board preview">
-      {yards.map(([color, img, area]) => (
+      {cells}
+      {yards.map(([color, area]) => (
         <div key={color} className={`sg-preview-yard yard-${color}`} style={{ gridArea: area }}>
-          {[0, 1, 2, 3].map(i => <img key={i} src={img} alt="" />)}
-          <span className="sg-preview-star">★</span>
+          {[[1, 1], [1, 4], [4, 1], [4, 4]].map(([r, c], i) => (
+            <img key={i} src={`./ludo/assets/pieces_${color}.svg`} alt=""
+              className="sg-yard-token" style={{ gridRow: r, gridColumn: c }} />
+          ))}
         </div>
       ))}
-      <div className="sg-preview-center">SG</div>
+      <div className="sg-preview-center">✦</div>
     </div>
   );
 }
@@ -98,6 +116,9 @@ function Mini({ tone, name, desc, command }) {
 
 export default function HubApp() {
   const [splashDone, setSplashDone] = useState(false);
+  const [soundOff, setSoundOff] = useState(() => {
+    try { return localStorage.getItem('sg-hub-sound') === 'off'; } catch (e) { return false; }
+  });
   const [toast, setToast] = useState('');
   const toastTimer = useRef(null);
   const profile = useMemo(() => {
@@ -168,6 +189,13 @@ export default function HubApp() {
         </nav>
         <div className="sg-top-actions">
           <span className="sg-profile" title="Telegram profile">{profile}</span>
+          <button type="button" className="sg-sound"
+            aria-pressed={soundOff}
+            onClick={() => {
+              const next = !soundOff;
+              setSoundOff(next);
+              try { localStorage.setItem('sg-hub-sound', next ? 'off' : 'on'); } catch (e) { /* ignore */ }
+            }}>{soundOff ? 'Sound off' : 'Sound on'}</button>
           <a className="sg-btn gold small" href={BOT_LINK}>Open Bot <span>↗</span></a>
         </div>
       </header>

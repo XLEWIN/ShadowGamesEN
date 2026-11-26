@@ -50,7 +50,10 @@
 .sg-nav a { font-size: 11px; letter-spacing: 1.2px; color: #aeb8c8; text-decoration: none; }
 .sg-nav a:hover, .sg-nav a.active { color: var(--gold); }
 .sg-top-actions { display: flex; align-items: center; gap: 10px; }
-.sg-profile { font-size: 10px; letter-spacing: 1px; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 9px 12px; max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sg-profile { font-size: 9px; letter-spacing: 1px; color: var(--muted); max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sg-sound { border: 1px solid var(--line); border-radius: 9px; padding: 9px 11px; background: rgba(15,24,41,.9); font-size: 9px; letter-spacing: 1px; cursor: pointer; }
+.sg-sound[aria-pressed='true'] { color: var(--muted); }
+.sg-sound:hover { border-color: rgba(232,184,93,.5); }
 
 /* Buttons */
 .sg-btn {
@@ -110,24 +113,34 @@
 .sg-card-top h3 { font-size: 26px; letter-spacing: 2px; margin: 8px 0 6px; }
 .sg-card-top p { font-size: 12px; line-height: 1.6; color: var(--muted); margin: 0; max-width: 380px; }
 .sg-board-preview {
-  height: 250px; border: 1px solid var(--line); border-radius: 10px;
+  height: 280px; border: 1px solid var(--line); border-radius: 10px;
   background: rgba(4,8,16,.72); display: grid; place-items: center; overflow: hidden;
 }
 .sg-card-bottom { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .sg-detail { font-size: 8px; letter-spacing: 1.5px; color: var(--muted); }
 
 /* Static board previews (presentation only) */
-.sg-chess-preview { position: relative; width: 218px; height: 218px; border-radius: 6px; background-position: center; background-size: cover; background-repeat: no-repeat; box-shadow: 0 12px 28px rgba(0,0,0,.5); }
+.sg-chess-preview { position: relative; width: 250px; height: 250px; border-radius: 6px; background-position: center; background-size: cover; background-repeat: no-repeat; box-shadow: 0 12px 28px rgba(0,0,0,.5); }
 .sg-chess-grid { position: absolute; inset: 4.6%; }
 .sg-preview-piece { position: absolute; width: 12.5%; height: 12.5%; object-fit: contain; filter: drop-shadow(0 2px 2px rgba(0,0,0,.5)); }
 .sg-preview-coords { position: absolute; bottom: -17px; left: 0; right: 0; text-align: center; font-size: 7px; letter-spacing: 2px; color: var(--muted); }
-.sg-ludo-preview { position: relative; width: 210px; height: 210px; display: grid; grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(2, 1fr); gap: 3px; padding: 6px; border-radius: 9px; background: linear-gradient(145deg,#e7c98f,#6b512f); box-shadow: 0 12px 28px rgba(0,0,0,.5); }
-.sg-preview-yard { position: relative; display: grid; grid-template-columns: repeat(2, 1fr); place-items: center; border-radius: 5px; overflow: hidden; }
-.sg-preview-yard img { width: 24px; height: 24px; filter: drop-shadow(0 2px 2px rgba(0,0,0,.4)); }
+.sg-ludo-preview {
+  position: relative; width: 250px; height: 250px; display: grid;
+  grid-template-columns: repeat(15, 1fr); grid-template-rows: repeat(15, 1fr);
+  padding: 5px; border-radius: 9px; background: linear-gradient(145deg,#e7c98f,#6b512f);
+  box-shadow: 0 12px 28px rgba(0,0,0,.5); overflow: hidden;
+}
+.sg-preview-yard { display: grid; grid-template-columns: repeat(6, 1fr); grid-template-rows: repeat(6, 1fr); place-items: center; }
+.sg-preview-yard .sg-yard-token { width: 26px; height: 26px; z-index: 2; filter: drop-shadow(0 2px 2px rgba(0,0,0,.4)); }
 .yard-blue { background: #2b4c8f; } .yard-yellow { background: #c9a433; }
 .yard-red { background: #b7202c; } .yard-green { background: #1e7b47; }
-.sg-preview-star { position: absolute; right: 4px; bottom: 0; color: rgba(255,255,255,.7); font-size: 10px; }
-.sg-preview-center { position: absolute; left: 42%; top: 42%; width: 16%; height: 16%; display: grid; place-items: center; border-radius: 4px; background: conic-gradient(#2f66c4 0 25%, #e0bd3a 0 50%, #27ae5f 0 75%, #d64533 0); color: #fff; font-size: 9px; font-weight: 800; }
+.sg-ludo-preview .lcell { background: #e8e4d8; border: .5px solid #c3c9c9; }
+.sg-ludo-preview .lcell.blue { background: #3f74cf; }
+.sg-ludo-preview .lcell.yellow { background: #d8b13c; }
+.sg-ludo-preview .lcell.green { background: #27ae5f; }
+.sg-ludo-preview .lcell.red { background: #d84a3d; }
+.sg-ludo-preview .lcell.safe:after { content: '★'; display: block; text-align: center; font-size: 8px; line-height: 1; color: #8a6b2f; }
+.sg-preview-center { position: absolute; left: 40%; top: 40%; width: 20%; height: 20%; display: grid; place-items: center; border-radius: 4px; background: conic-gradient(#2f66c4 0 25%, #e0bd3a 0 50%, #27ae5f 0 75%, #d64533 0); color: #fff; font-size: 12px; font-weight: 800; z-index: 2; }
 
 /* Chat-game cards */
 .sg-mini-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
