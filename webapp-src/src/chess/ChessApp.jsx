@@ -233,6 +233,14 @@ export default function ChessApp() {
   }
   const [promo, setPromo] = useState(null); // { from, to }
 
+  // Dismiss the promotion chooser without touching live game state.
+  useEffect(() => {
+    if (!promo) return;
+    const onKey = (e) => { if (e.key === 'Escape') setPromo(null); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [promo]);
+
   function attemptMove(from, to, promotion) {
     if (!promotion && needsPromotionChoice(from, to)) { setPromo({ from, to }); return; }
     const meP = G.current.players.find(p => p.isLocal);
@@ -677,7 +685,7 @@ export default function ChessApp() {
     <div className="fixed inset-0 flex flex-col" style={{ background: 'radial-gradient(900px 550px at 50% -15%, #141d3a 0%, transparent 55%), #060c1a' }}>
       <div className="flex items-center justify-between w-full max-w-[760px] px-2.5 pt-2.5 gap-2 z-10">
         <button className="iconbtn w-12 h-12 rounded-2xl border border-[rgba(227,183,91,.22)] bg-[#131a33] text-[#e3b75b] text-[19px]" onClick={() => setScreen('menu')} aria-label="Back to menu">←</button>
-        <div className={`flex items-center gap-2.5 rounded-full border border-[rgba(227,183,91,.22)] bg-[#131a33] px-5 py-2.5 text-[12px] font-extrabold tracking-[2px] ${turnColor === 'b' ? 'text-[#8fd0ff]' : ''}`}>
+        <div className={`turn-pill flex items-center gap-2.5 rounded-full px-5 py-2.5 text-[12px] font-extrabold tracking-[2px] ${turnColor === 'b' ? 'text-[#8fd0ff]' : ''}`}>
           <span className="w-3 h-3 rounded-full bg-[#f2ead9]" />
           {g.over ? 'GAME OVER' : `${turnColor === 'w' ? 'WHITE' : 'BLACK'} TO MOVE`}
         </div>
@@ -685,7 +693,7 @@ export default function ChessApp() {
       </div>
 
       <div className="flex-1 flex items-center justify-center min-h-0 px-2 z-[1]">
-        <div className="relative rounded-[14px]" style={{
+        <div className="chess-frame relative rounded-[14px]" style={{
           width: 'min(94vw, 55vh, 520px)', aspectRatio: '1 / 1', overflow: 'hidden',
           background: "url('assets/chessBoardDefault_1280.webp') center/cover no-repeat",
           boxShadow: '0 24px 70px rgba(0,0,0,.75), 0 0 55px rgba(103,232,249,.28), inset 0 0 0 2px rgba(8,51,68,.9)',
@@ -727,13 +735,13 @@ export default function ChessApp() {
       </div>
 
       <div className="flex items-stretch justify-between w-full max-w-[740px] gap-2 px-3 pb-[calc(12px+env(safe-area-inset-bottom))] z-10">
-        <div className="flex flex-col justify-center gap-1 rounded-2xl border border-white/10 bg-[#131a33]/80 px-3 py-1.5 min-w-[120px]">
+        <div className="hud-panel flex flex-col justify-center gap-1 rounded-2xl px-3 py-1.5 min-w-[120px]">
           <div className="text-[8px] tracking-[2px] text-[#a99e86] font-bold">CAPTURED</div>
           <div className="flex flex-wrap gap-0.5">{mineCap.map((t, i) => <img key={i} src={PIECES[(myColor === 'w' ? 'b' : 'w') + t]} alt={t} className="w-[18px] h-[18px]" />)}</div>
           <div className="flex flex-wrap gap-0.5 opacity-50">{oppCap.map((t, i) => <img key={i} src={PIECES[myColor + t]} alt={t} className="w-[18px] h-[18px]" />)}</div>
           <div className="text-[11px] font-extrabold text-[#ffd97a]">{materialAdv > 0 ? `+${materialAdv}` : materialAdv < 0 ? `${materialAdv}` : ''}</div>
         </div>
-        <div className="flex flex-col rounded-2xl border border-white/10 bg-[#131a33]/80 px-3 py-1.5 max-w-[300px] flex-1">
+        <div className="hud-panel flex flex-col rounded-2xl px-3 py-1.5 max-w-[300px] flex-1">
           <div className="text-[8px] tracking-[2px] text-[#a99e86] font-bold">MOVES</div>
           <div className="overflow-y-auto font-mono text-[12px] leading-relaxed max-h-16">
             {movesHtml.map(([n, w, b]) => <div key={n}><b className="text-[#e3b75b]">{n}.</b> {w}{b ? ' ' + b : ''}</div>)}
@@ -745,7 +753,7 @@ export default function ChessApp() {
             const clockSec = g.clock[p.color];
             const low = clockSec <= 10 && clockSec > 0;
             return (
-              <div key={i} className={`flex items-center gap-1.5 rounded-2xl border px-2 py-1.5 ${active ? 'border-[#e3b75b] shadow-[0_0_18px_rgba(227,183,91,.25)]' : 'border-white/10'} bg-[#131a33]/80`}>
+              <div key={i} className={`player-card flex items-center gap-1.5 rounded-2xl px-2 py-1.5 ${active ? 'is-active' : ''}`}>
                 <img src={p.photo || AVATARS[p.isBot ? p.name.split(' ')[0].toLowerCase() : 'you'] || AVATARS.you} alt="" className="w-8 h-8 rounded-full object-cover border border-[#8a6b2f]" />
                 <span className="flex flex-col leading-tight">
                   <span className="text-[11px] font-extrabold max-w-[84px] truncate">{p.name}</span>
@@ -760,8 +768,8 @@ export default function ChessApp() {
 
       {/* Promo modal */}
       {promo && (
-        <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/80 backdrop-blur-sm">
-          <div className="sg-grad-panel rounded-3xl border border-[#e3b75b] px-6 py-6 text-center flex flex-col items-center gap-3">
+        <div className="modal-backdrop fixed inset-0 z-20 flex items-center justify-center">
+          <div className="modal-surface rounded-3xl px-6 py-6 text-center flex flex-col items-center gap-3">
             <div className="text-[13px] tracking-[4px] text-[#e3b75b] font-extrabold">PROMOTE PAWN</div>
             <div className="flex gap-3">
               {['q', 'r', 'b', 'n'].map(piece => (
@@ -776,8 +784,8 @@ export default function ChessApp() {
 
       {/* Win overlay */}
       {g.over && (
-        <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/80 backdrop-blur-sm">
-          <div className="relative sg-grad-panel rounded-3xl border border-[#e3b75b] px-7 py-7 text-center w-[min(390px,calc(100vw-48px))] flex flex-col items-center gap-3 overflow-hidden">
+        <div className="modal-backdrop fixed inset-0 z-20 flex items-center justify-center">
+          <div className="modal-surface relative rounded-3xl px-7 py-7 text-center w-[min(390px,calc(100vw-48px))] flex flex-col items-center gap-3 overflow-hidden">
             <img className="w-20 h-20 object-contain" src="assets/crown.webp" alt="Crown" />
             <div className="text-[10px] tracking-[6px] text-[#e3b75b] font-extrabold">{g.result === 'checkmate' ? 'VICTORY' : 'DRAW'}</div>
             <div className="game-title-word text-[30px] font-black">{g.result === 'checkmate' ? 'Checkmate!' : g.result === 'timeout' ? "Flag fall!" : 'Draw'}</div>
@@ -791,13 +799,15 @@ export default function ChessApp() {
         </div>
       )}
 
-      {toast && <div className="fixed left-1/2 -translate-x-1/2 bottom-6 z-30 rounded-xl border border-[rgba(227,183,91,.3)] bg-[#1a2243] px-5 py-3 text-[13px] shadow-lg">{toast}</div>}
+      {toast && <div className="toast-surface fixed left-1/2 -translate-x-1/2 bottom-6 z-30 rounded-xl px-5 py-3 text-[13px]">{toast}</div>}
 
       {/* lastMove / check CSS */}
       <style>{`
-        .selected-cell { box-shadow: inset 0 0 0 3px rgba(255,240,170,.7); background: rgba(255,240,170,.32) !important; }
-        .last-move-glow { background: rgba(255,254,241,.22) !important; }
+        .chess-frame:after { content: ""; position: absolute; inset: 0; border: 1px solid rgba(255,240,200,.22); border-radius: 14px; pointer-events: none; }
+        .selected-cell { box-shadow: inset 0 0 0 3px rgba(255,220,130,.95); background: rgba(236,199,91,.24) !important; }
+        .last-move-glow { background: rgba(255,254,241,.18) !important; }
         .in-check-cell { animation: check-pulse 1s ease-in-out infinite; }
+        .chess-piece:active { filter: brightness(1.12) drop-shadow(0 3px 4px rgba(0,0,0,.6)); }
         @keyframes check-pulse { 0%,100% { box-shadow: inset 0 0 0 3px rgba(239,68,68,.5); } 50% { box-shadow: inset 0 0 22px 4px rgba(239,68,68,.75); } }
       `}</style>
     </div>

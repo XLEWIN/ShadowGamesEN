@@ -26,7 +26,7 @@
 /* Ambient background */
 .sg-home::before, .sg-home::after {
   content: ""; position: fixed; pointer-events: none; z-index: 0;
-  border-radius: 50%; filter: blur(75px); opacity: .22;
+  border-radius: 50%; filter: blur(70px); opacity: .12;
   animation: sg-drift 18s ease-in-out infinite alternate;
 }
 .sg-home::before { width: 360px; height: 360px; left: -130px; top: 18%; background: #bd8a43; }
@@ -35,7 +35,7 @@
 .sg-sparks { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
 .sg-spark {
   position: absolute; width: 3px; height: 3px; border-radius: 50%;
-  background: #f3cf86; opacity: .45; box-shadow: 0 0 12px #e8b85d;
+  background: #f3cf86; opacity: .2; box-shadow: 0 0 8px #e8b85d;
   animation: sg-float var(--t) linear infinite; left: var(--x); top: 110%;
 }
 @keyframes sg-float { to { transform: translate3d(var(--dx), -125vh, 0); opacity: 0; } }
@@ -75,6 +75,10 @@
 .sg-eyebrow { font: 11px 'DM Mono'; letter-spacing: 3px; text-transform: uppercase; color: var(--hg-gold); }
 .sg-hero { padding: 60px 0 46px; display: grid; grid-template-columns: 1.1fr .9fr; gap: 45px; align-items: center; }
 .sg-hero h1 { font: 700 clamp(38px, 8vw, 72px)/.98 'Space Grotesk'; letter-spacing: -3px; margin: 18px 0; }
+.sg-hero h1 em { font-style: normal; color: var(--hg-gold2); }
+.sg-pills { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 20px; }
+.sg-pill { display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--hg-line); border-radius: 999px; padding: 7px 12px; font: 10px 'DM Mono'; letter-spacing: .6px; color: #b6c0d1; background: rgba(17,24,39,.7); }
+.sg-pill i { width: 6px; height: 6px; border-radius: 50%; background: var(--hg-gold); }
 .sg-hero p { color: #aab5c7; line-height: 1.8; max-width: 510px; font-size: 14px; margin-top: 0; }
 .sg-actions { display: flex; gap: 12px; margin-top: 28px; flex-wrap: wrap; }
 .sg-btn { border: 1px solid var(--hg-line); border-radius: 8px; padding: 14px 19px; background: #182338; color: var(--hg-ink); font-size: 12px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; transition: .2s; }
@@ -93,12 +97,13 @@
 .sg-section-head h2 { font: 600 27px 'Space Grotesk'; margin: 0; }
 .sg-section-head span { font: 10px 'DM Mono'; color: var(--hg-muted); letter-spacing: 1.5px; text-align: right; }
 .sg-games { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
-.sg-game-card { min-height: 215px; border: 1px solid var(--hg-line); border-radius: 14px; padding: 22px; background: linear-gradient(135deg, #151f31, #101725); display: flex; flex-direction: column; position: relative; overflow: hidden; transition: .25s; }
-.sg-game-card:hover { transform: translateY(-4px); border-color: #b88f4c; }
+.sg-game-card { min-height: 215px; border: 1px solid var(--hg-line); border-radius: 14px; padding: 22px; background: linear-gradient(135deg, #151f31, #101725); display: flex; flex-direction: column; position: relative; overflow: hidden; transition: .25s; color: inherit; }
+.sg-game-card:hover, .sg-game-card:focus-visible { transform: translateY(-4px); border-color: #b88f4c; }
 .sg-game-card .num { font: 10px 'DM Mono'; color: var(--hg-gold); letter-spacing: 2px; }
 .sg-game-card h3 { font: 700 32px 'Space Grotesk'; letter-spacing: 2px; margin: 17px 0 5px; }
 .sg-game-card p { color: #aab5c7; font-size: 12px; line-height: 1.6; max-width: 340px; margin-top: 0; }
-.sg-game-card button { align-self: flex-start; margin-top: auto; background: transparent; border: 0; color: var(--hg-gold); font-size: 11px; font-weight: 800; letter-spacing: 1.5px; padding: 10px 0; }
+.sg-card-cta { align-self: flex-start; margin-top: auto; color: var(--hg-gold); font-size: 11px; font-weight: 800; letter-spacing: 1.5px; padding: 10px 0; }
+.sg-game-card:active .sg-card-cta { color: var(--hg-gold2); }
 .sg-game-icon { width: 72px; height: 72px; position: absolute; right: 24px; top: 35px; border: 1px solid #e8b85d44; border-radius: 20px; display: grid; place-items: center; background: linear-gradient(145deg, #ffffff12, #ffffff03); box-shadow: inset 0 1px #ffffff18; transform: rotate(5deg); transition: .35s; }
 .sg-game-icon svg { width: 43px; height: 43px; stroke: var(--hg-gold); fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 .sg-game-card:hover .sg-game-icon { transform: rotate(0) translateY(-5px); border-color: #e8b85d99; }

@@ -5,7 +5,7 @@ import { normalizeRoomCode, roomPageUrl } from '../shared/room.js';
 import './HubHome.css';
 
 const BOT_LINK = 'https://t.me/ShadowGameEnBot';
-const SPARKS = Array.from({ length: 24 }, (_, i) => ({
+const SPARKS = Array.from({ length: 8 }, (_, i) => ({
   x: Math.random() * 100,
   t: 12 + Math.random() * 18,
   dx: Math.random() * 120 - 60,
@@ -27,13 +27,13 @@ const WORD_ICON = (
 
 function GameCard({ num, title, desc, cta, href, icon }) {
   return (
-    <article className="sg-game-card">
+    <a className="sg-game-card" href={href}>
       <span className="num">{num}</span>
       <span className="sg-game-icon">{icon}</span>
       <h3>{title}</h3>
       <p>{desc}</p>
-      <button type="button" onClick={() => { window.location.href = href; }}>{cta} &nbsp;↗</button>
-    </article>
+      <span className="sg-card-cta">{cta} &nbsp;↗</span>
+    </a>
   );
 }
 
@@ -147,11 +147,15 @@ export default function HubApp() {
         <section className="sg-hero" id="sg-top">
           <div>
             <div className="sg-eyebrow">A LITTLE COMPETITION NEVER HURT</div>
-            <h1>Make your<br />next move.</h1>
-            <p>A home for quick rivalries, clever plays and the people you play with. Pick a table, invite a friend, or test your instincts against the house.</p>
+            <h1>Make your<br /><em>next move.</em></h1>
+            <p>A home for quick rivalries, clever plays and the people you play with. Pick a table, open a room, or take your next challenge into Telegram.</p>
             <div className="sg-actions">
-              <button type="button" className="sg-btn gold" onClick={scrollToGames}>Explore games <span>↗</span></button>
-              <button type="button" className="sg-btn" onClick={() => notify('Open Shadow Games in Telegram to play with friends online.')}>How it works</button>
+              <button type="button" className="sg-btn gold" onClick={scrollToGames}>Explore the games <span>↗</span></button>
+              <button type="button" className="sg-btn" onClick={() => notify('Open @ShadowGameEnBot in Telegram to play with friends.')}>How it works</button>
+            </div>
+            <div className="sg-pills">
+              <span className="sg-pill"><i /> Two interactive boards</span>
+              <span className="sg-pill">3 games in Telegram DM</span>
             </div>
           </div>
           <div className="sg-hero-art">
