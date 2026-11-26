@@ -18,11 +18,11 @@ export async function leaderboardText(chatId, opts = {}) {
   if (!totals.size) return `${E.INFO} No WordSeek scores yet${global ? '' : ' in this chat'}. Play with /new5 to get on the board.`;
   const users = await db.select().from(wsUsers).all();
   const names = new Map(users.map(u => [u.id, u.name]));
-  const board = [...totals.entries()].sort((a, b) => b[1] - a[1]).slice(0, 25);
+  const board = [...totals.entries()].sort((a, b) => b[1] - a[1]).slice(0, 12);
   const scope = [global ? 'Global' : 'This Chat', week ? 'This Week' : 'All Time', length ? `${length}-letter` : null].filter(Boolean).join(' · ');
   let text = `${E.TROPHY} <b>WordSeek Leaderboard</b>\n${E.BULLET}\n\n${E.INFO} <b>${scope}</b>\n\n`;
   board.forEach(([uid, score], i) => {
-    text += `${rankMedal(i)} <b>${esc(names.get(uid) || `Player ${uid}`)}</b>\n   ${E.TROPHY} ${score} Xeons\n\n`;
+    text += `${rankMedal(i)} <b>${esc(names.get(uid) || `Player ${uid}`)}</b> · ${E.TROPHY} ${score} Xeons\n`;
   });
   return text;
 }
@@ -41,11 +41,11 @@ export async function shadowRankingText(chatId = null) {
     totals.set(p.userId, cur);
   }
   const board = [...totals.entries()].map(([userId, v]) => ({ userId, ...v }))
-    .sort((a, b) => b.score - a.score).slice(0, 25);
+    .sort((a, b) => b.score - a.score).slice(0, 12);
   if (!board.length) return `${E.INFO} No Shadow Word scores${chatId === null ? ' yet globally' : ' in this chat'} yet. Play with /game to get on the board.`;
   let text = `${chatId === null ? E.GLOBE : E.TROPHY} <b>Top 25 Players (${chatId === null ? 'Global' : 'This Chat'})</b>\n${E.BULLET}\n\n`;
   board.forEach((p, i) => {
-    text += `${rankMedal(i)} <b>${esc(p.name)}</b>\n   ${E.TROPHY} ${p.score} Xeons · ${E.GAME} ${p.words} words\n\n`;
+    text += `${rankMedal(i)} <b>${esc(p.name)}</b> · ${E.TROPHY} ${p.score} · ${E.GAME} ${p.words}\n`;
   });
   return text;
 }

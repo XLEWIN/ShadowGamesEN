@@ -2,7 +2,7 @@
 import { api } from 'sdk';
 import { db, eq, desc } from 'sdk/db';
 import { configurePipeline, reportHandlerError, isRetryUpdate } from '../lib/pipeline.js';
-import { sendText, editText, deleteMessage, answerCallbackQuery, escapeHtml } from '../lib/msg.js';
+import { sendText, editText, editCaption, deleteMessage, answerCallbackQuery, escapeHtml } from '../lib/msg.js';
 import { E, EID, plain } from '../lib/emojis.js';
 const BULLET = E.BULLET;
 import { setState, deleteState } from '../lib/db.js';
@@ -169,29 +169,17 @@ async function handleBoardCallback(query, action) {
     return;
   }
   try {
-    await editText(chatId, query.message.message_id, text, { parseMode: 'HTML', replyMarkup: markup });
+    if (!(await editCaption(chatId, query.message.message_id, text, { parseMode: 'HTML', replyMarkup: markup }))) {
+      await editText(chatId, query.message.message_id, text, { parseMode: 'HTML', replyMarkup: markup });
+    }
   } catch (e) { /* message may be gone */ }
   await answerCallbackQuery(query.id);
 }
 
 async function handleGlobalRanking(query) {
-  const players = await db.select().from(gamePlayers).all();
-  const totals = new Map();
-  for (const p of players) {
-    const cur = totals.get(p.userId) || { score: 0, words: 0, name: 'Unknown' };
-    cur.score += p.score || 0;
-    cur.words += p.wordsGuessed || 0;
-    if (p.displayName && cur.name === 'Unknown') cur.name = p.displayName;
-    totals.set(p.userId, cur);
+  const text = await shadowRankingText();
+  if (!(await editCaption(query.message.chat.id, query.message.message_id, text, { parseMode: 'HTML', replyMarkup: rankingKeyboard() }))) {
+    await editText(query.message.chat.id, query.message.message_id, text, { parseMode: 'HTML', replyMarkup: rankingKeyboard() });
   }
-  const board = [...totals.entries()].map(([userId, v]) => ({ userId, ...v }))
-    .sort((a, b) => b.score - a.score).slice(0, 25);
-  if (!board.length) { await answerCallbackQuery(query.id, 'No scores yet globally.'); return; }
-  const medals = [E.MEDAL_1, E.MEDAL_2, E.MEDAL_3];
-  let text = `${E.GLOBE} <b>Top 25 Players (Global)</b>\n${E.BULLET}\n\n`;
-  board.forEach((p, i) => {
-    text += `${medals[i] || `${i + 1}.`} <b>${escapeHtml(p.name)}</b>\n   ${E.TROPHY} ${p.score} Xeons · ${E.GAME} ${p.words} words\n\n`;
-  });
-  await editText(query.message.chat.id, query.message.message_id, text, { parseMode: 'HTML', replyMarkup: rankingKeyboard() });
   await answerCallbackQuery(query.id);
 }

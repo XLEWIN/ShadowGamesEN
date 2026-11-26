@@ -48,6 +48,30 @@ export async function sendText(chatId, text, opts = {}) {
   }
 }
 
+export async function sendPhoto(chatId, photo, caption, opts = {}) {
+  const { parseMode, replyMarkup, ...rest } = opts;
+  const params = stripNulls({ chat_id: chatId, photo, caption, parse_mode: parseMode, ...rest });
+  if (replyMarkup !== undefined) params.reply_markup = replyMarkup;
+  try {
+    return await api.sendPhoto(params);
+  } catch (e) {
+    console.error('sendPhoto failed:', e?.description || e);
+    return null;
+  }
+}
+
+export async function editCaption(chatId, messageId, caption, opts = {}) {
+  const { parseMode, replyMarkup, ...rest } = opts;
+  const params = stripNulls({ chat_id: chatId, message_id: messageId, caption, parse_mode: parseMode, ...rest });
+  params.reply_markup = normalizeEditMarkup(replyMarkup);
+  try {
+    return await api.editMessageCaption(params);
+  } catch (e) {
+    console.error('editCaption failed:', e?.description || e);
+    return null;
+  }
+}
+
 export async function editText(chatId, messageId, text, opts = {}) {
   const { parseMode, replyMarkup, ...rest } = opts;
   const params = stripNulls({ chat_id: chatId, message_id: messageId, text, parse_mode: parseMode, ...rest });

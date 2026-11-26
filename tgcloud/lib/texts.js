@@ -31,6 +31,8 @@ export const OWNER_ID = 8953843780;
 export const LOG_CHANNEL_ID = -1003884436085;
 // Mini Apps are served by tgcloud static hosting — no GitHub identity in URLs.
 export const WEBAPP_BASE = 'https://app8670418995.tgcloud.ai/';
+export const LEADERBOARD_IMAGE = `${WEBAPP_BASE}assets/leaderboard-banner.jpg`;
+export const START_IMAGE = `${WEBAPP_BASE}assets/gaming-hub.jpg`;
 export const HUB_URL = WEBAPP_BASE;
 export const LUDO_URL = `${WEBAPP_BASE}ludo/`;
 export const CHESS_URL = `${WEBAPP_BASE}chess/`;

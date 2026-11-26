@@ -4,7 +4,7 @@
 import { api } from 'sdk';
 import { db, eq, and, desc, sql } from 'sdk/db';
 import { configurePipeline, reportHandlerError, isRetryUpdate } from '../lib/pipeline.js';
-import { replyText, sendText, deleteMessage, escapeHtml } from '../lib/msg.js';
+import { replyText, sendText, sendPhoto, deleteMessage, escapeHtml } from '../lib/msg.js';
 import { getState, setState, deleteState } from '../lib/db.js';
 import { parseCommand } from '../lib/commands.js';
 import { E, EID, plain } from '../lib/emojis.js';
@@ -17,6 +17,7 @@ import {
   RULES, HELP_TEXT, startText, mention,
   START_TITLE_LINE, START_HINT_LINE, BOT_DESCRIPTION,
   URL_ADD_TO_GROUP, URL_OWNER, URL_UPDATES, URL_DISCUSSION,
+  LEADERBOARD_IMAGE, START_IMAGE,
 } from '../lib/texts.js';
 import {
   userStartedBot, gbannedUsers, games, gamePlayers,
@@ -137,10 +138,12 @@ async function cmdStart(message, args, isPrivate, userId, user) {
     });
     return;
   }
-  const blocks = buildBlocks(buildStartBlocks, BOT_USERNAME);
-  await sendWithFallback(chatIdOf(message), blocks, {
-    fallback: async () => { await replyText(message, startText(), { parseMode: 'HTML', replyMarkup: buildStartKeyboard(BOT_USERNAME) }); return true; },
+  const sent = await sendPhoto(userId, START_IMAGE, startText(), {
+    parseMode: 'HTML', replyMarkup: buildStartKeyboard(BOT_USERNAME),
   });
+  if (!sent) {
+    await replyText(message, startText(), { parseMode: 'HTML', replyMarkup: buildStartKeyboard(BOT_USERNAME) });
+  }
   await deleteMessage(chatIdOf(message), message.message_id);
   await db.insert(userStartedBot).values({ userId: Number(userId), startedAt: new Date().toISOString() }).onConflictDoNothing().run();
   await sendText(LOG_CHANNEL_ID, `🆕 New user started bot: ${plain(user.first_name || 'User')} (${userId})`);
@@ -305,7 +308,10 @@ async function cmdLeaderboard(message, args) {
   };
   const text = await leaderboardText(message.chat.id, opts);
   const active = { chat: !opts.global && !opts.week && !opts.length, global: opts.global, week: opts.week, ...(opts.length ? { [opts.length]: true } : {}) };
-  await replyText(message, text, { parseMode: 'HTML', replyMarkup: leaderboardKeyboard(active) });
+  const sent = await sendPhoto(message.chat.id, LEADERBOARD_IMAGE, text, {
+    parseMode: 'HTML', replyMarkup: leaderboardKeyboard(active),
+  });
+  if (!sent) await replyText(message, text, { parseMode: 'HTML', replyMarkup: leaderboardKeyboard(active) });
 }
 
 // ── Shadow Word Guess ───────────────────────────
@@ -359,17 +365,20 @@ async function shadowBoard(chatId = null) {
 async function cmdRanking(message, isPrivate, chatId) {
   if (isPrivate) { await replyText(message, `${E.WARNING} Use this command in a group chat.`, { parseMode: 'HTML' }); return; }
   const text = await shadowRankingText(chatId);
-  await replyText(message, text, { parseMode: 'HTML', replyMarkup: rankingKeyboard() });
+  const sent = await sendPhoto(message.chat.id, LEADERBOARD_IMAGE, text, { parseMode: 'HTML', replyMarkup: rankingKeyboard() });
+  if (!sent) await replyText(message, text, { parseMode: 'HTML', replyMarkup: rankingKeyboard() });
 }
 
 async function cmdGlobalRanking(message) {
   const text = await shadowRankingText();
-  await replyText(message, text, { parseMode: 'HTML', replyMarkup: rankingKeyboard() });
+  const sent = await sendPhoto(message.chat.id, LEADERBOARD_IMAGE, text, { parseMode: 'HTML', replyMarkup: rankingKeyboard() });
+  if (!sent) await replyText(message, text, { parseMode: 'HTML', replyMarkup: rankingKeyboard() });
 }
 
 async function cmdMystats(message, userId, user) {
   const text = await mystatsText(userId, user.first_name || 'Unknown');
-  await replyText(message, text, { parseMode: 'HTML', replyMarkup: rankingKeyboard() });
+  const sent = await sendPhoto(message.chat.id, LEADERBOARD_IMAGE, text, { parseMode: 'HTML', replyMarkup: rankingKeyboard() });
+  if (!sent) await replyText(message, text, { parseMode: 'HTML', replyMarkup: rankingKeyboard() });
 }
 
 async function cmdResetData(message, userId) {
