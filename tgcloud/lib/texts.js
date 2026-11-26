@@ -2,28 +2,25 @@
 import { E } from './emojis.js';
 
 export const URL_ADD_TO_GROUP = (username) => `https://t.me/${username}?startgroup=true`;
-export const URL_OWNER = 'https://t.me/Xeczt';
+export const URL_OWNER = 'https://t.me/NonchalantDev';
 export const URL_UPDATES = 'https://t.me/ShadowBotsHQ';
-export const URL_DISCUSSION = 'https://t.me/keczt';
+export const URL_DISCUSSION = 'https://t.me/GamesComplex';
 
 export const BOT_DESCRIPTION =
-  'Three exciting games for your group chats:\n\n' +
-  '<b>Word Guess</b> — one player explains the secret word, the others guess it.\n' +
-  '<b>WordSeek</b> — guess the hidden word in 30 tries with color hints (like Wordle). ' +
-  'Play the <b>Daily WordSeek</b> in private for streaks!\n' +
-  '<b>UNO</b> — the classic card game, right in your chat with inline cards and fast mode.\n\n' +
-  'Add me to your group and start playing with your friends.';
+  'Bring the fun to your group with <b>5 exciting games!</b>\n\n' +
+  `${E.GAME} <b>Word Guess</b> • ${E.TROPHY} <b>WordSeek</b> • ${E.SPARKLE} <b>UNO</b>\n` +
+  `${E.CROWN} <b>Chess</b> • ${E.PLAY} <b>Ludo</b>\n\n` +
+  'Challenge your friends, compete and enjoy!\n\n' +
+  `${E.ADD} Add me to your group and start playing.`;
 
 export const BOT_DESCRIPTION_PLAIN =
-  'Three exciting games for your group chats:\n\n' +
-  'Word Guess — one player explains the secret word, the others guess it.\n' +
-  'WordSeek — guess the hidden word in 30 tries with color hints (like Wordle). ' +
-  'Play the Daily WordSeek in private for streaks!\n' +
-  'UNO — the classic card game, right in your chat with inline cards and fast mode.\n\n' +
-  'Add me to your group and start playing with your friends.';
+  'Bring the fun to your group with 5 exciting games!\n\n' +
+  'Word Guess • WordSeek • UNO\nChess • Ludo\n\n' +
+  'Challenge your friends, compete and enjoy!\n\n' +
+  'Add me to your group and start playing.';
 
-export const START_TITLE_LINE = (fire, username) => `${fire} ${username}`;
-export const START_HINT_LINE = (arrow) => `${arrow} /help for the full command list.`;
+export const START_TITLE_LINE = (fire, username) => `${fire} <b>${username}</b>`;
+export const START_HINT_LINE = (arrow) => `${arrow} /help for all commands.`;
 export const START_TEXT = (fire, username, description, arrow) =>
   START_TITLE_LINE(fire, username) + '\n' + description + '\n\n' + START_HINT_LINE(arrow);
 export const START_TEXT_PLAIN = (username, descriptionPlain) =>
