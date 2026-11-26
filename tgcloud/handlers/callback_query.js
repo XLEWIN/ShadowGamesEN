@@ -15,6 +15,10 @@ import {
 import { mention } from '../lib/texts.js';
 import { handleUnoCallback } from '../lib/uno_cmds.js';
 import { handleLobbyCallback } from '../lib/lobby_actions.js';
+import {
+  leaderboardText, shadowRankingText, mystatsText,
+  leaderboardKeyboard, rankingKeyboard,
+} from '../lib/boards.js';
 
 configurePipeline({ api, chatId: -1003884436085 });
 
@@ -35,6 +39,10 @@ export default async function (query, ctx) {
     }
     if (data.startsWith('mm:') || data.startsWith('uno:')) {
       await handleUnoCallback(query, ctx);
+      return;
+    }
+    if (data.startsWith('board:')) {
+      await handleBoardCallback(query, data.slice(6));
       return;
     }
     if (data.startsWith('ws:')) {
@@ -133,6 +141,39 @@ export default async function (query, ctx) {
   }
 }
 
+async function handleBoardCallback(query, action) {
+  const chatId = query.message?.chat?.id;
+  const user = query.from;
+  let text;
+  let markup;
+  if (['chat', 'global', 'week', '4', '5', '6'].includes(action)) {
+    const opts = {
+      global: action === 'global',
+      week: action === 'week',
+      length: ['4', '5', '6'].includes(action) ? action : null,
+    };
+    text = await leaderboardText(chatId, opts);
+    const active = {
+      chat: action === 'chat', global: action === 'global', week: action === 'week',
+      ...(opts.length ? { [opts.length]: true } : {}),
+    };
+    markup = leaderboardKeyboard(active);
+  } else if (action === 'shadow') {
+    text = await shadowRankingText(chatId);
+    markup = rankingKeyboard();
+  } else if (action === 'mystats') {
+    text = await mystatsText(user?.id, user?.first_name || 'Player');
+    markup = rankingKeyboard();
+  } else {
+    await answerCallbackQuery(query.id);
+    return;
+  }
+  try {
+    await editText(chatId, query.message.message_id, text, { parseMode: 'HTML', replyMarkup: markup });
+  } catch (e) { /* message may be gone */ }
+  await answerCallbackQuery(query.id);
+}
+
 async function handleGlobalRanking(query) {
   const players = await db.select().from(gamePlayers).all();
   const totals = new Map();
@@ -151,6 +192,6 @@ async function handleGlobalRanking(query) {
   board.forEach((p, i) => {
     text += `${medals[i] || `${i + 1}.`} <b>${escapeHtml(p.name)}</b>\n   ${E.TROPHY} ${p.score} Xeons · ${E.GAME} ${p.words} words\n\n`;
   });
-  await editText(query.message.chat.id, query.message.message_id, text, { parseMode: 'HTML' });
+  await editText(query.message.chat.id, query.message.message_id, text, { parseMode: 'HTML', replyMarkup: rankingKeyboard() });
   await answerCallbackQuery(query.id);
 }
