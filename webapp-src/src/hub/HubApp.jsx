@@ -148,7 +148,12 @@ export default function HubApp() {
         const game = watching ? parts[1] : parts[0];
         const code = normalizeRoomCode(watching ? parts[2] : parts[1]);
         if (!['ludo', 'chess'].includes(game) || !/^[A-Z0-9]{5}$/.test(code)) return;
-        const go = (spectate) => { window.location.href = roomPageUrl(game, code, spectate); };
+        const go = (spectate) => {
+          const target = game === 'chess' && !spectate
+            ? `./chess/?join=${encodeURIComponent(code)}`
+            : roomPageUrl(game, code, spectate);
+          window.location.href = target;
+        };
         if (watching) { callServer('lobbySpectate', { code }); go(true); return; }
         const joined = await Promise.race([
           callServer('lobbyJoin', { code, game }),

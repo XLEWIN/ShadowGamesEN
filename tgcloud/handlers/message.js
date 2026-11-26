@@ -21,7 +21,7 @@ import {
 } from '../lib/texts.js';
 import {
   userStartedBot, gbannedUsers, games, gamePlayers,
-  wsDailyWords, wsDailyGuesses, wsLeaderboard, wsUsers,
+  wsDailyWords, wsDailyGuesses, wsLeaderboard, wsUsers, wsUserStats,
 } from '../schema.js';
 import {
   VALID_WORD_RE, MAX_REGULAR_GUESSES, MAX_DAILY_ATTEMPTS, MODE_LABEL, getFeedback, toFancyText,
@@ -35,6 +35,7 @@ import {
 import { getWordOfTheDay, getGameDate } from '../lib/daily.js';
 import { handleAdminCommand } from '../lib/admin.js';
 import { handleUnoCommand } from '../lib/uno_cmds.js';
+import { buildHelpBlocks, helpHtml } from '../lib/helpmenu.js';
 import {
   leaderboardText, shadowRankingText, mystatsText,
   leaderboardKeyboard, rankingKeyboard,
@@ -203,17 +204,9 @@ async function cmdSettings(message, isPrivate) {
 }
 
 async function cmdHelp(message, isPrivate) {
-  const blocks = [
-    heading(htmlToRich(`${E.INFO} Shadow Games — Commands`), 2),
-    paragraph(htmlToRich(HELP_TEXT.replace(`${E.INFO} <b>Shadow Games — Commands</b>\n${E.BULLET}\n\n`, ''))),
-    divider(),
-    buttonsBlock([
-      button('All Games', { url: HUB_URL, style: 'primary', icon: E.GAME }),
-      button('Ludo', { url: LUDO_URL, icon: E.PLAY }),
-    ], 'center'),
-  ];
+  const blocks = buildHelpBlocks();
   await sendWithFallback(chatIdOf(message), blocks, {
-    fallback: async () => { await replyText(message, HELP_TEXT, { parseMode: 'HTML' }); return true; },
+    fallback: async () => { await replyText(message, helpHtml(), { parseMode: 'HTML' }); return true; },
   });
 }
 

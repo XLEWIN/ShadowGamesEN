@@ -63,6 +63,8 @@ export default function ChessApp() {
   const [sessionDead, setSessionDead] = useState(false);
   const sfx = useRef(createSfx());
   const onlineRef = useRef(null);
+  const joinFlowRef = useRef(false);
+  const joinCodeRef = useRef(null);
   const lastTapRef = useRef({ t: 0, square: '' });
   const G = useRef(freshState());
   const bump = () => setTick(t => t + 1);
@@ -76,7 +78,25 @@ export default function ChessApp() {
   useEffect(() => {
     let alive = true;
     (async () => {
-      const room = (new URLSearchParams(window.location.search).get('room') || '').trim().toUpperCase();
+      const qs = new URLSearchParams(window.location.search);
+      const join = (qs.get('join') || '').trim().toUpperCase();
+      const room = (qs.get('room') || '').trim().toUpperCase();
+
+      if (/^[A-Z0-9]{5}$/.test(join)) {
+        joinFlowRef.current = true;
+        joinCodeRef.current = join;
+        setScreen('lobby');
+        const state = await callServer('lobbyState', { code: join });
+        if (!alive) return;
+        if (state && (state.status === 'expired' || state.ok === false)) { setSessionDead(true); return; }
+        const cfg = state.config || {};
+        setRoomClock({ seconds: cfg.seconds || 300, inc: cfg.inc ?? 3 });
+        const isFirst = !state || (state.players || []).length <= 1;
+        if (isFirst) { createRoom(join); setScreen('lobby'); }
+        else { joinRoom(join); setScreen('lobby'); }
+        return;
+      }
+
       if (!/^[A-Z0-9]{5}$/.test(room)) return;
       setScreen('online');
       if ((await sessionState(room)) === 'expired') { if (alive) setSessionDead(true); return; }
@@ -93,9 +113,10 @@ export default function ChessApp() {
 
   // Keep checking while waiting in the room; expire the session if it lapses.
   useEffect(() => {
-    if (screen !== 'room') return;
-    const code = (new URLSearchParams(window.location.search).get('room') || '').toUpperCase();
-    if (!code) return;
+    if (screen !== 'room' && screen !== 'lobby') return;
+    const qs = new URLSearchParams(window.location.search);
+    const code = ((qs.get('join') || qs.get('room') || '')).toUpperCase();
+    if (!/^[A-Z0-9]{5}$/.test(code)) return;
     const id = setInterval(async () => {
       if ((await sessionState(code)) === 'expired') setSessionDead(true);
     }, 15000);
@@ -436,7 +457,9 @@ export default function ChessApp() {
       o.conn = conn;
       conn._name = String(data.name || 'Opponent').slice(0, 24);
       conn._photo = data.photo || null;
-      refreshLobby(); return;
+      refreshLobby();
+      if (joinFlowRef.current) startJoinedGame(); // 2nd player joined — start now
+      return;
     }
     if (data.type === 'move' && !G.current.over) {
       const move = { from: data.from, to: data.to, promotion: data.promotion };
@@ -475,7 +498,11 @@ export default function ChessApp() {
         callServer('lobbyJoin', { code });
       });
       conn.on('data', d => {
-        if (d.type === 'room') { onlineRef.current.players = d.players; setScreen('room'); bump(); }
+        if (d.type === 'room') {
+          onlineRef.current.players = d.players;
+          if (!joinFlowRef.current) setScreen('room');
+          bump();
+        }
         else if (d.type === 'start') {
           onlineRef.current.started = true;
           onlineRef.current.myColor = 'b';
@@ -486,7 +513,7 @@ export default function ChessApp() {
         else if (d.type === 'illegal') setToast('Illegal move');
       });
       conn.on('close', () => { setToast('Host disconnected.'); setScreen('menu'); });
-      setScreen('room');
+      if (!joinFlowRef.current) setScreen('room');
     });
     peer.on('error', (err) => {
       if (err?.type === 'peer-unavailable') {
@@ -497,6 +524,20 @@ export default function ChessApp() {
       }
       setToast('Connection failed — is the code right?');
     });
+  }
+
+  function startJoinedGame() {
+    const o = onlineRef.current;
+    if (!o || o.started) return;
+    const names = o.players.map(p => p.name);
+    const { seconds, inc } = roomClock;
+    o.started = true;
+    try { o.conn?.send({ type: 'start', players: names.map(n => ({ name: n })), clockSeconds: seconds, inc }); } catch (e) { /* ignore */ }
+    startMatch(o.players.map((p, i) => ({
+      name: p.name, photo: p.photo || null, color: i === 0 ? 'w' : 'b',
+      isBot: false, isLocal: i === 0, isRemote: i !== 0, avatar: AVATARS.you,
+    })), 'online', { seconds, inc }, 'w');
+    setScreen('game');
   }
 
   function resetOnlineMatch() {
@@ -607,7 +648,11 @@ export default function ChessApp() {
           <div className="flex flex-col gap-3 w-full mt-2">
             <button className="btn btn-gold py-[17px] text-[17px] w-full" onClick={() => { haptic(); setScreen('setup-ai'); }}>🤖 PLAY VS AI</button>
             <button className="btn btn-dark py-[17px] text-[17px] w-full" onClick={() => { haptic(); setScreen('setup-local'); }}>👥 PLAY 1V1</button>
-            <button className="btn btn-dark py-[17px] text-[17px] w-full" onClick={() => { haptic(); setScreen('online'); }}>➕ ONLINE ROOM</button>
+            <button className="btn btn-dark py-[17px] text-[17px] w-full" onClick={() => {
+              haptic();
+              const code = makeRoomCode();
+              window.location.href = `./?startapp=chess-${code}`;
+            }}>➕ CREATE GAME</button>
           </div>
           <div className="text-[#a99e86] text-[11px] mt-2 flex gap-2 items-center">
             <a className="text-[#e3b75b] font-bold no-underline" href="../index.html">← All Games</a><span className="opacity-50">•</span>
@@ -680,6 +725,31 @@ export default function ChessApp() {
       </SetupShell>
     );
   }
+  if (screen === 'lobby') {
+    const code = joinCodeRef.current || new URLSearchParams(window.location.search).get('join') || '';
+    const setClock = (seconds, inc) => {
+      setRoomClock({ seconds, inc });
+      if (code) callServer('lobbyConfig', { code, seconds, inc });
+    };
+    return (
+      <SetupShell title="Game ready" onBack={() => setScreen('menu')}>
+        <div className="text-[11px] tracking-[2px] text-[#a99e86]">INVITE CODE</div>
+        <div className="text-[38px] font-black tracking-[14px] text-[#ffd97a]">{code || '·····'}</div>
+        <label className="text-[#a99e86] text-[10px] tracking-[3px] font-bold">TIME CONTROL (first player sets it)</label>
+        <div id="seg-time-lobby" className="flex flex-wrap gap-2">
+          {[[60, 0, '1+0'], [180, 0, '3+0'], [180, 2, '3+2'], [300, 3, '5+3'], [600, 0, '10+0'], [600, 5, '10+5']].map(([secs, inc, label]) => (
+            <SegBtn key={label} selected={roomClock.seconds === secs && roomClock.inc === inc}
+              onClick={() => setClock(secs, inc)}>{label}</SegBtn>
+          ))}
+        </div>
+        <div className="text-[12px] text-[#a99e86]">Waiting for the second player — the game starts automatically.</div>
+        <button className="btn btn-gold w-full py-3 text-[13px]" onClick={() => {
+          if (!inviteFriends('chess', code)) setToast('Open Telegram to invite a friend.');
+        }}>🔗 Invite a friend</button>
+      </SetupShell>
+    );
+  }
+
   if (screen === 'room') {
     const o = onlineRef.current;
     const players = o?.players || [{ name: tgName() || 'You' }];

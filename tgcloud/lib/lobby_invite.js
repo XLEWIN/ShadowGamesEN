@@ -14,8 +14,10 @@ export function inviteArticle(game, user, code = null, full = false) {
     id: `invite-${game}-${code}`,
     title: `Shadow Games · ${game.toUpperCase()}${full ? ' (Full)' : ''}`,
     description: full
-      ? 'This table is full — tap to watch the match live'
-      : 'VS FRIEND challenge — open the table and invite players',
+      ? 'This game is full — tap to watch live'
+      : game === 'chess'
+        ? 'First player sets the clock · second player starts the game'
+        : 'VS FRIEND challenge — open the table and invite players',
     thumbnail_url: gameIcon(game),
     input_message_content: {
       message_text:
