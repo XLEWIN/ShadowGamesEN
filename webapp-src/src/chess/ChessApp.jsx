@@ -89,10 +89,17 @@ export default function ChessApp() {
         setScreen('lobby');
         const state = await callServer('lobbyState', { code: join });
         if (!alive) return;
-        if (state && (state.status === 'expired' || state.ok === false)) { setSessionDead(true); return; }
+        if (state?.status === 'expired') { setSessionDead(true); return; }
+        // A full table becomes a spectator, never a second player/host.
+        if (state?.ok && !state.youAreHost && (state.playerCount || 0) >= (state.maxPlayers || 2)) {
+          window.location.href = `./?spectate=${encodeURIComponent(join)}`;
+          return;
+        }
         const cfg = state?.config || {};
         setRoomClock({ seconds: cfg.seconds || 300, inc: cfg.inc ?? 3 });
-        const isFirst = !state || (state.players || []).length <= 1;
+        // Slot 1 is the host. With no lobby yet the opener becomes host.
+        // Never decide by player count alone — that made the 2nd player a host.
+        const isFirst = !state?.ok || state.youAreHost === true;
         if (isFirst) { createRoom(join); setScreen('lobby'); }
         else { joinRoom(join); setScreen('lobby'); }
         return;
@@ -521,7 +528,8 @@ export default function ChessApp() {
           onlineRef.current.started = true;
           onlineRef.current.myColor = 'b';
           const players = d.players.map((p, i) => ({ color: i === 0 ? 'w' : 'b', name: p.name, photo: p.photo || null, isLocal: i === 1, isRemote: i === 0, avatar: AVATARS.you }));
-          startMatch(players, 'online', { seconds: d.clockSeconds || 300, inc: d.inc || 3 }, 'b');
+          // Use the host's exact clock — never coerce a 0 increment to 3.
+          startMatch(players, 'online', { seconds: d.clockSeconds || 300, inc: d.inc ?? 3 }, 'b');
         }
         else if (d.type === 'state') applyRemoteState(d);
         else if (d.type === 'illegal') setToast('Illegal move');
@@ -543,7 +551,7 @@ export default function ChessApp() {
   // First player sits at the board with the clock idle until opponent joins.
   function showWaitingBoard(spec) {
     const o = onlineRef.current;
-    if (!o || waitingShownRef.current) return;
+    if (!o || !o.isHost || waitingShownRef.current) return; // only the host waits at the board
     waitingShownRef.current = true;
     const clock = spec || roomClock;
     o.started = false;
@@ -576,7 +584,7 @@ export default function ChessApp() {
 
   function resetOnlineMatch() {
     const clockSeconds = Math.round(G.current.clock.w) || 300;
-    const inc = G.current.clock.inc || 3;
+    const inc = G.current.clock.inc ?? 3;
     const prevPlayers = G.current.players;
     G.current = freshState();
     G.current.mode = 'online';

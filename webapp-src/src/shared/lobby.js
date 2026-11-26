@@ -37,7 +37,10 @@ export async function sessionState(code) {
     new Promise((resolve) => setTimeout(() => resolve(undefined), 2500)),
   ]);
   if (!state) return 'unknown';
-  if (!state.ok || state.status === 'expired' || state.status === 'ended') return 'expired';
+  // "Room not found" is a fresh invite the host has not created yet — not an
+  // expiry. Only an explicit expired/ended status means the session is dead.
+  if (state.status === 'expired' || state.status === 'ended') return 'expired';
+  if (state.ok === false && state.error && !/not found/i.test(state.error)) return 'expired';
   return 'alive';
 }
 
