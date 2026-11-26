@@ -71,7 +71,7 @@ function LudoPreview() {
       {yards.map(([color, area]) => (
         <div key={color} className={`sg-preview-yard yard-${color}`} style={{ gridArea: area }}>
           {[[1, 1], [1, 4], [4, 1], [4, 4]].map(([r, c], i) => (
-            <img key={i} src={`./ludo/assets/pieces_${color}.svg`} alt=""
+            <img key={i} src={`./ludo/assets/pieces_${color}.webp`} alt=""
               className="sg-yard-token" style={{ gridRow: r, gridColumn: c }} />
           ))}
         </div>

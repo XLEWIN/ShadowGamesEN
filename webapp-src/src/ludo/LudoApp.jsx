@@ -13,7 +13,7 @@ import SpectateView from '../shared/SpectateView.jsx';
 const AVATARS = { red: 'assets/petey.webp', yellow: 'assets/bomby.webp', green: 'assets/bruno.webp', blue: 'assets/bulby.webp' };
 const avatarFor = (p) => (p && p.photo) ? p.photo : ((p && p.isBot) ? (AVATARS[p.color] || 'assets/guest.webp') : 'assets/guest.webp');
 const PIP_LAYOUTS = { 1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] };
-const PIECES = { red: 'assets/pieces_red.svg', blue: 'assets/pieces_blue.svg', green: 'assets/pieces_green.svg', yellow: 'assets/pieces_yellow.svg' };
+const PIECES = { red: 'assets/pieces_red.webp', blue: 'assets/pieces_blue.webp', green: 'assets/pieces_green.webp', yellow: 'assets/pieces_yellow.webp' };
 
 /* ── Board cells (module-scope, computed once) ─────────────── */
 const CELLS = (() => {
