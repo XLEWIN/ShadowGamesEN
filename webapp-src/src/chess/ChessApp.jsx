@@ -65,6 +65,7 @@ export default function ChessApp() {
   const onlineRef = useRef(null);
   const joinFlowRef = useRef(false);
   const joinCodeRef = useRef(null);
+  const waitingShownRef = useRef(false);
   const lastTapRef = useRef({ t: 0, square: '' });
   const G = useRef(freshState());
   const bump = () => setTick(t => t + 1);
@@ -89,7 +90,7 @@ export default function ChessApp() {
         const state = await callServer('lobbyState', { code: join });
         if (!alive) return;
         if (state && (state.status === 'expired' || state.ok === false)) { setSessionDead(true); return; }
-        const cfg = state.config || {};
+        const cfg = state?.config || {};
         setRoomClock({ seconds: cfg.seconds || 300, inc: cfg.inc ?? 3 });
         const isFirst = !state || (state.players || []).length <= 1;
         if (isFirst) { createRoom(join); setScreen('lobby'); }
@@ -121,6 +122,14 @@ export default function ChessApp() {
       if ((await sessionState(code)) === 'expired') setSessionDead(true);
     }, 15000);
     return () => clearInterval(id);
+  }, [screen]);
+
+  // Choose the default clock automatically; tapping a mode also moves to the board.
+  useEffect(() => {
+    if (screen !== 'lobby') return;
+    const t = setTimeout(() => showWaitingBoard(roomClock), 1800);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [screen]);
 
   useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(''), 2600); return () => clearTimeout(t); }, [toast]);
@@ -227,6 +236,9 @@ export default function ChessApp() {
   function tapSquare(square) {
     if (suppressClickRef.current) { suppressClickRef.current = false; return; }
     if (G.current.over || spectate) return;
+    if (G.current.mode === 'online' && G.current.players.length < 2) {
+      setToast('Waiting for the second player.'); return;
+    }
     const p = G.current.players.find(p => p.isLocal);
     if (G.current.mode !== 'local' && !p) return;
     if (G.current.mode !== 'local' && p && p.color !== G.current.game.turn()) return;
@@ -309,6 +321,7 @@ export default function ChessApp() {
 
   function dropMove(from, to) {
     if (G.current.over || spectate) return;
+    if (G.current.mode === 'online' && G.current.players.length < 2) { setToast('Waiting for the second player.'); return; }
     const me = G.current.players.find(p => p.isLocal);
     const myTurn = G.current.mode === 'local' || (me && me.color === G.current.game.turn());
     if (myTurn) attemptMove(from, to);
@@ -320,6 +333,7 @@ export default function ChessApp() {
 
   function startDrag(e, square, color) {
     if (G.current.over || spectate) return;
+    if (G.current.mode === 'online' && G.current.players.length < 2) return;
     const me = G.current.players.find(p => p.isLocal);
     if (G.current.mode !== 'local' && (!me || me.color !== color)) return;
     e.preventDefault();
@@ -526,6 +540,26 @@ export default function ChessApp() {
     });
   }
 
+  // First player sits at the board with the clock idle until opponent joins.
+  function showWaitingBoard(spec) {
+    const o = onlineRef.current;
+    if (!o || waitingShownRef.current) return;
+    waitingShownRef.current = true;
+    const clock = spec || roomClock;
+    o.started = false;
+    G.current = {
+      ...freshState(), mode: 'online', orientation: 'w',
+      players: [{
+        name: o.players[0]?.name || tgName() || 'You',
+        photo: o.players[0]?.photo || null, color: 'w',
+        isBot: false, isLocal: true, isRemote: false, avatar: AVATARS.you,
+      }],
+      clock: { w: clock.seconds, b: clock.seconds, inc: clock.inc, active: false, last: performance.now() },
+    };
+    setScreen('game');
+    bump();
+  }
+
   function startJoinedGame() {
     const o = onlineRef.current;
     if (!o || o.started) return;
@@ -730,6 +764,7 @@ export default function ChessApp() {
     const setClock = (seconds, inc) => {
       setRoomClock({ seconds, inc });
       if (code) callServer('lobbyConfig', { code, seconds, inc });
+      showWaitingBoard({ seconds, inc });
     };
     return (
       <SetupShell title="Game ready" onBack={() => setScreen('menu')}>
@@ -824,7 +859,7 @@ export default function ChessApp() {
         <div className="flex flex-col items-center gap-1">
           <div className={`turn-pill flex items-center gap-2.5 rounded-full px-5 py-2.5 text-[12px] font-extrabold tracking-[2px] ${turnColor === 'b' ? 'text-[#8fd0ff]' : ''}`}>
             <span className="w-3 h-3 rounded-full bg-[#f2ead9]" />
-            {g.over ? 'GAME OVER' : `${turnColor === 'w' ? 'WHITE' : 'BLACK'} TO MOVE`}
+            {g.over ? 'GAME OVER' : (g.players.length < 2 ? 'WAITING FOR OPPONENT' : `${turnColor === 'w' ? 'WHITE' : 'BLACK'} TO MOVE`)}
           </div>
           <div className="chess-mobile-clocks flex gap-2">
             {g.players.map((p) => (
