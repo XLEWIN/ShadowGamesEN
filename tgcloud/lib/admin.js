@@ -4,21 +4,25 @@ import { db, eq, and, sql, asc, desc } from 'sdk/db';
 import { getState, setState, deleteState } from './db.js';
 import { escapeHtml } from './msg.js';
 import { E, plain } from './emojis.js';
-import { OWNER_ID } from './texts.js';
+import { isAdmin } from './auth.js';
+import { safeId, safeInt, safeText } from './guard.js';
 import {
   wsChatGameTopics, wsAuthorizedUsers, wsTracking, wsBroadcastChats,
   wsBroadcastState, wsUsers, wsLeaderboard, gbannedUsers,
 } from '../schema.js';
 
-const ownerGate = (uid) => Number(uid) === OWNER_ID || Number(uid) === 8301883098;
+const ownerGate = isAdmin;
 const topicId = (m) => m.message_thread_id ? String(m.message_thread_id) : 'general';
 
 export async function handleAdminCommand(command, args, message, ctx) {
-  const uid = message.from?.id;
+  const uid = safeId(message.from?.id);
   const chat = message.chat;
   const isPrivate = chat?.type === 'private';
-  const argParts = (args || '').trim().split(/\s+/).filter(Boolean);
+  const argParts = safeText(args, 200).trim().split(/\s+/).filter(Boolean);
   const reply = (text, markup) => ctx.reply(text, markup);
+
+  // Privileged commands are whitelist-only — no fallback to "any group user".
+  if (!ownerGate(uid)) return reply(`${E.LOCK} This command is owner/admin only.`, { parseMode: 'HTML' });
 
   switch (command) {
     // ── Group admin: topic settings ────────────────────────

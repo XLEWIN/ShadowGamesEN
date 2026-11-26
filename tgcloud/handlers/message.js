@@ -43,20 +43,26 @@ import {
   createLobby, getLobby, getOpenLobby, joinLobby, addSpectator,
   inviteText, lobbyKeyboard, roomUrl, saveLobby, parseStartPayload,
 } from '../lib/lobby.js';
+import { safeText, safeId, safeInt, safeWord, WORD_RE } from '../lib/guard.js';
+import { throttleCommand, throttle } from '../lib/ratelimit.js';
+import { isAdmin } from '../lib/auth.js';
+import { tryLock, unlock } from '../lib/lock.js';
 
 configurePipeline({ api, chatId: LOG_CHANNEL_ID });
 
-const isOwner = (uid) => Number(uid) === OWNER_ID || Number(uid) === 8301883098;
+const isOwner = isAdmin;
 const chatIdOf = (m) => m.chat.id;
 
 export default async function (message, ctx) {
-  if (isRetryUpdate(ctx)) return;
+  if (await isRetryUpdate(ctx)) return;
   try {
     if (!message?.chat || !message.from || message.from.is_bot) return;
     const chat = message.chat;
     const user = message.from;
-    const chatId = chat.id;
-    const userId = user.id;
+    const chatId = safeId(chat.id);
+    const userId = safeId(user.id);
+    if (chatId === null || userId === null) return;
+    const text = safeText(message.text, 4096);
     const isPrivate = chat.type === 'private';
 
     if (await isGbanned(userId)) {
@@ -64,10 +70,15 @@ export default async function (message, ctx) {
       return;
     }
 
-    const parsed = parseCommand(message.text, BOT_USERNAME);
+    const parsed = parseCommand(text, BOT_USERNAME);
     if (!parsed) {
-      if (isPrivate) await handlePrivateText(message);
-      else await handleGroupText(message);
+      if (!(await throttle('text', userId))) return; // silent for plain chatter
+      if (isPrivate) await handlePrivateText(message, text, userId);
+      else await handleGroupText(message, text, userId);
+      return;
+    }
+    if (!(await throttleCommand(userId))) {
+      await replyText(message, `${E.WARNING} Too many commands — please slow down.`, { parseMode: 'HTML' });
       return;
     }
     const { command, args } = parsed;
@@ -76,6 +87,7 @@ export default async function (message, ctx) {
       case 'help': await cmdHelp(message, isPrivate); break;
       case 'rules': await cmdRules(message); break;
       case 'id': await cmdId(message); break;
+      case 'settings': await cmdSettings(message, isPrivate); break;
       case 'challenge': case 'invite': case 'sansad': await cmdChallenge(message, args, isPrivate, user); break;
       case 'ludo': await cmdWebApp(message, 'Ludo', 'Play vs AI, 1v1 or online rooms', LUDO_URL); break;
       case 'chess': await cmdWebApp(message, 'Chess', 'Real rules — vs AI, 1v1, online rooms with clocks', CHESS_URL); break;
@@ -178,6 +190,18 @@ async function handleLobbyDeepLink(message, userId, user, target) {
     });
 }
 
+async function cmdSettings(message, isPrivate) {
+  if (!isPrivate) { await replyText(message, `${E.INFO} Open my DM to see your settings.`, { parseMode: 'HTML' }); return; }
+  const admin = isAdmin(message.from?.id) ? `${E.CHECK} Yes` : `${E.INFO} No`;
+  const text = `${E.SETTINGS} <b>Your Settings</b>\n${E.BULLET}\n\n` +
+    `${E.INFO} <b>Admin access:</b> ${admin}\n` +
+    `${E.GAME} <b>WordGuess:</b> /game · /stop\n` +
+    `${E.GAME} <b>WordSeek:</b> /new4 · /new5 · /new6 · /daily\n` +
+    `${E.GAME} <b>Mini Apps:</b> /ludo · /chess · /games\n\n` +
+    `${E.INFO} Use /help for the full command list.`;
+  await replyText(message, text, { parseMode: 'HTML' });
+}
+
 async function cmdHelp(message, isPrivate) {
   const blocks = [
     heading(htmlToRich(`${E.INFO} Shadow Games — Commands`), 2),
@@ -251,7 +275,7 @@ async function cmdNew(message, command, args, isPrivate) {
   if (isPrivate) { await replyText(message, `${E.WARNING} Use this command in a group chat.`, { parseMode: 'HTML' }); return; }
   const forced = { new4: 4, new5: 5, new6: 6 }[command] || null;
   const arg = (args || '').trim().split(/\s+/)[0];
-  const parsedLen = forced || (arg ? Number(arg) : 5);
+  const parsedLen = forced || (arg ? safeInt(arg, { min: 4, max: 6, fallback: 5 }) : 5);
   const length = [4, 5, 6].includes(parsedLen) ? parsedLen : 5;
   const chatId = String(message.chat.id);
   const topicId = message.message_thread_id ? String(message.message_thread_id) : 'general';
@@ -317,6 +341,10 @@ async function cmdLeaderboard(message, args) {
 // ── Shadow Word Guess ───────────────────────────
 async function cmdGame(message, chat, user, isPrivate, args) {
   if (isPrivate) { await replyText(message, `${E.WARNING} Use this command in a group chat.`, { parseMode: 'HTML' }); return; }
+  if (!isAdmin(user.id)) { await replyText(message, `${E.LOCK} Only an admin can start a Shadow Word game.`, { parseMode: 'HTML' }); return; }
+  const lockKey = `game:${chat.id}`;
+  if (!(await tryLock(lockKey))) return;
+  try {
   const existing = await getActiveGame(chat.id);
   if (existing) {
     await replyText(message, `${E.INFO} A game is already active in this chat.`, { parseMode: 'HTML', replyMarkup: buildKeyboard([[btnDanger('Stop Game', 'sgb:stop', EID.CROSS)]]) });
@@ -333,12 +361,22 @@ async function cmdGame(message, chat, user, isPrivate, args) {
     await reportHandlerError(e, { where: 'cmdGame' });
     await replyText(message, `${E.ERROR} Something went wrong. Please try again.`, { parseMode: 'HTML' });
   }
+  } finally { await unlock(lockKey); }
 }
 
 async function cmdStop(message, chat, user, isPrivate) {
   if (isPrivate) { await replyText(message, `${E.WARNING} Use this command in a group chat.`, { parseMode: 'HTML' }); return; }
+  const game = await getActiveGame(chat.id);
+  if (game && !isAdmin(user.id) && Number(game.currentLeaderId) !== Number(user.id)) {
+    await replyText(message, `${E.LOCK} Only the current leader or an admin can stop this game.`, { parseMode: 'HTML' });
+    return;
+  }
+  const lockKey = `game:${chat.id}`;
+  if (!(await tryLock(lockKey))) return;
+  try {
   const ok = await endGame(chat.id);
   await replyText(message, ok ? `${E.SUCCESS} Game stopped! Use /game to start a new game.` : `${E.INFO} No active game to stop.`, { parseMode: 'HTML' });
+  } finally { await unlock(lockKey); }
 }
 
 async function shadowBoard(chatId = null) {
@@ -387,9 +425,13 @@ async function cmdResetData(message, userId) {
 }
 
 // ── Text routing ────────────────────────────────
-async function handleGroupText(message) {
+async function handleGroupText(message, text, userId) {
+  const lockKey = `turn:${message.chat.id}`;
+  if (!(await tryLock(lockKey))) return; // another update is applying a turn
+  try {
   // Shadow Word Guess takes priority (leader's word is typed by participants)
-  const shadow = await handleShadowGuess(message.chat.id, message.from.id, message.from.first_name || 'Player', message.from.username, message.text || '');
+  const guess = safeText(text, 12).toLowerCase();
+  const shadow = await handleShadowGuess(message.chat.id, userId, safeText(message.from.first_name, 64) || 'Player', safeText(message.from.username, 32), guess);
   if (shadow) {
     if (shadow.wasLeader) {
       await replyText(message, `${E.DISAPPROVE} ${mention(message.from.id, shadow.winner_name)} guessed the word!\n\nNo winner this round.\nNo points were awarded.\n\n${E.INFO} A new leader must be selected.`, { parseMode: 'HTML', replyMarkup: buildKeyboard([[btnPrimary('Become Leader', 'sgb:volunteer', EID.USER)]]) });
@@ -398,22 +440,27 @@ async function handleGroupText(message) {
     }
     return;
   }
-  await handleWordSeekGuess(message);
+  await handleWordSeekGuess(message, guess);
+  } finally { await unlock(lockKey); }
 }
 
-async function handlePrivateText(message) {
-  const text = (message.text || '').trim();
-  if (!text || text.startsWith('/')) return;
-  const uid = String(message.from.id);
+async function handlePrivateText(message, text, userId) {
+  const clean = safeText(text, 12).trim();
+  if (!clean || clean.startsWith('/')) return;
+  const uid = String(userId);
   const daily = await getState(`daily:${uid}`);
   if (daily) {
-    await handleDailyGuess(message, text.toLowerCase(), daily);
+    const guess = safeWord(clean, 5);
+    if (!guess) { await replyText(message, `${E.ERROR} Enter a valid 5-letter word.`); return; }
+    await handleDailyGuess(message, guess, daily);
     return;
   }
   // Word-set workflow via bot_state
   const pending = await getState(`setword:${uid}`);
-  if (pending && text.length <= 50) {
-    const ok = await setCustomWord(pending.gameChatId, text.trim());
+  const word = safeWord(clean);
+  if (pending && word) {
+    const text = word.toUpperCase();
+    const ok = await setCustomWord(pending.gameChatId, word);
     await deleteState(`setword:${uid}`);
     if (ok) {
       await replyText(message, `${E.SUCCESS} Your word has been set to:\n\n<code>${escapeHtml(text.trim().toUpperCase())}</code>`, { parseMode: 'HTML' });
@@ -460,8 +507,8 @@ async function meaningLine(word) {
   return def ? `\n\n${E.INFO} <b>Meaning:</b> ${escapeHtml(def)}` : '';
 }
 
-async function handleWordSeekGuess(message) {
-  const text = (message.text || '').trim().toLowerCase();
+async function handleWordSeekGuess(message, rawText) {
+  const text = safeText(rawText, 12).trim().toLowerCase();
   if (!text || text.startsWith('/') || !VALID_WORD_RE.test(text)) return;
   const chatId = String(message.chat.id);
   const topicId = message.message_thread_id ? String(message.message_thread_id) : 'general';

@@ -19,17 +19,26 @@ import {
   leaderboardText, shadowRankingText, mystatsText,
   leaderboardKeyboard, rankingKeyboard,
 } from '../lib/boards.js';
+import { safeCallbackData, safeId, safeText } from '../lib/guard.js';
+import { throttleCallback } from '../lib/ratelimit.js';
+import { isAdmin } from '../lib/auth.js';
+import { tryLock, unlock } from '../lib/lock.js';
 
 configurePipeline({ api, chatId: -1003884436085 });
 
 export default async function (query, ctx) {
-  if (isRetryUpdate(ctx)) return;
+  if (await isRetryUpdate(ctx)) return;
   try {
-    if (!query?.data || !query.message) return;
-    const data = query.data;
+    if (!query?.id || !query.message) return;
+    const data = safeCallbackData(query.data);
     const user = query.from;
     const chat = query.message.chat;
-    if (!user || !chat) return;
+    const userId = safeId(user?.id);
+    if (!data || !user || !chat || userId === null) return;
+    if (!(await throttleCallback(userId))) {
+      await api.answerCallbackQuery({ callback_query_id: query.id, text: 'Too many taps — slow down.' });
+      return;
+    }
     const chatId = chat.id;
     const msgId = query.message.message_id;
 
@@ -56,6 +65,7 @@ export default async function (query, ctx) {
       if (chat.type !== 'group' && chat.type !== 'supergroup') { await answerCallbackQuery(query.id, 'Use in a group'); return; }
 
       if (action.startsWith('mode:')) {
+        if (!isAdmin(userId)) { await answerCallbackQuery(query.id, 'Admin only.', { showAlert: true }); return; }
         const category = action.slice(5);
         if (!['normal', 'fiction'].includes(category)) { await answerCallbackQuery(query.id, 'Invalid mode'); return; }
         const existing = await getActiveGame(chatId);
@@ -74,6 +84,9 @@ export default async function (query, ctx) {
 
       const game = await getActiveGame(chatId);
       if (!game) { await answerCallbackQuery(query.id, 'No active game in this chat.'); return; }
+      const lockKey = `game:${chatId}`;
+      if (!(await tryLock(lockKey))) { await answerCallbackQuery(query.id, 'Game is busy — try again.'); return; }
+      try {
       const isLeader = Number(user.id) === Number(game.currentLeaderId);
 
       switch (action) {
@@ -124,6 +137,7 @@ export default async function (query, ctx) {
         }
         default: await answerCallbackQuery(query.id, 'Unknown action.');
       }
+      } finally { await unlock(lockKey); }
       return;
     }
 

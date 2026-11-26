@@ -6,7 +6,7 @@ export const HANDLED_COMMANDS = new Set([
   'ranking', 'globalranking', 'chatranking', 'new', 'new4', 'new5', 'new6',
   'newword', 'newuno', 'startuno', 'join', 'leave', 'kill', 'kick', 'open',
   'close', 'skip', 'notifyme', 'notify_me', 'modes', 'unostats', 'end',
-  'daily', 'pausedaily', 'leaderboard', 'myscore', 'id', 'ludo', 'chess',
+  'daily', 'pausedaily', 'leaderboard', 'myscore', 'id', 'settings', 'ludo', 'chess',
   'games', 'setgametopic', 'unsetgametopic', 'allowonlylen', 'recreatetopic',
   'seekauth', 'resetdata', 'gban', 'ungban', 'ban', 'unban', 'transfer',
   'track', 'untrack', 'tracklist', 'broadcast', 'broadcast_status',

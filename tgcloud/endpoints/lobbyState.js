@@ -1,8 +1,11 @@
 // Live lobby state — used by the spectator view and room screens.
 import { getLobby } from '../lib/lobby.js';
+import { safeCode } from '../lib/guard.js';
 
 export default async function (input = {}) {
-  const lobby = await getLobby(input.code);
+  const code = safeCode(input.code);
+  if (!code) return { ok: false, error: 'Invalid room code.' };
+  const lobby = await getLobby(code);
   if (!lobby) return { ok: false, error: 'Room not found.' };
   return {
     ok: true, code: lobby.code, game: lobby.game,

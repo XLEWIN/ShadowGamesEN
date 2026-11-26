@@ -1,6 +1,8 @@
-// ── pipeline.js — error cards + update dedup ─────────────────
+// ── pipeline.js — error cards + cross-isolate update dedup ─────
 
 import { api } from 'sdk';
+import { db, eq } from 'sdk/db';
+import { botState } from '../schema.js';
 
 let _config = { api: null, chatId: null };
 
@@ -9,20 +11,17 @@ export function configurePipeline({ api: a, chatId }) {
   _config.chatId = chatId;
 }
 
-// Dedup by update_id (in-memory per isolate; for cross-isolate use bot_state)
-const _seen = new Set();
-const _seenCap = 2000;
-
-export function isRetryUpdate(ctx) {
-  const uid = ctx?.update?.update_id;
-  if (!uid) return false;
-  if (_seen.has(uid)) return true;
-  if (_seen.size >= _seenCap) {
-    // evict oldest (best-effort)
-    const first = _seen.values().next().value;
-    _seen.delete(first);
-  }
-  _seen.add(uid);
+// Cross-isolate dedup: the same update_id must never be processed twice.
+// A DB unique key is the lock, so concurrent isolates cannot both claim it.
+export async function isRetryUpdate(ctx) {
+  const uid = Number(ctx?.update?.update_id);
+  if (!Number.isSafeInteger(uid)) return false; // no id — don't block the update
+  const key = `upd:${uid}`;
+  const seen = await db.select().from(botState).where(eq(botState.key, key)).get();
+  if (seen) return true;
+  await db.insert(botState).values({
+    key, value: { seenAt: new Date().toISOString() }, updatedAt: new Date(),
+  }).onConflictDoNothing().run();
   return false;
 }
 

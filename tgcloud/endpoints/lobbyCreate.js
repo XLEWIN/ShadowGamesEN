@@ -1,20 +1,21 @@
 // Called by the Mini App host after a PeerJS room is created.
 import { getLobby, createLobby, saveLobby } from '../lib/lobby.js';
+import { safeCode, safeId, safeText, safeInt } from '../lib/guard.js';
 
 export default async function (input = {}, ctx = {}) {
   const user = ctx?.initData?.user;
-  if (!user) return { ok: false, error: 'Open this from Telegram.' };
-  const code = String(input.code || '').toUpperCase();
-  if (!/^[A-Z0-9]{5}$/.test(code)) return { ok: false, error: 'Invalid room code.' };
+  const userId = safeId(user?.id);
+  const code = safeCode(input.code);
+  if (!user || userId === null || !code) return { ok: false, error: 'Invalid room request.' };
   const game = input.game === 'ludo' ? 'ludo' : 'chess';
-  const maxPlayers = game === 'chess' ? 2 : ([2, 3, 4].includes(Number(input.maxPlayers)) ? Number(input.maxPlayers) : 4);
+  const maxPlayers = game === 'chess' ? 2 : safeInt(input.maxPlayers, { min: 2, max: 4, fallback: 4 });
 
   let lobby = await getLobby(code);
   if (!lobby) {
     lobby = await createLobby({
-      code, game, creatorId: user.id,
-      creatorName: user.first_name || user.username || 'Player',
-      creatorPhoto: user.photo_url || null,
+      code, game, creatorId: userId,
+      creatorName: safeText(user.first_name || user.username, 64) || 'Player',
+      creatorPhoto: safeText(user.photo_url, 300) || null,
       maxPlayers,
     });
   } else if (lobby.status === 'expired') {

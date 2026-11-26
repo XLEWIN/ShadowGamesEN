@@ -5,14 +5,19 @@ import { api } from 'sdk';
 import { configurePipeline, reportHandlerError, isRetryUpdate } from '../lib/pipeline.js';
 import { processChosenResult } from '../lib/uno_inline.js';
 import { LOG_CHANNEL_ID } from '../lib/texts.js';
+import { safeCallbackData, safeId } from '../lib/guard.js';
+import { throttle } from '../lib/ratelimit.js';
 
 configurePipeline({ api, chatId: LOG_CHANNEL_ID });
 
 export default async function (chosen, ctx) {
-  if (isRetryUpdate(ctx)) return;
+  if (await isRetryUpdate(ctx)) return;
   try {
-    if (!chosen?.from || !chosen.result_id) return;
-    await processChosenResult(chosen);
+    const userId = safeId(chosen?.from?.id);
+    const resultId = safeCallbackData(chosen?.result_id);
+    if (userId === null || !resultId) return;
+    if (!(await throttle('chosen', userId, { limit: 10, windowMs: 10_000 }))) return;
+    await processChosenResult({ ...chosen, result_id: resultId, from: { ...chosen.from, id: userId } });
   } catch (err) {
     await reportHandlerError(err, { where: 'handlers/chosen_inline_result', update: ctx?.update });
   }
