@@ -1,6 +1,6 @@
 // Callback actions for webapp lobby invites (join / spectate / open).
 import { api } from 'sdk';
-import { sendText, editText, editCaption, escapeHtml } from './msg.js';
+import { sendText, editText, escapeHtml } from './msg.js';
 import { E, plain } from './emojis.js';
 import { gameBoardUrl } from './texts.js';
 import { btnUrl, buildKeyboard } from './keyboards.js';
@@ -20,13 +20,10 @@ async function answer(query, text, alert = false) {
 }
 
 function openKeyboard(lobby, spectate = false) {
-  return buildKeyboard([
-    [btnUrl(
-      spectate ? 'Watch the table' : 'Open table',
-      startAppLink(lobby.game, lobby.code, spectate), undefined, 'primary',
-    )],
-    [btnUrl(`Open ${lobby.game.toUpperCase()} board`, gameBoardUrl(lobby.game), undefined, 'primary')],
-  ]);
+  return buildKeyboard([[btnUrl(
+    spectate ? 'Watch the table' : 'Open table',
+    startAppLink(lobby.game, lobby.code, spectate), undefined, 'primary',
+  )]]);
 }
 
 export async function handleLobbyCallback(query) {
@@ -114,17 +111,17 @@ async function joinAndNotify(query, lobby, user, chat) {
   // Update the posted invite so everyone sees the live roster.
   if (chat && lobby.messageId) {
     try {
-      // Invites are posted as board photos now — edit the caption, not text.
-      await editCaption(chat.id, lobby.messageId, inviteText(lobby, lobby.players[0]?.name || 'Player', lobby.players[0]?.userId || 0), {
-        parseMode: 'HTML', replyMarkup: lobbyKeyboard(lobby),
-      });
+      await editText(chat.id, lobby.messageId,
+        inviteText(lobby, lobby.players[0]?.name || 'Player', lobby.players[0]?.userId || 0) + `\n\n${gameBoardUrl(lobby.game)}`, {
+          parseMode: 'HTML', replyMarkup: lobbyKeyboard(lobby),
+        });
     } catch (e) { /* message may be gone */ }
   } else if (chat && !lobby.messageId) {
     try {
       await sendText(chat.id,
-        `${E.SUCCESS} ${escapeHtml(user.first_name || 'Player')} joined the <b>${lobby.game.toUpperCase()}</b> table · ${lobby.players.length}/${lobby.maxPlayers}\n` +
-        `<a href="${gameBoardUrl(lobby.game)}">Open ${lobby.game.toUpperCase()} board</a>`,
-        { parseMode: 'HTML', replyMarkup: lobbyKeyboard(lobby) });
+        `${E.SUCCESS} ${escapeHtml(user.first_name || 'Player')} joined the <b>${lobby.game.toUpperCase()}</b> table · ${lobby.players.length}/${lobby.maxPlayers}\n\n` +
+        gameBoardUrl(lobby.game),
+        { parseMode: 'HTML', replyMarkup: lobbyKeyboard(lobby), link_preview_options: { is_disabled: false } });
     } catch (e) { /* ignore */ }
   }
 
@@ -132,9 +129,9 @@ async function joinAndNotify(query, lobby, user, chat) {
   try {
     await sendText(user.id,
       `${E.GAME} <b>${lobby.game.toUpperCase()}</b> table <code>${escapeHtml(lobby.code)}</code>\n` +
-      `${E.INFO} ${lobby.players.length}/${lobby.maxPlayers} players · ${isFull(lobby) ? 'ready to start' : 'waiting for players'}\n` +
-      `<a href="${gameBoardUrl(lobby.game)}">Open ${lobby.game.toUpperCase()} board</a>`,
-      { parseMode: 'HTML', replyMarkup: openKeyboard(lobby) });
+      `${E.INFO} ${lobby.players.length}/${lobby.maxPlayers} players · ${isFull(lobby) ? 'ready to start' : 'waiting for players'}\n\n` +
+      gameBoardUrl(lobby.game),
+      { parseMode: 'HTML', replyMarkup: openKeyboard(lobby), link_preview_options: { is_disabled: false } });
   } catch (e) {
     await answer(query, `${E.INFO} Start the bot in DM to receive the room link.`, true);
   }
