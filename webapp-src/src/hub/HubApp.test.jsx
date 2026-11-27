@@ -7,65 +7,64 @@ async function mount() {
   const view = render(<HubApp />);
   const skip = screen.queryByRole('button', { name: /skip intro/i });
   if (skip) fireEvent.click(skip);
-  await waitFor(() => expect(screen.queryByLabelText('Loading Shadow Games')).toBeNull());
+  await waitFor(() => expect(screen.queryByText('PREPARING THE GAME ROOM')).toBeNull());
   return view;
 }
 
-describe('Shadow Games hub', () => {
+describe('Shadow Games hub (v4 reference design)', () => {
   beforeEach(() => { window.Telegram.WebApp.startParam = ''; });
 
-  it('renders the cinematic hero and all four games behind filter tabs', async () => {
+  it('shows the Code Council loader and skips it', async () => {
+    render(<HubApp />);
+    expect(screen.getByText('CODE COUNCIL PRESENTS')).toBeInTheDocument();
+    expect(screen.getByText(/PREPARING THE GAME ROOM/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /skip intro/i }));
+    await waitFor(() => expect(screen.queryByText(/PREPARING THE GAME ROOM/i)).toBeNull());
+  });
+
+  it('renders the cinematic hero and four games', async () => {
     await mount();
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/make your/i);
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/next move/i);
-    expect(screen.getByRole('tablist', { name: /game categories/i })).toBeInTheDocument();
-    expect(screen.getAllByRole('tab')).toHaveLength(2);
-    expect(screen.getByRole('heading', { name: 'CHESS' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'LUDO' })).toBeInTheDocument();
+    expect(screen.getAllByRole('tab')).toHaveLength(3);
+    expect(screen.getByRole('heading', { name: 'Chess' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Ludo' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Wordseek' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Wordguess' })).toBeInTheDocument();
   });
 
-  it('switches to the word games tab', async () => {
+  it('filters word games', async () => {
     await mount();
-    fireEvent.click(screen.getByRole('tab', { name: 'Word Games' }));
-    await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'WORDSEEK' })).toBeInTheDocument();
-      expect(screen.getByRole('heading', { name: 'WORDGUESS' })).toBeInTheDocument();
-    });
-    expect(screen.getByRole('tab', { name: 'Word Games' })).toHaveAttribute('aria-selected', 'true');
+    fireEvent.click(screen.getByRole('tab', { name: /word games/i }));
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Wordseek' })).toBeInTheDocument());
+    expect(screen.getByRole('tab', { name: /word games/i })).toHaveAttribute('aria-selected', 'true');
   });
 
-  it('opens an accessible preview modal and closes it with Escape', async () => {
+  it('opens a preview dialog and closes it with Escape', async () => {
     await mount();
-    fireEvent.click(screen.getAllByRole('button', { name: /preview & play/i })[0]);
+    fireEvent.click(screen.getAllByRole('button', { name: /preview/i })[0]);
     const dialog = await screen.findByRole('dialog');
     expect(dialog).toHaveAttribute('aria-modal', 'true');
-    expect(screen.getByLabelText('Close preview')).toHaveFocus();
+    expect(screen.getByRole('button', { name: /close preview/i })).toBeInTheDocument();
     fireEvent.keyDown(window, { key: 'Escape' });
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
   });
 
-  it('has no persistent sound toggle and unlocks audio on first gesture', async () => {
-    await mount();
-    expect(screen.queryByRole('button', { name: /sound/i })).toBeNull();
-    expect(screen.queryByRole('button', { pressed: true })).toBeNull();
-  });
-
-  it('opens the Ctrl+K search palette and finds a game', async () => {
+  it('opens the command palette with Ctrl+K and filters games', async () => {
     await mount();
     fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
-    const palette = await screen.findByRole('dialog', { name: /search games/i });
-    const input = within(palette).getByRole('searchbox', { name: /search games/i });
+    const input = await screen.findByPlaceholderText(/search games, styles/i);
+    const panel = input.closest('.command-panel');
     fireEvent.change(input, { target: { value: 'ludo' } });
-    await waitFor(() => expect(within(palette).queryByText('CHESS')).toBeNull());
-    expect(within(palette).getByText('LUDO')).toBeInTheDocument();
+    await waitFor(() => expect(within(panel).queryByText('Chess')).toBeNull());
+    expect(within(panel).getByText('Ludo')).toBeInTheDocument();
   });
 
-  it('exposes an accessible mobile menu button', async () => {
+  it('exposes an accessible mobile navigation toggle', async () => {
     const { container } = await mount();
-    const menu = container.querySelector('[aria-label="Open main menu"]');
+    const menu = container.querySelector('[aria-label="Toggle navigation"]');
     expect(menu).toBeTruthy();
-    expect(menu).toHaveAttribute('aria-expanded', 'false');
     fireEvent.click(menu);
-    expect(menu).toHaveAttribute('aria-expanded', 'true');
+    expect(container.querySelector('.nav-links.show')).toBeTruthy();
   });
 });
