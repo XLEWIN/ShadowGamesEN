@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import hqLogo from '../assets/spiky-code-council-emblem.png';
 import chessPreview from '../assets/chess-board-preview.png';
 import ludoPreview from '../assets/ludo-board-preview.png';
@@ -34,20 +35,28 @@ const GAMES = {
 };
 
 function WordTiles({ word = 'WORD', revealed = false }) {
+  const reduce = useReducedMotion();
   return (
     <div className="sg-word-tiles" aria-hidden="true">
       {word.split('').map((ch, i) => (
-        <span key={`${ch}-${i}`} className={`sg-tile${revealed ? ' is-open' : ''}`} style={{ animationDelay: `${i * 60}ms` }}>
+        <motion.span key={`${ch}-${i}`} className={`sg-tile${revealed ? ' is-open' : ''}`}
+          initial={reduce ? false : { opacity: 0, y: 10, rotate: -4 }}
+          animate={{ opacity: 1, y: 0, rotate: 0 }}
+          transition={{ delay: reduce ? 0 : i * 0.06, duration: 0.28 }}>
           {revealed ? ch : '·'}
-        </span>
+        </motion.span>
       ))}
     </div>
   );
 }
 
 function GameCard({ game, preview, onOpen }) {
+  const reduce = useReducedMotion();
   return (
-    <article className="sg-game-card">
+    <motion.article className="sg-game-card"
+      whileHover={reduce ? undefined : { y: -4 }}
+      whileTap={reduce ? undefined : { scale: 0.99 }}
+      transition={{ type: 'spring', stiffness: 300, damping: 24 }}>
       <div className="sg-card-top">
         <div>
           <div className="sg-card-number">{game.num}</div>
@@ -63,7 +72,7 @@ function GameCard({ game, preview, onOpen }) {
           Preview &amp; play <span aria-hidden="true">↗</span>
         </button>
       </div>
-    </article>
+    </motion.article>
   );
 }
 
@@ -88,11 +97,15 @@ function ChessMini() {
 }
 
 function Dice({ face }) {
+  const reduce = useReducedMotion();
   const pips = { 1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] }[face] || [4];
   return (
-    <div className="sg-dice" aria-label={`Dice showing ${face}`}>
+    <motion.div key={face} className="sg-dice" aria-label={`Dice showing ${face}`}
+      initial={reduce ? false : { rotate: -18, scale: 0.8 }}
+      animate={{ rotate: 0, scale: 1 }}
+      transition={{ type: 'spring', stiffness: 260, damping: 16 }}>
       {Array.from({ length: 9 }, (_, i) => <i key={i} className={pips.includes(i) ? 'pip on' : 'pip'} />)}
-    </div>
+    </motion.div>
   );
 }
 
@@ -219,8 +232,10 @@ export default function HubApp() {
 
   return (
     <div className="sg-home">
-      {!splashDone && (
-        <div className="sg-splash" role="status" aria-label="Loading Shadow Games">
+      <AnimatePresence>
+        {!splashDone && (
+        <motion.div className="sg-splash" role="status" aria-label="Loading Shadow Games"
+          initial={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.4 }}>
           <div className="sg-splash-inner">
             <img className="sg-splash-mark" src={hqLogo} alt="" />
             <div className="sg-splash-title">SHADOW GAMES</div>
@@ -230,8 +245,9 @@ export default function HubApp() {
               Skip intro
             </button>
           </div>
-        </div>
-      )}
+        </motion.div>
+        )}
+      </AnimatePresence>
 
       <header className="sg-top sg-shell">
         <a className="sg-brand" href={BOT_LINK}>
@@ -282,10 +298,10 @@ export default function HubApp() {
             <span className="sg-count">01 — 04 / ALL GAMES</span>
           </div>
           <div className="sg-filter" role="tablist" aria-label="Game categories">
-            <button type="button" role="tab" id="tab-board" aria-controls="sg-game-panel" aria-selected={filter === 'board'}
-              className={filter === 'board' ? 'is-active' : ''} onClick={() => changeFilter('board')}>Board Games</button>
-            <button type="button" role="tab" id="tab-word" aria-controls="sg-game-panel" aria-selected={filter === 'word'}
-              className={filter === 'word' ? 'is-active' : ''} onClick={() => changeFilter('word')}>Word Games</button>
+            <motion.button type="button" role="tab" id="tab-board" aria-controls="sg-game-panel" aria-selected={filter === 'board'}
+              className={filter === 'board' ? 'is-active' : ''} whileTap={{ scale: 0.96 }} onClick={() => changeFilter('board')}>Board Games</motion.button>
+            <motion.button type="button" role="tab" id="tab-word" aria-controls="sg-game-panel" aria-selected={filter === 'word'}
+              className={filter === 'word' ? 'is-active' : ''} whileTap={{ scale: 0.96 }} onClick={() => changeFilter('word')}>Word Games</motion.button>
           </div>
           <div className="sg-board-games" id="sg-game-panel" role="tabpanel" aria-labelledby={filter === 'board' ? 'tab-board' : 'tab-word'}>
             {shown.map((id) => (
@@ -328,11 +344,23 @@ export default function HubApp() {
         <span>STRATEGY · CHANCE · FRIENDSHIP</span>
       </footer>
 
-      {toast && <div className="sg-toast" role="status">{toast}</div>}
+      <AnimatePresence>
+        {toast && (
+          <motion.div className="sg-toast" role="status"
+            initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 14 }}>
+            {toast}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {game && (
-        <div className="sg-modal-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) setActiveGame(null); }}>
-          <div className="sg-modal" role="dialog" aria-modal="true" aria-labelledby="sg-modal-title" ref={modalRef}>
+      <AnimatePresence>
+        {game && (
+        <motion.div className="sg-modal-backdrop"
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+          onMouseDown={(e) => { if (e.target === e.currentTarget) setActiveGame(null); }}>
+          <motion.div className="sg-modal" role="dialog" aria-modal="true" aria-labelledby="sg-modal-title" ref={modalRef}
+            initial={{ opacity: 0, y: 16, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 12, scale: 0.97 }}
+            transition={{ type: 'spring', stiffness: 260, damping: 24 }}>
             <button type="button" className="sg-modal-close" aria-label="Close preview" onClick={() => { sfx.current?.move(); setActiveGame(null); }}>×</button>
             <div className="sg-card-number">{game.num}</div>
             <h2 id="sg-modal-title">{game.title}</h2>
@@ -347,9 +375,10 @@ export default function HubApp() {
               <a className="sg-btn gold" href={game.href} onClick={() => sfx.current?.move()}>{game.cta} <span aria-hidden="true">↗</span></a>
               <button type="button" className="sg-btn" onClick={() => { sfx.current?.move(); setActiveGame(null); }}>Back to games</button>
             </div>
-          </div>
-        </div>
-      )}
+          </motion.div>
+        </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
