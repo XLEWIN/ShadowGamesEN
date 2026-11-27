@@ -9,8 +9,9 @@
     "migrate": "tgcloud migrate",
     "run": "tgcloud run",
     "webhook": "tgcloud webhook",
-    "test": "node --test tests_js/*.test.js",
-    "check": "node --check tgcloud/handlers/message.js && node --test tests_js/*.test.js",
+    "test": "node scripts/test.js",
+    "check": "node scripts/check.js && node scripts/test.js",
+    "verify": "npm run check && npm run build:web",
     "build:web": "npm --prefix webapp-src run build",
     "deploy": "npm run build:web && tgcloud push"
   },
