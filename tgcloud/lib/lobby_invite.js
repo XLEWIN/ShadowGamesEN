@@ -15,7 +15,8 @@ export function inviteArticle(game, user, code = null, full = false) {
     `<b>VS FRIEND</b> challenge from ${mention(user.id, name)}\n\n` +
     `${TAGLINE}\n\n` +
     `<b>${game.toUpperCase()}</b> · ${game === 'chess' ? '1v1' : '2–4 players'}\n` +
-    `<b>${game === 'chess' ? '1st sets the clock · 2nd starts the game' : 'Open the board and invite your friends'}</b>`;
+    `<b>${game === 'chess' ? '1st sets the clock · 2nd starts the game' : 'Open the board and invite your friends'}</b>\n\n` +
+    `<a href="${gameBoardUrl(game)}">Open ${game.toUpperCase()} board</a>`;
   return {
     // A photo result posts the board image itself, with caption + hyperlinks.
     type: 'photo',
@@ -37,7 +38,6 @@ export function inviteArticle(game, user, code = null, full = false) {
             btnUrl(joinLabel, joinUrl, undefined, 'success'),
             btnUrl('Spectate', startAppLink(game, code, true), undefined, 'primary'),
           ],
-          [btnUrl(`Open ${game.toUpperCase()} board`, gameBoardUrl(game), undefined, 'primary')],
         ]),
   };
 }

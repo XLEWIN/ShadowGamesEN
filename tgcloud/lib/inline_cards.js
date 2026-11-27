@@ -21,7 +21,7 @@ export function gameArticle(id, title, description, url, label, iconUrl, photoUr
       photo_url: photoUrl, thumb_url: iconUrl,
       // Custom emoji entities are stripped from inline-posted messages, so
       // keep the caption free of plain-emoji fallbacks.
-      caption: `<b>${title}</b>\n\nOpen the board and play with friends.\nPowered by @ShadowGameEnBot`,
+      caption: `<b>${title}</b>\n\nOpen the board and play with friends.\n<a href="${url}">Open ${title.includes('Ludo') ? 'LUDO' : 'CHESS'} board</a>`,
       parse_mode: 'HTML',
       reply_markup: markup,
     };

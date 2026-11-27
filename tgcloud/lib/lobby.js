@@ -4,7 +4,7 @@
 import { db, eq, and, sql, deleteState } from './db.js';
 import { webappLobbies } from '../schema.js';
 import { E, EID } from './emojis.js';
-import { mention } from './texts.js';
+import { mention, gameBoardUrl } from './texts.js';
 import { btnUrl, buildKeyboard } from './keyboards.js';
 
 const ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
@@ -148,13 +148,11 @@ export function parseStartPayload(payload) {
 }
 
 export function lobbyKeyboard(lobby) {
-  const boardUrl = lobby.game === 'ludo' ? `${WEBAPP_BASE}ludo/` : `${WEBAPP_BASE}chess/`;
   return buildKeyboard([
     [
       btnUrl('Join the game', startAppLink(lobby.game, lobby.code), EID.PLAY, 'success'),
       btnUrl('Spectate', startAppLink(lobby.game, lobby.code, true), EID.WATCH, 'primary'),
     ],
-    [btnUrl(`Open ${lobby.game.toUpperCase()} board`, boardUrl, EID.GAME, 'primary')],
   ]);
 }
 
@@ -168,5 +166,6 @@ export function inviteText(lobby, inviterName = 'Player', inviterId = 0) {
     `${E.INFO} ${TAGLINE}\n\n` +
     `${E.GAME} <b>${lobby.game.toUpperCase()}</b> · ${players.length}/${lobby.maxPlayers} players` +
     (roster ? `\n\n${E.USER} <b>Table</b>\n${roster}` : '') +
-    `\n\n${E.WATCH} Spectators are welcome — tap below to join or watch.`;
+    `\n\n${E.WATCH} Spectators are welcome — tap below to join or watch.` +
+    `\n<a href="${gameBoardUrl(lobby.game)}">Open ${lobby.game.toUpperCase()} board</a>`;
 }

@@ -2,6 +2,7 @@
 import { api } from 'sdk';
 import { sendText, editText, editCaption, escapeHtml } from './msg.js';
 import { E, plain } from './emojis.js';
+import { gameBoardUrl } from './texts.js';
 import { btnUrl, buildKeyboard } from './keyboards.js';
 import {
   getLobby, getOpenLobby, createLobby, joinLobby, addSpectator,
@@ -118,7 +119,8 @@ async function joinAndNotify(query, lobby, user, chat) {
   } else if (chat && !lobby.messageId) {
     try {
       await sendText(chat.id,
-        `${E.SUCCESS} ${escapeHtml(user.first_name || 'Player')} joined the <b>${lobby.game.toUpperCase()}</b> table · ${lobby.players.length}/${lobby.maxPlayers}`,
+        `${E.SUCCESS} ${escapeHtml(user.first_name || 'Player')} joined the <b>${lobby.game.toUpperCase()}</b> table · ${lobby.players.length}/${lobby.maxPlayers}\n` +
+        `<a href="${gameBoardUrl(lobby.game)}">Open ${lobby.game.toUpperCase()} board</a>`,
         { parseMode: 'HTML', replyMarkup: lobbyKeyboard(lobby) });
     } catch (e) { /* ignore */ }
   }
@@ -127,7 +129,8 @@ async function joinAndNotify(query, lobby, user, chat) {
   try {
     await sendText(user.id,
       `${E.GAME} <b>${lobby.game.toUpperCase()}</b> table <code>${escapeHtml(lobby.code)}</code>\n` +
-      `${E.INFO} ${lobby.players.length}/${lobby.maxPlayers} players · ${isFull(lobby) ? 'ready to start' : 'waiting for players'}`,
+      `${E.INFO} ${lobby.players.length}/${lobby.maxPlayers} players · ${isFull(lobby) ? 'ready to start' : 'waiting for players'}\n` +
+      `<a href="${gameBoardUrl(lobby.game)}">Open ${lobby.game.toUpperCase()} board</a>`,
       { parseMode: 'HTML', replyMarkup: openKeyboard(lobby) });
   } catch (e) {
     await answer(query, `${E.INFO} Start the bot in DM to receive the room link.`, true);

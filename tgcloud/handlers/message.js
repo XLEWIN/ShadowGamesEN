@@ -188,10 +188,10 @@ async function handleLobbyDeepLink(message, userId, user, target) {
     : roomUrl(target.game, target.code, target.spectate);
   const caption =
     `${E.SPARKLE} <b>Shadow Games</b>\n\n${E.GAME} <b>${target.game.toUpperCase()}</b> · table <code>${escapeHtml(target.code)}</code>\n` +
-    `${E.INFO} ${target.spectate ? 'You are spectating this table.' : `Players in this table: ${lobby.players.length}/${lobby.maxPlayers}`}`;
+    `${E.INFO} ${target.spectate ? 'You are spectating this table.' : `Players in this table: ${lobby.players.length}/${lobby.maxPlayers}`}\n` +
+    `<a href="${gameBoardUrl(target.game)}">Open ${target.game.toUpperCase()} board</a>`;
   const markup = buildKeyboard([
     [btnWebApp(label, webAppUrl, EID.GAME, 'primary')],
-    [{ text: `Open ${target.game.toUpperCase()} board`, url: gameBoardUrl(target.game), style: 'primary' }],
   ]);
   const sent = await replyPhoto(message, challengeImage(target.game), caption, {
     parseMode: 'HTML', replyMarkup: markup,
@@ -251,10 +251,10 @@ async function cmdChallenge(message, args, isPrivate, user) {
   if (open && !parts.includes('new')) {
     const markup = buildKeyboard([
       [btnWebApp('Open table', roomUrl(game, open.code), EID.GAME, 'primary')],
-      [{ text: `Open ${game.toUpperCase()} board`, url: gameBoardUrl(game), style: 'primary' }],
     ]);
     const sent = await replyPhoto(message, challengeImage(game),
-      `${E.INFO} There is already an open <b>${game.toUpperCase()}</b> table in this chat.`,
+      `${E.INFO} There is already an open <b>${game.toUpperCase()}</b> table in this chat.\n` +
+      `<a href="${gameBoardUrl(game)}">Open ${game.toUpperCase()} board</a>`,
       { parseMode: 'HTML', replyMarkup: markup });
     if (!sent) await replyText(message, `${E.INFO} There is already an open <b>${game.toUpperCase()}</b> table in this chat.`, { parseMode: 'HTML', replyMarkup: markup });
     return;
