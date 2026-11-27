@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Shadow Games · Ludo</title>
+<meta property="og:type" content="website" />
+<meta property="og:title" content="Shadow Games · Ludo" />
+<meta property="og:description" content="Roll the dice and race your friends — play vs AI or online." />
+<meta property="og:image" content="https://app8670418995.tgcloud.ai/assets/challenge-ludo.png" />
+<meta property="og:image:width" content="640" />
+<meta property="og:image:height" content="640" />
+<script>
+(function () {
+  var code = new URLSearchParams(location.search).get('code') || 'LUDO1';
+  code = /^[A-Z0-9]{5}$/.test(code) ? code : 'LUDO1';
+  location.replace('https://t.me/ShadowGameEnBot?startapp=ludo-' + code);
+})();
+</script>
+</head>
+<body style="background:#060c1a;color:#ffd97a;font:16px sans-serif;text-align:center;padding:40px">
+Opening Ludo in Telegram…
+<p><a style="color:#ffd97a" href="https://t.me/ShadowGameEnBot?startapp=ludo-LUDO">Open the game</a></p>
+</body>
+</html>

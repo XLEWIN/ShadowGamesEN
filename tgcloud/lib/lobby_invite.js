@@ -1,7 +1,7 @@
 // Inline "Shadow Games" challenges. The posted message ends with the board
 // URL, so Telegram renders a clickable link-preview image between the text and
 // the inline buttons — the image itself is the hyperlink.
-import { mention, gameBoardUrl } from './texts.js';
+import { mention, previewUrl } from './texts.js';
 import { btnUrl, buildKeyboard } from './keyboards.js';
 import { generateCode, startAppLink, getLobby, isFull, TAGLINE } from './lobby.js';
 import { gameIcon } from './inline_cards.js';
@@ -16,8 +16,7 @@ export function inviteArticle(game, user, code = null, full = false) {
     `<b>VS FRIEND</b> challenge from ${mention(user.id, name)}\n\n` +
     `${TAGLINE}\n\n` +
     `<b>${game.toUpperCase()}</b> · ${game === 'chess' ? '1v1' : '2–4 players'}\n` +
-    `<b>${game === 'chess' ? '1st sets the clock · 2nd starts the game' : 'Open the board and invite your friends'}</b>\n\n` +
-    `${gameBoardUrl(game)}`;
+    `<b>${game === 'chess' ? '1st sets the clock · 2nd starts the game' : 'Open the board and invite your friends'}</b>`;
   return {
     type: 'article',
     id: `invite-${game}-${code}`,
@@ -31,7 +30,7 @@ export function inviteArticle(game, user, code = null, full = false) {
     input_message_content: {
       message_text: messageText,
       parse_mode: 'HTML',
-      link_preview_options: { is_disabled: false },
+      link_preview_options: { is_disabled: false, url: previewUrl(game, code) },
     },
     reply_markup: full
       ? buildKeyboard([[btnUrl('Watch live', joinUrl, undefined, 'primary')]])

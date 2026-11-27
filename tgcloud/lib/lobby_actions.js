@@ -2,7 +2,7 @@
 import { api } from 'sdk';
 import { sendText, editText, escapeHtml } from './msg.js';
 import { E, plain } from './emojis.js';
-import { gameBoardUrl } from './texts.js';
+import { previewUrl } from './texts.js';
 import { btnUrl, buildKeyboard } from './keyboards.js';
 import {
   getLobby, getOpenLobby, createLobby, joinLobby, addSpectator,
@@ -112,16 +112,15 @@ async function joinAndNotify(query, lobby, user, chat) {
   if (chat && lobby.messageId) {
     try {
       await editText(chat.id, lobby.messageId,
-        inviteText(lobby, lobby.players[0]?.name || 'Player', lobby.players[0]?.userId || 0) + `\n\n${gameBoardUrl(lobby.game)}`, {
+        inviteText(lobby, lobby.players[0]?.name || 'Player', lobby.players[0]?.userId || 0), {
           parseMode: 'HTML', replyMarkup: lobbyKeyboard(lobby),
         });
     } catch (e) { /* message may be gone */ }
   } else if (chat && !lobby.messageId) {
     try {
       await sendText(chat.id,
-        `${E.SUCCESS} ${escapeHtml(user.first_name || 'Player')} joined the <b>${lobby.game.toUpperCase()}</b> table · ${lobby.players.length}/${lobby.maxPlayers}\n\n` +
-        gameBoardUrl(lobby.game),
-        { parseMode: 'HTML', replyMarkup: lobbyKeyboard(lobby), link_preview_options: { is_disabled: false } });
+        `${E.SUCCESS} ${escapeHtml(user.first_name || 'Player')} joined the <b>${lobby.game.toUpperCase()}</b> table · ${lobby.players.length}/${lobby.maxPlayers}`,
+        { parseMode: 'HTML', replyMarkup: lobbyKeyboard(lobby), link_preview_options: { is_disabled: false, url: previewUrl(lobby.game, lobby.code) } });
     } catch (e) { /* ignore */ }
   }
 
@@ -129,9 +128,8 @@ async function joinAndNotify(query, lobby, user, chat) {
   try {
     await sendText(user.id,
       `${E.GAME} <b>${lobby.game.toUpperCase()}</b> table <code>${escapeHtml(lobby.code)}</code>\n` +
-      `${E.INFO} ${lobby.players.length}/${lobby.maxPlayers} players · ${isFull(lobby) ? 'ready to start' : 'waiting for players'}\n\n` +
-      gameBoardUrl(lobby.game),
-      { parseMode: 'HTML', replyMarkup: openKeyboard(lobby), link_preview_options: { is_disabled: false } });
+      `${E.INFO} ${lobby.players.length}/${lobby.maxPlayers} players · ${isFull(lobby) ? 'ready to start' : 'waiting for players'}`,
+      { parseMode: 'HTML', replyMarkup: openKeyboard(lobby), link_preview_options: { is_disabled: false, url: previewUrl(lobby.game, lobby.code) } });
   } catch (e) {
     await answer(query, `${E.INFO} Start the bot in DM to receive the room link.`, true);
   }

@@ -17,7 +17,7 @@ import {
   RULES, HELP_TEXT, startText, mention,
   START_TITLE_LINE, START_HINT_LINE, BOT_DESCRIPTION,
   URL_ADD_TO_GROUP, URL_OWNER, URL_UPDATES, URL_DISCUSSION,
-  LEADERBOARD_IMAGE, START_IMAGE, gameBoardUrl,
+  LEADERBOARD_IMAGE, START_IMAGE, previewUrl,
 } from '../lib/texts.js';
 import {
   userStartedBot, gbannedUsers, games, gamePlayers,
@@ -188,14 +188,13 @@ async function handleLobbyDeepLink(message, userId, user, target) {
     : roomUrl(target.game, target.code, target.spectate);
   const text =
     `${E.SPARKLE} <b>Shadow Games</b>\n\n${E.GAME} <b>${target.game.toUpperCase()}</b> · table <code>${escapeHtml(target.code)}</code>\n` +
-    `${E.INFO} ${target.spectate ? 'You are spectating this table.' : `Players in this table: ${lobby.players.length}/${lobby.maxPlayers}`}\n\n` +
-    gameBoardUrl(target.game);
+    `${E.INFO} ${target.spectate ? 'You are spectating this table.' : `Players in this table: ${lobby.players.length}/${lobby.maxPlayers}`}`;
   const markup = buildKeyboard([
     [btnWebApp(label, webAppUrl, EID.GAME, 'primary')],
   ]);
   await replyText(message, text, {
     parseMode: 'HTML', replyMarkup: markup,
-    link_preview_options: { is_disabled: false },
+    link_preview_options: { is_disabled: false, url: previewUrl(target.game, target.code) },
   });
 }
 
@@ -253,9 +252,8 @@ async function cmdChallenge(message, args, isPrivate, user) {
       [btnWebApp('Open table', roomUrl(game, open.code), EID.GAME, 'primary')],
     ]);
     await replyText(message,
-      `${E.INFO} There is already an open <b>${game.toUpperCase()}</b> table in this chat.\n\n` +
-      gameBoardUrl(game),
-      { parseMode: 'HTML', replyMarkup: markup, link_preview_options: { is_disabled: false } });
+      `${E.INFO} There is already an open <b>${game.toUpperCase()}</b> table in this chat.`,
+      { parseMode: 'HTML', replyMarkup: markup, link_preview_options: { is_disabled: false, url: previewUrl(game) } });
     return;
   }
   try {
@@ -264,10 +262,10 @@ async function cmdChallenge(message, args, isPrivate, user) {
       maxPlayers: requested, chatId: message.chat.id,
     });
     const markup = lobbyKeyboard(lobby);
-    const text = inviteText(lobby, user.first_name || 'Player', user.id) + `\n\n${gameBoardUrl(game)}`;
+    const text = inviteText(lobby, user.first_name || 'Player', user.id);
     const sent = await replyText(message, text, {
       parseMode: 'HTML', replyMarkup: markup,
-      link_preview_options: { is_disabled: false },
+      link_preview_options: { is_disabled: false, url: previewUrl(game, lobby.code) },
     });
     if (sent?.message_id) { lobby.messageId = sent.message_id; await saveLobby(lobby); }
   } catch (err) {

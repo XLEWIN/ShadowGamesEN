@@ -39,6 +39,15 @@ export const CHESS_URL = `${WEBAPP_BASE}chess/`;
 // Stable, real board captures used on every challenge card (not build-hashed).
 export const challengeImage = (game) => `${WEBAPP_BASE}assets/challenge-${game === 'ludo' ? 'ludo' : 'chess'}.png`;
 export const gameBoardUrl = (game) => game === 'ludo' ? LUDO_URL : CHESS_URL;
+// Used as the link-preview URL: crawlers see the board OG image, but a tap
+// redirects into the Telegram Mini App instead of opening a browser page.
+export const previewUrl = (game, code = null) => {
+  const g = game === 'ludo' ? 'ludo' : 'chess';
+  const safe = /^[A-Z0-9]{5}$/.test(String(code || '').toUpperCase()) ? String(code).toUpperCase() : `${g.toUpperCase()}1`;
+  // Static host rewrites .html → extensionless and drops the query on the
+  // redirect, so use the canonical extensionless path directly.
+  return `${WEBAPP_BASE}preview/${g}?code=${safe}`;
+};
 
 export const RULES = `${E.INFO} <b>Game Rules</b>\n${E.BULLET}\n\n` +
   `<b>Word Guess</b> — one player explains the secret word, the others guess it.\n` +

@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Shadow Games · Chess</title>
+<meta property="og:type" content="website" />
+<meta property="og:title" content="Shadow Games · Chess" />
+<meta property="og:description" content="Real chess rules — play vs AI or challenge a friend online." />
+<meta property="og:image" content="https://app8670418995.tgcloud.ai/assets/challenge-chess.png" />
+<meta property="og:image:width" content="640" />
+<meta property="og:image:height" content="640" />
+<script>
+// Telegram crawlers only read the OG tags above. A real tap goes straight
+// into the Mini App instead of leaving Telegram for the browser.
+(function () {
+  var code = new URLSearchParams(location.search).get('code') || 'CHESS';
+  code = /^[A-Z0-9]{5}$/.test(code) ? code : 'CHESS';
+  location.replace('https://t.me/ShadowGameEnBot?startapp=chess-' + code);
+})();
+</script>
+</head>
+<body style="background:#060c1a;color:#ffd97a;font:16px sans-serif;text-align:center;padding:40px">
+Opening Chess in Telegram…
+<p><a style="color:#ffd97a" href="https://t.me/ShadowGameEnBot?startapp=chess-CHESS">Open the game</a></p>
+</body>
+</html>
