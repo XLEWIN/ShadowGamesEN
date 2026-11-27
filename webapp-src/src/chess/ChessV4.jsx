@@ -7,7 +7,15 @@ import './ChessV4.css';
 
 const times = ['1+0', '3+0', '3+2', '5+3', '10+0', '10+5'];
 const levels = [['casual', 'Casual', 'Relaxed warm-up'], ['tactician', 'Tactician', 'Think ahead'], ['master', 'Master', 'A sharper challenge']];
-const glyph = { wk: '♔', wq: '♕', wr: '♖', wb: '♗', wn: '♘', wp: '♙', bk: '♚', bq: '♛', br: '♜', bb: '♝', bn: '♞', bp: '♟' };
+// Original Shadow Games piece art — the sculpted WebP set, not Unicode glyphs.
+const pieceAssets = {
+  wp: 'assets/chessSetDefault_PawnWhite_160.webp', wn: 'assets/chessSetDefault_KnightWhite_160.webp',
+  wb: 'assets/chessSetDefault_BishopWhite_160.webp', wr: 'assets/chessSetDefault_RookWhite_160.webp',
+  wq: 'assets/chessSetDefault_QueenWhite_160.webp', wk: 'assets/chessSetDefault_KingWhite_160.webp',
+  bp: 'assets/chessSetDefault_PawnBlack_160.webp', bn: 'assets/chessSetDefault_KnightBlack_160.webp',
+  bb: 'assets/chessSetDefault_BishopBlack_160.webp', br: 'assets/chessSetDefault_RookBlack_160.webp',
+  bq: 'assets/chessSetDefault_QueenBlack_160.webp', bk: 'assets/chessSetDefault_KingBlack_160.webp',
+};
 const capturedGlyph = { p: '♟', n: '♞', b: '♝', r: '♜', q: '♛' };
 
 export function BrandMark({ compact = false }) {
@@ -78,17 +86,18 @@ export function ChessBoardV4({ game, onMove, flipped = false, disabled = false }
       return <button key={sq} type="button" className={`square ${light ? 'light' : 'dark'} ${selected === sq ? 'selected' : ''} ${last.includes(sq) ? 'recent' : ''} ${checkSq === sq ? 'in-check' : ''}`} aria-label={`${sq}${p ? ` ${p.color === 'w' ? 'white' : 'black'} ${p.type}` : ''}`} onClick={() => click(sq)}>
         {edge && <span className="coord rank">{sq[1]}</span>}{bottom && <span className="coord file">{sq[0]}</span>}
         {targets.includes(sq) && <span className={`dot ${p ? 'capture' : ''}`} />}
-        {p && <span className={`piece ${p.color === 'w' ? 'white-piece' : 'black-piece'}`}>{glyph[p.color + p.type]}</span>}
+        {p && <span className={`piece ${p.color === 'w' ? 'white-piece' : 'black-piece'}`}><img src={pieceAssets[p.color + p.type]} alt="" draggable="false" /></span>}
       </button>;
     })}
   </div></div><div className="board-caption"><span><i /> LEGAL-MOVE BOARD</span><span>{notice}</span></div></div>;
 }
 
-export function ChessRoomV4({ game, players, clocks, turn, over, status, history, moves, captured, flipped, onBack, onResign, onSound, onReset, onMove, onInvite, onMenu, onConfirm, onRematch, onMainMenu, result, winner, modal, setModal, toast, level }) {
+export function ChessRoomV4({ game, players, clocks, turn, over, status, history, moves, captured, flipped, selfName, onBack, onResign, onSound, onReset, onMove, onInvite, onMenu, onConfirm, onRematch, onMainMenu, result, winner, modal, setModal, toast, level }) {
   const done = over || game.isGameOver();
   const turnText = turn === 'b' ? 'BLACK' : 'WHITE';
   const myColor = flipped ? 'b' : 'w';
-  const opp = players.find(p => p.color !== myColor) || { name: 'Shadow Engine' };
+  // An empty name means the second player has not joined yet.
+  const opp = players.find(p => p.color !== myColor) || { name: '' };
   return <div className="app-shell">
     <header className="topbar"><button aria-label="Back" onClick={() => onBack?.()}><ArrowLeft /></button><div className="telegram-title">Shadow Games <span>EN 🇮🇳</span></div><button aria-label="More options" onClick={onMenu}><MoreHorizontal /></button><button aria-label="Close" onClick={() => onConfirm?.('leave')}><X /></button></header>
     <motion.main className="screen board-screen" {...transition}>
@@ -96,7 +105,7 @@ export function ChessRoomV4({ game, players, clocks, turn, over, status, history
       <div className="clocks"><span>● <b>{clocks.w}</b></span><span>○ <b>{clocks.b}</b></span></div>
       <div className="player"><div className="avatar black-avatar">♟</div><div className="player-copy"><b>{opp.name}</b><small>{flipped ? 'WHITE' : 'BLACK'} · {level?.toUpperCase() || 'TACTICIAN'}</small></div><strong className="player-clock">{clocks[flipped ? 'w' : 'b']}</strong></div>
       <ChessBoardV4 game={game} onMove={onMove} flipped={flipped} disabled={done} />
-      <div className="player"><div className="avatar white-avatar">♟</div><div className="player-copy"><b>You</b><small>{myColor.toUpperCase()} · {players.length > 1 ? 'ONLINE' : 'LOCAL PREVIEW'}</small></div><strong className="player-clock">{clocks[myColor]}</strong></div>
+      <div className="player"><div className="avatar white-avatar">♟</div><div className="player-copy"><b>{selfName || ''}</b><small>{myColor.toUpperCase()} · {players.length > 1 ? 'ONLINE' : 'LOCAL PREVIEW'}</small></div><strong className="player-clock">{clocks[myColor]}</strong></div>
       <div className="board-bottom"><div className="bottom-box"><small>CAPTURED</small><div>{(captured || []).map((m, i) => <span key={i}>{capturedGlyph[m] || m}</span>)}</div></div><div className="bottom-box move-box"><small>MOVES</small><div>{moves?.length ? moves.map((m, i) => <span key={i}>{i % 2 === 0 && <b>{Math.floor(i / 2) + 1}. </b>}{m.san || m} </span>) : '—'}</div></div><button className="reset" onClick={onReset}><RotateCcw /> RESET</button></div>
       <div className="status-line"><i /> {status}</div>
     </motion.main>

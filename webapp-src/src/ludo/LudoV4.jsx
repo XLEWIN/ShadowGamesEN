@@ -151,7 +151,7 @@ export function LudoBoardV4({ tokens, selectedColor, legal = [], onPawn }) {
   </div><div className="board-glint" /></div>;
 }
 
-export function LudoRoomV4({ tokens, players, currentColor, myColor: chosenColor, dice, diceN, hasRolled, legal, onPawn, onRoll, onBack, onSound, onLeave, onModal, onRematch, onMainMenu, toast, over, winner }) {
+export function LudoRoomV4({ tokens, players, currentColor, myColor: chosenColor, selfName, dice, diceN, hasRolled, legal, onPawn, onRoll, onBack, onSound, onLeave, onModal, onRematch, onMainMenu, toast, over, winner }) {
   const current = currentColor || 'red';
   const myColor = chosenColor || current;
   return <div className="app-shell">
@@ -160,7 +160,7 @@ export function LudoRoomV4({ tokens, players, currentColor, myColor: chosenColor
       <div className="ludo-toolbar"><button className="round" onClick={onBack}><ArrowLeft /></button><div className="turn-chip"><i style={{ background: colors.find(c => c[0] === current)?.[2] }} />{over ? 'GAME OVER' : `${current.toUpperCase()} TO MOVE`}</div><button className="round" onClick={onSound} aria-label="Sound effects"><Volume2 /></button></div>
       <div className="ludo-board-holder"><LudoBoardV4 tokens={tokens} selectedColor={chosenColor || current} legal={legal} onPawn={onPawn} /></div>
       <div className="ludo-control-row"><button className="btn gold compact" onClick={onRoll}><Dices /> ROLL DICE <span className="dice-face">{diceN}</span></button><button className="btn navy compact" onClick={onModal}><span className="plus">✦</span> PICK A PAWN</button></div>
-      <div className="ludo-players">{players.map(p => <div className={`ludo-player ${p.color} ${p.color === myColor ? 'is-you' : ''}`} key={p.color}><span className="player-orb" style={{ '--token-color': colors.find(x => x[0] === p.color)?.[2] }} /><div><b>{p.isLocal || p.color === myColor ? 'You' : p.name || p.color}</b><small>{p.isBot ? `BOT · ${p.color.toUpperCase()}` : p.isLocal || p.color === myColor ? 'YOU' : p.color.toUpperCase()}</small></div><strong>HOME {(tokens?.[p.color] || []).filter(t => t.step === FINISH_STEP).length}/4</strong></div>)}</div>
+      <div className="ludo-players">{players.map(p => <div className={`ludo-player ${p.color} ${p.color === myColor ? 'is-you' : ''}`} key={p.color}><span className="player-orb" style={{ '--token-color': colors.find(x => x[0] === p.color)?.[2] }} /><div><b>{p.isLocal || p.color === myColor ? (selfName || '') : (p.name || '')}</b><small>{p.isBot ? `BOT · ${p.color.toUpperCase()}` : p.isLocal || p.color === myColor ? (selfName || '').toUpperCase() : p.color.toUpperCase()}</small></div><strong>HOME {(tokens?.[p.color] || []).filter(t => t.step === FINISH_STEP).length}/4</strong></div>)}</div>
       <div className="status-line"><i /> {over ? (winner ? `${winner.toUpperCase()} WINS` : 'GAME OVER') : hasRolled || dice !== null ? `Dice shows ${diceN} · tap a pawn to move` : 'Roll the dice to take your turn'}</div>
     </motion.main>
     <footer className="telegram-footer"><small>@ShadowGameEnBot</small></footer>

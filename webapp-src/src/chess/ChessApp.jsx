@@ -953,6 +953,7 @@ export default function ChessApp() {
       turn={g.game.turn()} over={g.over} status={status}
       history={hist} moves={hist} captured={captured}
       flipped={g.orientation === 'b'} level={aiSetup.diff}
+      selfName={tgFullName() || 'Player'}
       onMove={(from, to, promotion) => attemptMove(from, to, promotion)}
       onBack={() => quitMatch()}
       onResign={() => setV4Modal('resign')}

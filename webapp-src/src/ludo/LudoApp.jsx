@@ -4,7 +4,7 @@ import {
   freshTokens, legalMoves, applyMove, aiPickMove, tokenXY,
   PEER_PREFIX, ICE_SERVERS, cellKey,
 } from './engine.js';
-import { tg, tgReady, tgName, tgPhoto, haptic, backButton } from '../shared/telegram.js';
+import { tg, tgReady, tgName, tgFullName, tgPhoto, haptic, backButton } from '../shared/telegram.js';
 import { createSfx } from '../shared/audio.js';
 import { callServer, inviteFriends, spectateCode, botDeepLink, claimHost, sessionState } from '../shared/lobby.js';
 import { makeRoomCode, normalizeRoomCode } from '../shared/room.js';
@@ -680,6 +680,7 @@ export default function LudoApp() {
     const legal = g.awaitingMove && !g.over ? legalMoves(g.tokens, color, g.dice) : [];
     return <LudoRoomV4
       tokens={g.tokens} players={g.players} currentColor={color} myColor={G.current.myColor || 'red'}
+      selfName={tgFullName() || 'Player'}
       dice={g.dice} diceN={diceN} hasRolled={g.awaitingMove}
       legal={legal}
       onPawn={(c, idx) => { if (c !== color) { announce('That pawn belongs to another player.'); return; } doMove(idx); }}

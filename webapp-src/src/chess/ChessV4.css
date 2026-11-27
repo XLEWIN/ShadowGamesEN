@@ -20,6 +20,9 @@
   .status-line{margin:5px 0 0}
   .telegram-footer{padding:6px}
 }
+/* Original sculpted piece art on the board. */
+.piece{width:100%;height:100%;display:grid;place-items:center;font-size:0}
+.piece img{width:100%;height:100%;object-fit:contain;display:block;filter:drop-shadow(0 2px 2px rgba(0,0,0,.55))}
 /* Very short screens: board takes priority, secondary text shrinks. */
 @media(max-height:600px){
   .board-wrap{width:min(100%,calc(100dvh - 360px))}
