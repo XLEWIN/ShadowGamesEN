@@ -2,104 +2,110 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import hqLogo from '../assets/spiky-code-council-emblem.png';
 import chessPreview from '../assets/chess-board-preview.png';
 import ludoPreview from '../assets/ludo-board-preview.png';
+import { createSfx } from '../shared/audio.js';
 import { callServer } from '../shared/lobby.js';
 import { normalizeRoomCode, roomPageUrl } from '../shared/room.js';
 import './HubHome.css';
 
 const BOT_LINK = 'https://t.me/ShadowGameEnBot';
 
-const CHESS_PIECES = {
-  wp: './chess/assets/chessSetDefault_PawnWhite_160.webp',
-  wn: './chess/assets/chessSetDefault_KnightWhite_160.webp',
-  wb: './chess/assets/chessSetDefault_BishopWhite_160.webp',
-  wr: './chess/assets/chessSetDefault_RookWhite_160.webp',
-  wq: './chess/assets/chessSetDefault_QueenWhite_160.webp',
-  wk: './chess/assets/chessSetDefault_KingWhite_160.webp',
-  bp: './chess/assets/chessSetDefault_PawnBlack_160.webp',
-  bn: './chess/assets/chessSetDefault_KnightBlack_160.webp',
-  bb: './chess/assets/chessSetDefault_BishopBlack_160.webp',
-  br: './chess/assets/chessSetDefault_RookBlack_160.webp',
-  bq: './chess/assets/chessSetDefault_QueenBlack_160.webp',
-  bk: './chess/assets/chessSetDefault_KingBlack_160.webp',
+// One source of truth for the four cards in the game selection area.
+const GAMES = {
+  chess: {
+    id: 'chess', num: '01 / STRATEGY', title: 'CHESS', category: 'board',
+    desc: 'Think a few moves ahead. Original Shadow Games board skin, sculpted pieces, clocks and premoves.',
+    detail: 'REAL PIECE ART · CLOCKS · PREMOVES', cta: 'Enter board', href: './chess/',
+  },
+  ludo: {
+    id: 'ludo', num: '02 / RACE', title: 'LUDO', category: 'board',
+    desc: 'Bring the tokens home. Classic 15×15 race geometry, safe stars, home lanes and a tactile dice table.',
+    detail: 'TOKEN ART · DICE ANIMATION', cta: 'Roll in', href: './ludo/',
+  },
+  wordseek: {
+    id: 'wordseek', num: '03 / WORDS', title: 'WORDSEEK', category: 'word',
+    desc: 'Hunt the hidden word with colour hints. Six tries, one clue, and a fresh puzzle every day.',
+    detail: 'DAILY PUZZLE · /new4 · /new5 · /new6', cta: 'Open in bot', href: `${BOT_LINK}?start=new`,
+  },
+  wordguess: {
+    id: 'wordguess', num: '04 / WORDS', title: 'WORDGUESS', category: 'word',
+    desc: 'One player describes the secret word, the group guesses it. Fast, loud, and made for friends.',
+    detail: 'GROUP GAME · /game', cta: 'Open in bot', href: `${BOT_LINK}?start=game`,
+  },
 };
-const BACK_RANK = ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'];
 
-function ChessPreview() {
-  const cells = [];
-  for (const [row, side] of [[0, 'b'], [1, 'b'], [6, 'w'], [7, 'w']]) {
-    for (let col = 0; col < 8; col++) {
-      const key = side + (row === 1 || row === 6 ? 'p' : BACK_RANK[col]);
-      cells.push(
-        <img key={`${row}-${col}`} src={CHESS_PIECES[key]} alt="" className="sg-preview-piece"
-          style={{ left: `${col * 12.5}%`, top: `${row * 12.5}%` }} />,
-      );
-    }
-  }
+function WordTiles({ word = 'WORD', revealed = false }) {
   return (
-    <div className="sg-chess-preview" aria-label="Chess board preview"
-      style={{ backgroundImage: "url('./chess/assets/chessBoardDefault_1280.webp')" }}>
-      <div className="sg-chess-grid" />
-      {cells}
-      <div className="sg-preview-coords">'8 7 6 5 4 3 2 1 a b c d e f g h'</div>
-    </div>
-  );
-}
-
-function LudoPreview() {
-  const yards = [
-    ['blue', '1 / 1 / 6 / 6'], ['yellow', '1 / 10 / 6 / 15'],
-    ['red', '10 / 1 / 15 / 6'], ['green', '10 / 10 / 15 / 15'],
-  ];
-  const cells = [];
-  for (let r = 0; r < 15; r++) {
-    for (let c = 0; c < 15; c++) {
-      let cls = 'lcell';
-      if (r >= 6 && r <= 8 && c >= 6 && c <= 8) cls += ' center';
-      else if (r === 7 || c === 7) {
-        cls += ' path';
-        if (r === 7 && c < 6) cls += ' blue';
-        else if (c === 7 && r < 6) cls += ' yellow';
-        else if (r === 7 && c > 8) cls += ' green';
-        else if (c === 7 && r > 8) cls += ' red';
-        if ((r === 7 && c === 1) || (c === 7 && r === 1) ||
-            (r === 7 && c === 13) || (c === 7 && r === 13)) cls += ' safe';
-      }
-      cells.push(<i key={`${r}-${c}`} className={cls} style={{ gridRow: r + 1, gridColumn: c + 1 }} />);
-    }
-  }
-  return (
-    <div className="sg-ludo-preview" aria-label="Ludo board preview">
-      {cells}
-      {yards.map(([color, area]) => (
-        <div key={color} className={`sg-preview-yard yard-${color}`} style={{ gridArea: area }}>
-          {[[1, 1], [1, 4], [4, 1], [4, 4]].map(([r, c], i) => (
-            <img key={i} src={`./ludo/assets/pieces_${color}.webp`} alt=""
-              className="sg-yard-token" style={{ gridRow: r, gridColumn: c }} />
-          ))}
-        </div>
+    <div className="sg-word-tiles" aria-hidden="true">
+      {word.split('').map((ch, i) => (
+        <span key={`${ch}-${i}`} className={`sg-tile${revealed ? ' is-open' : ''}`} style={{ animationDelay: `${i * 60}ms` }}>
+          {revealed ? ch : '·'}
+        </span>
       ))}
-      <div className="sg-preview-center">✦</div>
     </div>
   );
 }
 
-function GameCard({ num, title, desc, detail, cta, href, preview }) {
+function GameCard({ game, preview, onOpen }) {
   return (
     <article className="sg-game-card">
       <div className="sg-card-top">
         <div>
-          <div className="sg-card-number">{num}</div>
-          <h3>{title}</h3>
-          <p>{desc}</p>
+          <div className="sg-card-number">{game.num}</div>
+          <h3>{game.title}</h3>
+          <p>{game.desc}</p>
         </div>
-        <span className="sg-pill">Board preview</span>
+        <span className="sg-pill">{game.category === 'board' ? 'Board preview' : 'Word game'}</span>
       </div>
       <div className="sg-board-preview">{preview}</div>
       <div className="sg-card-bottom">
-        <span className="sg-detail">{detail}</span>
-        <a className="sg-btn gold small" href={href}>{cta} <span>↗</span></a>
+        <span className="sg-detail">{game.detail}</span>
+        <button type="button" className="sg-btn gold small" onClick={() => onOpen(game.id)}>
+          Preview &amp; play <span aria-hidden="true">↗</span>
+        </button>
       </div>
     </article>
+  );
+}
+
+function ChessMini() {
+  const [sq, setSq] = useState('e4');
+  const files = 'abcdefgh';
+  const ranks = [8, 7, 6, 5, 4, 3, 2, 1];
+  return (
+    <div className="sg-mini-board" role="group" aria-label="Chessboard preview"
+      style={{ backgroundImage: "url('./chess/assets/chessBoardDefault_1280.webp')" }}>
+      {ranks.map((r, ri) => files.split('').map((f, ci) => {
+        const name = f + r;
+        return (
+          <button key={name} type="button" aria-label={`Highlight square ${name}`}
+            className={`sg-mini-sq${sq === name ? ' is-lit' : ''}`}
+            style={{ gridRow: ri + 1, gridColumn: ci + 1 }}
+            onClick={() => setSq(name)} />
+        );
+      }))}
+    </div>
+  );
+}
+
+function Dice({ face }) {
+  const pips = { 1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] }[face] || [4];
+  return (
+    <div className="sg-dice" aria-label={`Dice showing ${face}`}>
+      {Array.from({ length: 9 }, (_, i) => <i key={i} className={pips.includes(i) ? 'pip on' : 'pip'} />)}
+    </div>
+  );
+}
+
+function LudoMini() {
+  const [face, setFace] = useState(1);
+  return (
+    <div className="sg-ludo-mini">
+      <img src={ludoPreview} alt="Ludo board with four player yards" />
+      <div className="sg-ludo-dice">
+        <Dice face={face} />
+        <button type="button" className="sg-btn gold small" onClick={() => setFace(1 + Math.floor(Math.random() * 6))}>Roll dice</button>
+      </div>
+    </div>
   );
 }
 
@@ -111,18 +117,20 @@ function Mini({ tone, name, desc, command }) {
         <b>{name}</b>
         <p>{desc}</p>
       </div>
-      <span className="sg-mini-cta">OPEN IN BOT <span>↗</span></span>
+      <span className="sg-mini-cta">OPEN IN BOT <span aria-hidden="true">↗</span></span>
     </a>
   );
 }
 
 export default function HubApp() {
   const [splashDone, setSplashDone] = useState(false);
-  const [soundOff, setSoundOff] = useState(() => {
-    try { return localStorage.getItem('sg-hub-sound') === 'off'; } catch (e) { return false; }
-  });
+  const [filter, setFilter] = useState('board');
+  const [activeGame, setActiveGame] = useState(null);
   const [toast, setToast] = useState('');
   const toastTimer = useRef(null);
+  const modalRef = useRef(null);
+  const sfx = useRef(null);
+  if (!sfx.current) sfx.current = createSfx();
   const profile = useMemo(() => {
     const u = window.Telegram?.WebApp?.initDataUnsafe?.user;
     return u ? (u.username ? `@${u.username}` : (u.first_name || 'PLAYER')) : 'PLAYER / GUEST';
@@ -131,6 +139,13 @@ export default function HubApp() {
   useEffect(() => {
     const t = setTimeout(() => setSplashDone(true), 900);
     return () => clearTimeout(t);
+  }, []);
+
+  // Sound stays on by default but is only created/unlocked after a real tap.
+  useEffect(() => {
+    const unlock = () => { sfx.current?.move(); };
+    window.addEventListener('pointerdown', unlock, { once: true });
+    return () => window.removeEventListener('pointerdown', unlock);
   }, []);
 
   // Deep link from inline Join/Spectate buttons: open the right table directly.
@@ -160,32 +175,63 @@ export default function HubApp() {
           new Promise((resolve) => setTimeout(() => resolve(null), 500)),
         ]);
         if (joined?.expired) { setToast(joined.error || 'Session expired — ask for a new invite.'); return; }
-        // `already` is a normal re-entry (the bot or an earlier tap already
-        // registered this seat) — never block it. Only a genuine 3rd player
-        // (`full`, not `already`) should fall through to spectating.
         if (joined && joined.ok === false && !joined.already && !joined.full) { setToast(joined.error || 'Invite is no longer valid.'); return; }
         go(!!(joined && joined.full && !joined.already));
       } catch (e) { /* stay on hub */ }
     })();
   }, []);
 
+  // Modal accessibility: focus, Esc, Tab trap, no background scroll.
+  useEffect(() => {
+    if (!activeGame) return;
+    const previous = document.activeElement;
+    const focusables = () => [...(modalRef.current?.querySelectorAll('button, a[href]') || [])];
+    focusables()[0]?.focus();
+    const onKey = (e) => {
+      if (e.key === 'Escape') { setActiveGame(null); return; }
+      if (e.key !== 'Tab') return;
+      const items = focusables();
+      if (!items.length) return;
+      const first = items[0], last = items[items.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      previous?.focus?.();
+    };
+  }, [activeGame]);
+
   function notify(msg) {
     setToast(msg);
     clearTimeout(toastTimer.current);
     toastTimer.current = setTimeout(() => setToast(''), 3000);
   }
-  const scrollTo = (id) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const scrollTo = (id) => {
+    sfx.current?.move();
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+  const changeFilter = (next) => { sfx.current?.move(); setFilter(next); };
+
+  const game = activeGame ? GAMES[activeGame] : null;
+  const shown = filter === 'board' ? ['chess', 'ludo'] : ['wordseek', 'wordguess'];
 
   return (
     <div className="sg-home">
-      <div className={`sg-splash${splashDone ? ' done' : ''}`}>
-        <div className="sg-splash-inner">
-          <img className="sg-splash-mark" src={hqLogo} alt="" />
-          <div className="sg-splash-title">SHADOW GAMES</div>
-          <div className="sg-splash-sub">THE TABLE IS BEING SET</div>
-          <div className="sg-load-track"><i /></div>
+      {!splashDone && (
+        <div className="sg-splash" role="status" aria-label="Loading Shadow Games">
+          <div className="sg-splash-inner">
+            <img className="sg-splash-mark" src={hqLogo} alt="" />
+            <div className="sg-splash-title">SHADOW GAMES</div>
+            <div className="sg-splash-sub">THE TABLE IS BEING SET</div>
+            <div className="sg-load-track"><i /></div>
+            <button type="button" className="sg-splash-skip" onClick={() => { sfx.current?.move(); setSplashDone(true); }}>
+              Skip intro
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       <header className="sg-top sg-shell">
         <a className="sg-brand" href={BOT_LINK}>
@@ -193,42 +239,35 @@ export default function HubApp() {
           <span className="sg-brand-text"><b>SHADOW GAMES</b><small>STRATEGY · CHANCE · FRIENDSHIP</small></span>
         </a>
         <nav className="sg-nav" aria-label="Sections">
-          <a href="#sg-board-games" className="active" onClick={(e) => { e.preventDefault(); scrollTo('sg-board-games'); }}>Board games</a>
-          <a href="#sg-chat-games" onClick={(e) => { e.preventDefault(); scrollTo('sg-chat-games'); }}>Chat games</a>
+          <a href="#sg-board-games" className="active" onClick={(e) => { e.preventDefault(); scrollTo('sg-board-games'); }}>Games</a>
+          <a href="#sg-chat-games" onClick={(e) => { e.preventDefault(); scrollTo('sg-chat-games'); }}>In Telegram</a>
           <a href={BOT_LINK}>Community</a>
         </nav>
         <div className="sg-top-actions">
           <span className="sg-profile" title="Telegram profile">{profile}</span>
-          <button type="button" className="sg-sound"
-            aria-pressed={soundOff}
-            onClick={() => {
-              const next = !soundOff;
-              setSoundOff(next);
-              try { localStorage.setItem('sg-hub-sound', next ? 'off' : 'on'); } catch (e) { /* ignore */ }
-            }}>{soundOff ? 'Sound off' : 'Sound on'}</button>
-          <a className="sg-btn gold small" href={BOT_LINK}>Open Bot <span>↗</span></a>
+          <a className="sg-btn gold small" href={BOT_LINK}>Open Bot <span aria-hidden="true">↗</span></a>
         </div>
       </header>
 
-      <main className="sg-shell">
+      <main className="sg-shell" id="sg-main">
         <section className="sg-hero" id="sg-top">
           <div className="sg-hero-copy">
             <div className="sg-eyebrow">A LITTLE COMPETITION NEVER HURT</div>
             <h1>Make your<br /><em>next move.</em></h1>
             <p>A home for quick rivalries, clever plays, and the people you play with. Pick a table, open a room, or take your next challenge into Telegram.</p>
             <div className="sg-actions">
-              <button type="button" className="sg-btn gold" onClick={() => scrollTo('sg-board-games')}>Explore the games <span>↗</span></button>
-              <button type="button" className="sg-btn" onClick={() => notify('Open @ShadowGameEnBot in Telegram to play with friends.')}>How it works</button>
+              <button type="button" className="sg-btn gold" onClick={() => scrollTo('sg-board-games')}>Play now <span aria-hidden="true">↗</span></button>
+              <button type="button" className="sg-btn" onClick={() => { sfx.current?.move(); notify('Open @ShadowGameEnBot in Telegram to play with friends.'); }}>How it works</button>
             </div>
             <div className="sg-pills">
-              <span className="sg-pill"><i /> Two interactive boards</span>
+              <span className="sg-pill"><i aria-hidden="true" /> Two interactive boards</span>
               <span className="sg-pill">3 games in Telegram DM</span>
             </div>
           </div>
           <div className="sg-hero-art">
             <span className="sg-art-corner">SHADOW HQ / 001</span>
             <span className="sg-art-index">CC × SG</span>
-            <img src={hqLogo} alt="Code Council emblem" />
+            <img src={hqLogo} alt="Code Council emblem presented by Shadow Games" />
             <span className="sg-art-caption">CODE COUNCIL · PRESENTS</span>
           </div>
         </section>
@@ -238,19 +277,26 @@ export default function HubApp() {
             <div>
               <div className="sg-eyebrow">THE GAME ROOM</div>
               <h2>Choose your table</h2>
-              <p>Chess preserves the original Shadow Games board skin. Ludo uses the original 15×15 geometry with clearer framing and tactile tokens.</p>
+              <p>Four ways to play — real boards here, word games and UNO inside Telegram.</p>
             </div>
-            <span className="sg-count">01 — 02 / BOARD GAMES</span>
+            <span className="sg-count">01 — 04 / ALL GAMES</span>
           </div>
-          <div className="sg-board-games">
-            <GameCard
-              num="01 / STRATEGY" title="CHESS"
-              desc="Think a few moves ahead. Original Shadow Games board skin, original sculpted set, and a familiar move layout."
-              detail="REAL PIECE ART · CLICK-TO-MOVE" cta="Enter board" href="./chess/" preview={<img className="sg-preview-img" src={chessPreview} alt="Original Shadow Games chess board" />} />
-            <GameCard
-              num="02 / RACE" title="LUDO"
-              desc="Bring the tokens home. Classic 15×15 race geometry, safe-star spaces, home lanes, and an embossed dice table."
-              detail="TOKEN ART · DICE ANIMATION" cta="Roll in" href="./ludo/" preview={<img className="sg-preview-img" src={ludoPreview} alt="Shadow Games Ludo board" />} />
+          <div className="sg-filter" role="tablist" aria-label="Game categories">
+            <button type="button" role="tab" id="tab-board" aria-controls="sg-game-panel" aria-selected={filter === 'board'}
+              className={filter === 'board' ? 'is-active' : ''} onClick={() => changeFilter('board')}>Board Games</button>
+            <button type="button" role="tab" id="tab-word" aria-controls="sg-game-panel" aria-selected={filter === 'word'}
+              className={filter === 'word' ? 'is-active' : ''} onClick={() => changeFilter('word')}>Word Games</button>
+          </div>
+          <div className="sg-board-games" id="sg-game-panel" role="tabpanel" aria-labelledby={filter === 'board' ? 'tab-board' : 'tab-word'}>
+            {shown.map((id) => (
+              <GameCard key={id} game={GAMES[id]} onOpen={(key) => { sfx.current?.move(); setActiveGame(key); }}
+                preview={id === 'chess'
+                  ? <img className="sg-preview-img" src={chessPreview} alt="3D chessboard with pieces set up" />
+                  : id === 'ludo'
+                    ? <img className="sg-preview-img" src={ludoPreview} alt="Ludo board with four player yards" />
+                    : <WordTiles word={id === 'wordseek' ? 'SEEK' : 'GUESS'} />}
+              />
+            ))}
           </div>
         </section>
 
@@ -258,20 +304,20 @@ export default function HubApp() {
           <div className="sg-section-head">
             <div>
               <div className="sg-eyebrow">IN THE GROUP CHAT</div>
-              <h2>Play directly with the bot</h2>
+              <h2>More in Telegram</h2>
               <p>These games open Shadow Games in Telegram DM using the start links from the current app.</p>
             </div>
-            <span className="sg-count">03 — 05 / TELEGRAM</span>
+            <span className="sg-count">05 / TELEGRAM</span>
           </div>
           <div className="sg-mini-grid">
             <Mini tone="uno" name="UNO" desc="Deal the cards, pick your mode, and outplay your friends with perfectly timed moves." command="newuno" />
-            <Mini tone="seek" name="WORDSEEK" desc="Start a hidden-word round in Telegram. Find the word and keep your streak alive." command="new" />
-            <Mini tone="word" name="WORDGUESS" desc="Kick off a word-guessing game with your group and see who gets it first." command="game" />
+            <Mini tone="seek" name="DAILY WORD" desc="Solve the daily word puzzle and keep your streak alive." command="daily" />
+            <Mini tone="word" name="LEADERBOARD" desc="See where you rank across all Shadow Games." command="leaderboard" />
           </div>
           <div className="sg-note">
-            <span className="sg-note-mark">✦</span>
+            <span className="sg-note-mark" aria-hidden="true">✦</span>
             <span><b>Want the full experience?</b><br />Open @ShadowGameEnBot in Telegram for the bot-driven group games, commands, and room invitations.</span>
-            <a href={BOT_LINK}>Visit Bot <span>↗</span></a>
+            <a href={BOT_LINK}>Visit Bot <span aria-hidden="true">↗</span></a>
           </div>
         </section>
       </main>
@@ -281,7 +327,29 @@ export default function HubApp() {
         <span>PLAY WELL. PLAY TOGETHER.</span>
         <span>STRATEGY · CHANCE · FRIENDSHIP</span>
       </footer>
+
       {toast && <div className="sg-toast" role="status">{toast}</div>}
+
+      {game && (
+        <div className="sg-modal-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) setActiveGame(null); }}>
+          <div className="sg-modal" role="dialog" aria-modal="true" aria-labelledby="sg-modal-title" ref={modalRef}>
+            <button type="button" className="sg-modal-close" aria-label="Close preview" onClick={() => { sfx.current?.move(); setActiveGame(null); }}>×</button>
+            <div className="sg-card-number">{game.num}</div>
+            <h2 id="sg-modal-title">{game.title}</h2>
+            <p className="sg-modal-desc">{game.desc}</p>
+            <div className="sg-modal-preview">
+              {game.id === 'chess' && <ChessMini />}
+              {game.id === 'ludo' && <LudoMini />}
+              {game.id === 'wordseek' && <WordTiles word="SEEK" revealed />}
+              {game.id === 'wordguess' && <WordTiles word="GUESS" revealed />}
+            </div>
+            <div className="sg-modal-actions">
+              <a className="sg-btn gold" href={game.href} onClick={() => sfx.current?.move()}>{game.cta} <span aria-hidden="true">↗</span></a>
+              <button type="button" className="sg-btn" onClick={() => { sfx.current?.move(); setActiveGame(null); }}>Back to games</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

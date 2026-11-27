@@ -1,5 +1,21 @@
 @import "tailwindcss";
 
+/* Code Council design tokens (Tailwind v4 theme). transparent/currentColor
+   are provided by Tailwind itself. Use bg-navy, text-gold, border-teal, etc. */
+@theme {
+  --color-navy: #060910;
+  --color-navy-2: #0b1220;
+  --color-navy-3: #0e1829;
+  --color-gold: #e8b85d;
+  --color-gold-bright: #f6d58b;
+  --color-gold-deep: #8a6b2f;
+  --color-teal: #67e8f9;
+  --color-teal-deep: #0b3d4a;
+  --color-ink: #f3efe6;
+  --color-muted: #9aa8bd;
+  --font-display: 'Exo 2', system-ui, sans-serif;
+}
+
 @font-face {
   font-family: 'Exo 2';
   src: url('../ludo/assets/Exo2-latin.woff2') format('woff2');
