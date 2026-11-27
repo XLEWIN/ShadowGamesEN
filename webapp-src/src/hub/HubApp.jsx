@@ -109,14 +109,15 @@ function Dice({ face }) {
   );
 }
 
-function LudoMini() {
+function LudoMini({ onRoll }) {
   const [face, setFace] = useState(1);
+  const roll = () => { setFace(1 + Math.floor(Math.random() * 6)); onRoll?.(); };
   return (
     <div className="sg-ludo-mini">
       <img src={ludoPreview} alt="Ludo board with four player yards" />
       <div className="sg-ludo-dice">
         <Dice face={face} />
-        <button type="button" className="sg-btn gold small" onClick={() => setFace(1 + Math.floor(Math.random() * 6))}>Roll dice</button>
+        <button type="button" className="sg-btn gold small" onClick={roll}>Roll dice</button>
       </div>
     </div>
   );
@@ -139,6 +140,9 @@ export default function HubApp() {
   const [splashDone, setSplashDone] = useState(false);
   const [filter, setFilter] = useState('board');
   const [activeGame, setActiveGame] = useState(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [paletteQuery, setPaletteQuery] = useState('');
   const [toast, setToast] = useState('');
   const toastTimer = useRef(null);
   const modalRef = useRef(null);
@@ -159,6 +163,22 @@ export default function HubApp() {
     const unlock = () => { sfx.current?.move(); };
     window.addEventListener('pointerdown', unlock, { once: true });
     return () => window.removeEventListener('pointerdown', unlock);
+  }, []);
+
+  // Ctrl/Cmd+K opens a small game search palette; Escape closes overlays.
+  useEffect(() => {
+    const onKey = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setPaletteOpen((v) => !v);
+        setMenuOpen(false);
+      } else if (e.key === 'Escape') {
+        setPaletteOpen(false);
+        setMenuOpen(false);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
   }, []);
 
   // Deep link from inline Join/Spectate buttons: open the right table directly.
@@ -225,10 +245,20 @@ export default function HubApp() {
     sfx.current?.move();
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
-  const changeFilter = (next) => { sfx.current?.move(); setFilter(next); };
+  const changeFilter = (next) => { sfx.current?.select(); setFilter(next); };
+  const tabKeys = (e) => {
+    if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+    e.preventDefault();
+    const next = filter === 'board' ? 'word' : 'board';
+    changeFilter(next);
+    document.getElementById(next === 'board' ? 'tab-board' : 'tab-word')?.focus();
+  };
 
   const game = activeGame ? GAMES[activeGame] : null;
   const shown = filter === 'board' ? ['chess', 'ludo'] : ['wordseek', 'wordguess'];
+  const q = paletteQuery.trim().toLowerCase();
+  const paletteResults = Object.values(GAMES).filter((g) =>
+    !q || `${g.title} ${g.desc} ${g.category}`.toLowerCase().includes(q));
 
   return (
     <div className="sg-home">
@@ -254,13 +284,18 @@ export default function HubApp() {
           <img className="sg-brand-mark" src={hqLogo} alt="" />
           <span className="sg-brand-text"><b>SHADOW GAMES</b><small>STRATEGY · CHANCE · FRIENDSHIP</small></span>
         </a>
-        <nav className="sg-nav" aria-label="Sections">
-          <a href="#sg-board-games" className="active" onClick={(e) => { e.preventDefault(); scrollTo('sg-board-games'); }}>Games</a>
-          <a href="#sg-chat-games" onClick={(e) => { e.preventDefault(); scrollTo('sg-chat-games'); }}>In Telegram</a>
+        <nav className={`sg-nav${menuOpen ? ' is-open' : ''}`} aria-label="Sections">
+          <a href="#sg-board-games" className="active" onClick={(e) => { e.preventDefault(); setMenuOpen(false); scrollTo('sg-board-games'); }}>Games</a>
+          <a href="#sg-chat-games" onClick={(e) => { e.preventDefault(); setMenuOpen(false); scrollTo('sg-chat-games'); }}>In Telegram</a>
           <a href={BOT_LINK}>Community</a>
+          <button type="button" className="sg-nav-search" onClick={() => { setMenuOpen(false); setPaletteOpen(true); }}>Search games (Ctrl+K)</button>
         </nav>
         <div className="sg-top-actions">
           <span className="sg-profile" title="Telegram profile">{profile}</span>
+          <button type="button" className="sg-btn small sg-search-btn" aria-label="Search games"
+            onClick={() => { sfx.current?.select(); setPaletteOpen(true); }}>⌕ Search</button>
+          <button type="button" className="sg-menu-btn" aria-label="Open main menu" aria-expanded={menuOpen}
+            onClick={() => { sfx.current?.select(); setMenuOpen(v => !v); }}><span /><span /><span /></button>
           <a className="sg-btn gold small" href={BOT_LINK}>Open Bot <span aria-hidden="true">↗</span></a>
         </div>
       </header>
@@ -297,7 +332,7 @@ export default function HubApp() {
             </div>
             <span className="sg-count">01 — 04 / ALL GAMES</span>
           </div>
-          <div className="sg-filter" role="tablist" aria-label="Game categories">
+          <div className="sg-filter" role="tablist" aria-label="Game categories" onKeyDown={tabKeys}>
             <motion.button type="button" role="tab" id="tab-board" aria-controls="sg-game-panel" aria-selected={filter === 'board'}
               className={filter === 'board' ? 'is-active' : ''} whileTap={{ scale: 0.96 }} onClick={() => changeFilter('board')}>Board Games</motion.button>
             <motion.button type="button" role="tab" id="tab-word" aria-controls="sg-game-panel" aria-selected={filter === 'word'}
@@ -305,7 +340,7 @@ export default function HubApp() {
           </div>
           <div className="sg-board-games" id="sg-game-panel" role="tabpanel" aria-labelledby={filter === 'board' ? 'tab-board' : 'tab-word'}>
             {shown.map((id) => (
-              <GameCard key={id} game={GAMES[id]} onOpen={(key) => { sfx.current?.move(); setActiveGame(key); }}
+              <GameCard key={id} game={GAMES[id]} onOpen={(key) => { sfx.current?.open(); setActiveGame(key); }}
                 preview={id === 'chess'
                   ? <img className="sg-preview-img" src={chessPreview} alt="3D chessboard with pieces set up" />
                   : id === 'ludo'
@@ -367,7 +402,7 @@ export default function HubApp() {
             <p className="sg-modal-desc">{game.desc}</p>
             <div className="sg-modal-preview">
               {game.id === 'chess' && <ChessMini />}
-              {game.id === 'ludo' && <LudoMini />}
+              {game.id === 'ludo' && <LudoMini onRoll={() => sfx.current?.roll()} />}
               {game.id === 'wordseek' && <WordTiles word="SEEK" revealed />}
               {game.id === 'wordguess' && <WordTiles word="GUESS" revealed />}
             </div>
@@ -377,6 +412,34 @@ export default function HubApp() {
             </div>
           </motion.div>
         </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {paletteOpen && (
+          <motion.div className="sg-modal-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            onMouseDown={(e) => { if (e.target === e.currentTarget) setPaletteOpen(false); }}>
+            <motion.div className="sg-palette" role="dialog" aria-modal="true" aria-label="Search games"
+              initial={{ opacity: 0, y: 12, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 8, scale: 0.98 }}>
+              <input autoFocus className="sg-palette-input" type="search" placeholder="Search games…"
+                aria-label="Search games" value={paletteQuery} onChange={(e) => setPaletteQuery(e.target.value)} />
+              <div className="sg-palette-list">
+                {paletteResults.map((g) => (
+                  <button key={g.id} type="button" onClick={() => {
+                    sfx.current?.open();
+                    setPaletteOpen(false); setPaletteQuery('');
+                    setFilter(g.category); setActiveGame(g.id);
+                  }}>
+                    <span className="sg-card-number">{g.num}</span>
+                    <b>{g.title}</b>
+                    <small>{g.detail}</small>
+                  </button>
+                ))}
+                {!paletteResults.length && <p className="sg-palette-empty">No games match that search.</p>}
+              </div>
+              <p className="sg-palette-hint">Press Esc to close · Ctrl+K to toggle</p>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>

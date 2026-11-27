@@ -19,6 +19,10 @@ export function createSfx() {
     toggle: () => { mutedRef.current = !mutedRef.current; return mutedRef.current; },
     roll: () => { tone(300, .07); setTimeout(() => tone(420, .07), 70); setTimeout(() => tone(520, .09), 140); },
     move: () => tone(660, .06, 'triangle', .06),
+    // Short, non-looping UI feedback — only ever played after a user gesture.
+    select: () => tone(520, .05, 'sine', .05),
+    open: () => { tone(440, .07, 'triangle', .05); setTimeout(() => tone(660, .09, 'triangle', .05), 60); },
+    roll: () => { tone(240, .06, 'square', .035); setTimeout(() => tone(360, .08, 'square', .035), 70); },
     capture: () => { tone(180, .15, 'sawtooth', .07); setTimeout(() => tone(120, .2, 'sawtooth', .07), 110); },
     home: () => [523, 659, 784].forEach((f, i) => setTimeout(() => tone(f, .14, 'triangle', .07), i * 90)),
     win: () => [523, 587, 659, 784, 1046].forEach((f, i) => setTimeout(() => tone(f, .22, 'triangle', .08), i * 130)),

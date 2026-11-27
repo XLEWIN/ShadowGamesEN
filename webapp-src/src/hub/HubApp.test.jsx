@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, expect, it, beforeEach } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import HubApp from './HubApp.jsx';
 
 async function mount() {
@@ -48,5 +48,24 @@ describe('Shadow Games hub', () => {
     await mount();
     expect(screen.queryByRole('button', { name: /sound/i })).toBeNull();
     expect(screen.queryByRole('button', { pressed: true })).toBeNull();
+  });
+
+  it('opens the Ctrl+K search palette and finds a game', async () => {
+    await mount();
+    fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
+    const palette = await screen.findByRole('dialog', { name: /search games/i });
+    const input = within(palette).getByRole('searchbox', { name: /search games/i });
+    fireEvent.change(input, { target: { value: 'ludo' } });
+    await waitFor(() => expect(within(palette).queryByText('CHESS')).toBeNull());
+    expect(within(palette).getByText('LUDO')).toBeInTheDocument();
+  });
+
+  it('exposes an accessible mobile menu button', async () => {
+    const { container } = await mount();
+    const menu = container.querySelector('[aria-label="Open main menu"]');
+    expect(menu).toBeTruthy();
+    expect(menu).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(menu);
+    expect(menu).toHaveAttribute('aria-expanded', 'true');
   });
 });
