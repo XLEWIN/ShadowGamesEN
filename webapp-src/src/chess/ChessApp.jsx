@@ -6,6 +6,7 @@ import { createSfx } from '../shared/audio.js';
 import { callServer, inviteFriends, spectateCode, botDeepLink, claimHost, sessionState } from '../shared/lobby.js';
 import { makeRoomCode, normalizeRoomCode } from '../shared/room.js';
 import SpectateView from '../shared/SpectateView.jsx';
+import { ChessLanding, AiSetupV4, ChessRoomV4 } from './ChessV4.jsx';
 
 const PIECES = {
   wp: 'assets/chessSetDefault_PawnWhite_160.webp',
@@ -66,6 +67,7 @@ export default function ChessApp() {
   const [sessionDead, setSessionDead] = useState(false);
   const [premove, setPremove] = useState(null);
   const [confirmResign, setConfirmResign] = useState(false);
+  const [v4Modal, setV4Modal] = useState('');
   const sfx = useRef(createSfx());
   const onlineRef = useRef(null);
   const joinFlowRef = useRef(false);
@@ -743,63 +745,27 @@ export default function ChessApp() {
     );
   }
   if (screen === 'menu') {
-    return (
-      <div className="sg-bg min-h-full flex flex-col items-center justify-center px-5 py-8">
-        <div className="flex flex-col items-center gap-2 w-full max-w-[440px] text-center">
-          <img src="assets/og_image_960.webp" alt="Chess" draggable="false" className="w-40 h-[100px] object-contain" />
-          <h1 className="game-title-word text-[clamp(56px,16vw,92px)] font-black tracking-[12px] leading-none">CHESS</h1>
-          <div className="gold-rule"><span /><em className="text-[#e3b75b]">✦</em><span /></div>
-          <div className="text-[#a99e86] text-[12px]">Outwit. Outplay. Outlast.</div>
-          <div className="flex flex-col gap-3 w-full mt-2">
-            <button className="btn btn-gold py-[17px] text-[17px] w-full" onClick={() => { haptic(); setScreen('setup-ai'); }}>🤖 PLAY VS AI</button>
-            <button className="btn btn-dark py-[17px] text-[17px] w-full" onClick={() => { haptic(); setScreen('setup-local'); }}>👥 PLAY 1V1</button>
-            <button className="btn btn-dark py-[17px] text-[17px] w-full" onClick={() => {
-              haptic();
-              const code = makeRoomCode();
-              window.location.href = `./?startapp=chess-${code}`;
-            }}>➕ CREATE GAME</button>
-          </div>
-          <div className="text-[#a99e86] text-[11px] mt-2 flex gap-2 items-center">
-            <a className="text-[#e3b75b] font-bold no-underline" href="../index.html">← All Games</a><span className="opacity-50">•</span>
-            <a className="text-[#e3b75b] font-bold no-underline" href="https://t.me/ShadowGameEnBot">@ShadowGameEnBot</a>
-          </div>
-        </div>
-      </div>
-    );
+    return <ChessLanding
+      onAI={() => { haptic(); setScreen('setup-ai'); }}
+      on1v1={() => { haptic(); setScreen('setup-local'); }}
+      onCreate={() => { haptic(); window.location.href = `./?startapp=chess-${makeRoomCode()}`; }}
+      onAllGames={() => { window.location.href = '../'; }}
+      onBot={() => { window.location.href = 'https://t.me/ShadowGameEnBot'; }}
+    />;
   }
   if (screen === 'setup-ai') {
-    return (
-      <SetupShell id="ai-setup" title="Play vs AI" onBack={() => setScreen('menu')}>
-        <label className="text-[#a99e86] text-[10px] tracking-[3px] font-bold">TIME CONTROL</label>
-        <SegRow id="seg-time-ai">
-          {[[60, 0, '1+0'], [180, 0, '3+0'], [180, 2, '3+2'], [300, 3, '5+3'], [600, 0, '10+0'], [600, 5, '10+5']].map(([secs, inc, label]) => (
-            <SegBtn key={secs} dataV={String(secs)} inc={inc} selected={aiSetup.seconds === secs && aiSetup.inc === inc}
-              onClick={() => { setAiSetup(s => ({ ...s, seconds: secs, inc })); haptic('light'); }}>{label}</SegBtn>
-          ))}
-        </SegRow>
-        <label className="text-[#a99e86] text-[10px] tracking-[3px] font-bold">DIFFICULTY</label>
-        <SegRow id="seg-difficulty">
-          {[['casual', 'Casual'], ['tactician', 'Tactician'], ['master', 'Master']].map(([key, label]) => (
-            <SegBtn key={key} dataV={key} selected={aiSetup.diff === key}
-              onClick={() => { setAiSetup(s => ({ ...s, diff: key })); haptic('light'); }}>{label}</SegBtn>
-          ))}
-        </SegRow>
-        <label className="text-[#a99e86] text-[10px] tracking-[3px] font-bold">YOUR COLOUR</label>
-        <div className="piece-pick flex gap-3 justify-center">
-          {[['w', 'assets/chessSetDefault_KingWhite_160.webp', 'WHITE'],
-            ['random', 'assets/chessSetDefault_QueenBlack_160.webp', 'RANDOM'],
-            ['b', 'assets/chessSetDefault_KingBlack_160.webp', 'BLACK']].map(([v, img, label]) => (
-            <button key={v} data-v={v}
-              className={`flex flex-col items-center gap-1 rounded-2xl border-2 px-3 py-2 transition-all ${aiSetup.color === v ? 'border-[#e3b75b] bg-[#e3b75b]/10 shadow-[0_0_18px_rgba(227,183,91,.2)]' : 'border-white/10 bg-[#1a2243]'}`}
-              onClick={() => { setAiSetup(s => ({ ...s, color: v })); haptic('light'); }}>
-              <img src={img} alt={label} className="w-[52px] h-[52px]" />
-              <span className="text-[9px] tracking-[1.5px] font-extrabold text-[#a99e86]">{label}</span>
-            </button>
-          ))}
-        </div>
-        <button className="btn btn-gold w-full py-[17px] text-[17px]" onClick={startAiGame}>START GAME</button>
-      </SetupShell>
-    );
+    const clockLabel = { '60-0': '1+0', '180-0': '3+0', '180-2': '3+2', '300-3': '5+3', '600-0': '10+0', '600-5': '10+5' }[`${aiSetup.seconds}-${aiSetup.inc}`] || '5+3';
+    const labels = { '1+0': [60, 0], '3+0': [180, 0], '3+2': [180, 2], '5+3': [300, 3], '10+0': [600, 0], '10+5': [600, 5] };
+    return <div className="app-shell"><AiSetupV4
+      clock={clockLabel}
+      setClock={(t) => { const [seconds, inc] = labels[t] || [300, 3]; setAiSetup(s => ({ ...s, seconds, inc })); haptic('light'); }}
+      level={aiSetup.diff}
+      setLevel={(diff) => { setAiSetup(s => ({ ...s, diff })); haptic('light'); }}
+      side={aiSetup.color === 'w' ? 'white' : aiSetup.color === 'b' ? 'black' : 'random'}
+      setSide={(v) => { setAiSetup(s => ({ ...s, color: v === 'white' ? 'w' : v === 'black' ? 'b' : 'random' })); haptic('light'); }}
+      onStart={startAiGame}
+      onBack={() => setScreen('menu')}
+    /></div>;
   }
   if (screen === 'setup-local') {
     return (
@@ -935,7 +901,38 @@ export default function ChessApp() {
     );
   }
 
-  /* ═══ GAME SCREEN ═══ */
+  /* ═══ GAME SCREEN — v4 rooms visual shell ═══ */
+  if (screen === 'game') {
+    const g = G.current;
+    const myColor = me()?.color || 'w';
+    const oppColor = myColor === 'w' ? 'b' : 'w';
+    const counts = pieceCount(g.game, oppColor);
+    const captured = Object.entries(BASE_COUNTS).flatMap(([t, n]) => Array(Math.max(0, n - (counts[t] || 0))).fill(t));
+    const hist = g.game.history({ verbose: true });
+    const turnText = g.game.turn() === 'w' ? 'WHITE' : 'BLACK';
+    const status = g.over
+      ? (g.result === 'checkmate' ? (g.winner === myColor ? 'Checkmate · you win' : 'Checkmate · you lose')
+        : g.result === 'timeout' ? 'Flag fall' : g.result === 'resign' ? 'Resigned'
+          : g.result === 'abandoned' ? 'Opponent left' : 'Draw')
+      : g.game.inCheck() ? `${turnText} IS IN CHECK` : `${turnText} TO MOVE`;
+    return <ChessRoomV4
+      game={g.game} players={g.players}
+      clocks={{ w: fmtClock(g.clock.w), b: fmtClock(g.clock.b) }}
+      turn={g.game.turn()} over={g.over} status={status}
+      history={hist} moves={hist} captured={captured}
+      flipped={g.orientation === 'b'} level={aiSetup.diff}
+      onMove={(from, to, promotion) => attemptMove(from, to, promotion)}
+      onBack={() => setScreen('menu')}
+      onResign={(confirmed) => { if (confirmed) resign(); else setV4Modal('resign'); }}
+      onSound={() => { sfx.current.toggle(); bump(); }}
+      onReset={() => { if (g.mode === 'ai') startAiGame(); else if (g.mode === 'local') startLocalGame(); else resetOnlineMatch(); }}
+      onInvite={() => { if (!inviteFriends('chess', onlineRef.current?.code || '')) setToast('Open Telegram to invite a friend.'); }}
+      onMenu={() => setV4Modal('menu')}
+      modal={v4Modal} setModal={setV4Modal} toast={toast}
+    />;
+  }
+
+  /* ═══ GAME SCREEN (legacy) ═══ */
   const g = G.current;
   const orientNow = g.orientation;
   const ranksNow = orientNow === 'w' ? RANKS_W : RANKS_B;

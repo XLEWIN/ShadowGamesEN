@@ -9,6 +9,7 @@ import { createSfx } from '../shared/audio.js';
 import { callServer, inviteFriends, spectateCode, botDeepLink, claimHost, sessionState } from '../shared/lobby.js';
 import { makeRoomCode, normalizeRoomCode } from '../shared/room.js';
 import SpectateView from '../shared/SpectateView.jsx';
+import { LudoLanding, LudoSetupV4, LudoRoomV4 } from './LudoV4.jsx';
 
 const AVATARS = { red: 'assets/petey.webp', yellow: 'assets/bomby.webp', green: 'assets/bruno.webp', blue: 'assets/bulby.webp' };
 const avatarFor = (p) => (p && p.photo) ? p.photo : ((p && p.isBot) ? (AVATARS[p.color] || 'assets/guest.webp') : 'assets/guest.webp');
@@ -529,45 +530,23 @@ export default function LudoApp() {
     );
   }
   if (screen === 'menu') {
-    return (
-      <div className="sg-bg min-h-full flex flex-col items-center justify-center px-5 py-8">
-        <div className="flex flex-col items-center gap-3 w-full max-w-[440px] text-center">
-          <img src="assets/icon.webp" alt="Ludo" draggable="false" className="w-[130px] h-[130px] object-contain drop-shadow-[0_14px_40px_rgba(242,140,40,.35)] animate-[floaty_3.4s_ease-in-out_infinite]" />
-          <h1 className="game-title-word text-[clamp(72px,21vw,112px)] font-black leading-none">LUDO</h1>
-          <div className="text-[#a99e86] text-[12px]">Race your pawns home — the Shadow Games way.</div>
-          <div className="flex flex-col gap-3 w-full mt-2">
-            <button className="btn btn-gold py-[17px] text-[17px] w-full" onClick={() => { haptic(); setScreen('setup-bots'); }}>🤖 PLAY VS BOTS</button>
-            <button className="btn btn-dark py-[17px] text-[17px] w-full" onClick={() => { haptic(); setScreen('online'); }}>➕ CREATE ROOM</button>
-            <button className="btn btn-dark py-[17px] text-[17px] w-full" onClick={() => { haptic(); setScreen('setup-local'); }}>👥 PLAY IN PERSON</button>
-          </div>
-          <div className="text-[#a99e86] text-[11px] mt-3 flex gap-2 items-center">
-            <a className="text-[#e3b75b] font-bold no-underline" href="../index.html">← All Games</a><span className="opacity-50">•</span>
-            <a className="text-[#e3b75b] font-bold no-underline" href="https://t.me/ShadowGameEnBot">@ShadowGameEnBot</a>
-          </div>
-        </div>
-      </div>
-    );
+    return <LudoLanding
+      onBots={() => { haptic(); setScreen('setup-bots'); }}
+      onCreate={() => { haptic(); setScreen('online'); }}
+      onPerson={() => { haptic(); setScreen('setup-local'); }}
+      onAllGames={() => { window.location.href = '../'; }}
+      onBot={() => { window.location.href = 'https://t.me/ShadowGameEnBot'; }}
+    />;
   }
   if (screen === 'setup-bots') {
-    return (
-      <SetupShell title="Play vs Bots" onBack={() => setScreen('menu')}>
-        <label className="text-[#a99e86] text-[10px] tracking-[3px] font-bold">BOT COUNT</label>
-        <div className="flex gap-2" id="bot-count">
-          {[1, 2, 3].map(n => (
-            <SegBtn key={n} selected={(G.current.botCount || 3) === n} onClick={() => { G.current.botCount = n; bump(); }}>{n}</SegBtn>
-          ))}
-        </div>
-        <label className="text-[#a99e86] text-[10px] tracking-[3px] font-bold mt-1">YOUR COLOUR</label>
-        <div className="flex gap-3.5 justify-center">
-          {['red', 'yellow', 'green', 'blue'].map(c => (
-            <button key={c} aria-label={c} onClick={() => { G.current.myColor = c; bump(); }}
-                    className={`w-14 h-14 rounded-full transition-transform duration-150 ${(G.current.myColor || 'red') === c ? 'scale-115 ring-4 ring-[#ffd97a]' : ''}`}
-                    style={{ background: `radial-gradient(circle at 35% 32%, ${COLORS[c].light}, ${COLORS[c].hex} 55%, ${COLORS[c].dark})` }} />
-          ))}
-        </div>
-        <button className="btn btn-gold w-full py-[17px] text-[17px] mt-2" onClick={startBotsGame}>START GAME</button>
-      </SetupShell>
-    );
+    return <div className="app-shell"><LudoSetupV4
+      botCount={G.current.botCount || 3}
+      setBotCount={(n) => { G.current.botCount = n; bump(); }}
+      myColor={G.current.myColor || 'red'}
+      setMyColor={(c) => { G.current.myColor = c; bump(); }}
+      onStart={startBotsGame}
+      onBack={() => setScreen('menu')}
+    /></div>;
   }
   if (screen === 'setup-local') {
     return (
@@ -664,7 +643,26 @@ export default function LudoApp() {
     );
   }
 
-  /* ═══ GAME SCREEN ═══ */
+  /* ═══ GAME SCREEN — v4 rooms visual shell ═══ */
+  if (screen === 'game') {
+    const g = G.current;
+    const color = currentColor() || 'red';
+    const legal = g.awaitingMove && !g.over ? legalMoves(g.tokens, color, g.dice) : [];
+    return <LudoRoomV4
+      tokens={g.tokens} players={g.players} currentColor={color} myColor={G.current.myColor || 'red'}
+      dice={g.dice} diceN={diceN} hasRolled={g.awaitingMove}
+      legal={legal}
+      onPawn={(c, idx) => { if (c !== color) { announce('That pawn belongs to another player.'); return; } doMove(idx); }}
+      onRoll={() => rollDice()}
+      onBack={() => setScreen('menu')}
+      onSound={() => sfx.move()}
+      onLeave={() => setScreen('menu')}
+      onModal={() => announce(legal.length ? 'Tap one of your glowing pawns to move.' : 'Roll the dice to take your turn.')}
+      toast={toast} over={g.over} winner={g.winner}
+    />;
+  }
+
+  /* ═══ GAME SCREEN (legacy) ═══ */
   const g = G.current;
   const myPlayer = cur || {};
   const finished = myPlayer.color ? g.tokens[myPlayer.color].filter(t => t.step === 56).length : 0;
