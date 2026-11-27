@@ -1,11 +1,11 @@
 // Shared inline-result cards for Shadow Games, Ludo and Chess.
-// The posted text has no visible URL — Telegram shows a clickable board
-// preview supplied explicitly via link_preview_options, and the button opens
-// the Mini App inside Telegram.
+// Inline results must use URL buttons — `web_app` buttons are rejected by the
+// Bot API for inline messages posted outside private chats (BUTTON_TYPE_INVALID).
+// t.me startapp links still open the Mini App inside Telegram.
 
 import { EID } from './emojis.js';
-import { btnWebApp, buildKeyboard } from './keyboards.js';
-import { HUB_URL, LUDO_URL, CHESS_URL, previewUrl } from './texts.js';
+import { btnUrl, buildKeyboard } from './keyboards.js';
+import { HUB_URL, LUDO_URL, CHESS_URL, BOT_USERNAME, previewUrl } from './texts.js';
 
 export const ICONS = {
   hub: `${HUB_URL}assets/hub-icon.png`,
@@ -13,7 +13,9 @@ export const ICONS = {
   chess: `${CHESS_URL}assets/icon.webp`,
 };
 
-export function gameArticle(id, title, description, webAppUrl, label, iconUrl, preview = null) {
+const startApp = (game) => `https://t.me/${BOT_USERNAME}?startapp=${game}-${game === 'ludo' ? 'LUDO1' : 'CHESS'}`;
+
+export function gameArticle(id, title, description, url, label, iconUrl, preview = null) {
   return {
     type: 'article', id, title, description,
     thumbnail_url: iconUrl,
@@ -23,7 +25,9 @@ export function gameArticle(id, title, description, webAppUrl, label, iconUrl, p
       ...(preview ? { link_preview_options: { is_disabled: false, url: preview } } : {}),
     },
     reply_markup: buildKeyboard([[{
-      text: label, web_app: { url: webAppUrl }, style: 'primary', icon_custom_emoji_id: EID.GAME,
+      text: label,
+      url: id === 'hub' ? url : startApp(id === 'open-ludo' ? 'ludo' : 'chess'),
+      style: 'primary', icon_custom_emoji_id: EID.GAME,
     }]]),
   };
 }
