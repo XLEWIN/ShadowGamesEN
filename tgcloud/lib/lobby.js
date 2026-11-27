@@ -22,6 +22,11 @@ export function roomUrl(game, code, spectate = false) {
   return spectate ? `${base}?spectate=${encodeURIComponent(code)}` : `${base}?room=${encodeURIComponent(code)}`;
 }
 
+// Join-based games (chess) go straight to the clubhouse lobby at ?join=CODE.
+export function gameJoinUrl(game, code) {
+  return `${WEBAPP_BASE}${game}/?join=${encodeURIComponent(code)}`;
+}
+
 export function maxPlayersFor(game, requested) {
   const n = Number(requested);
   if (game === 'chess') return 2;

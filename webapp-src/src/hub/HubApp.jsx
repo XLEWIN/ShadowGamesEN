@@ -160,8 +160,11 @@ export default function HubApp() {
           new Promise((resolve) => setTimeout(() => resolve(null), 500)),
         ]);
         if (joined?.expired) { setToast(joined.error || 'Session expired — ask for a new invite.'); return; }
-        if (joined && joined.ok === false && !joined.full) { setToast(joined.error || 'Invite is no longer valid.'); return; }
-        go(!!(joined && joined.full));
+        // `already` is a normal re-entry (the bot or an earlier tap already
+        // registered this seat) — never block it. Only a genuine 3rd player
+        // (`full`, not `already`) should fall through to spectating.
+        if (joined && joined.ok === false && !joined.already && !joined.full) { setToast(joined.error || 'Invite is no longer valid.'); return; }
+        go(!!(joined && joined.full && !joined.already));
       } catch (e) { /* stay on hub */ }
     })();
   }, []);

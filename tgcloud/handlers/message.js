@@ -42,7 +42,7 @@ import {
 } from '../lib/boards.js';
 import {
   createLobby, getLobby, getOpenLobby, joinLobby, addSpectator,
-  inviteText, lobbyKeyboard, roomUrl, saveLobby, parseStartPayload,
+  inviteText, lobbyKeyboard, roomUrl, gameJoinUrl, saveLobby, parseStartPayload,
 } from '../lib/lobby.js';
 import { safeText, safeId, safeInt, safeWord, WORD_RE } from '../lib/guard.js';
 import { throttleCommand, throttle } from '../lib/ratelimit.js';
@@ -182,12 +182,16 @@ async function handleLobbyDeepLink(message, userId, user, target) {
   }
   await saveLobby(lobby);
   const label = target.spectate ? 'Watch table' : 'Join table';
+  // Chess uses the join flow: the 2nd player is taken straight to the board.
+  const webAppUrl = target.game === 'chess' && !target.spectate
+    ? gameJoinUrl(target.game, target.code)
+    : roomUrl(target.game, target.code, target.spectate);
   await replyText(message,
     `${E.SPARKLE} <b>Shadow Games</b>\n\n${E.GAME} <b>${target.game.toUpperCase()}</b> · table <code>${escapeHtml(target.code)}</code>\n` +
     `${E.INFO} ${target.spectate ? 'You are spectating this table.' : `Players in this table: ${lobby.players.length}/${lobby.maxPlayers}`}`,
     {
       parseMode: 'HTML',
-      replyMarkup: buildKeyboard([[btnWebApp(label, roomUrl(target.game, target.code, target.spectate), EID.GAME, 'primary')]]),
+      replyMarkup: buildKeyboard([[btnWebApp(label, webAppUrl, EID.GAME, 'primary')]]),
     });
 }
 

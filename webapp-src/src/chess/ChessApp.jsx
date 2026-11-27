@@ -58,6 +58,9 @@ export default function ChessApp() {
   const [, setTick] = useState(0);
   const [spectatorLive, setSpectatorLive] = useState(false);
   const [roomClock, setRoomClock] = useState({ seconds: 300, inc: 3 });
+  // Authoritative clock: updated synchronously so a fast-joining opponent can
+  // never start the match with the default instead of the selected mode.
+  const clockRef = useRef({ seconds: 300, inc: 3 });
   const [aiSetup, setAiSetup] = useState({ seconds: 300, inc: 3, diff: 'tactician', color: 'w' });
   const [localClock, setLocalClock] = useState({ seconds: 300, inc: 3 });
   const [sessionDead, setSessionDead] = useState(false);
@@ -69,6 +72,12 @@ export default function ChessApp() {
   const lastTapRef = useRef({ t: 0, square: '' });
   const G = useRef(freshState());
   const bump = () => setTick(t => t + 1);
+  const applyClock = (seconds, inc) => {
+    const next = { seconds, inc };
+    clockRef.current = next;
+    setRoomClock(next);
+    return next;
+  };
   const cur = () => G.current.players[G.current.game.turn() === 'w' ? 0 : 1] || G.current.players[0];
   const me = () => G.current.players.find(p => p.isLocal);
   const localTurn = () => G.current.mode === 'local' || me()?.color === G.current.game.turn();
@@ -90,18 +99,25 @@ export default function ChessApp() {
         const state = await callServer('lobbyState', { code: join });
         if (!alive) return;
         if (state?.status === 'expired') { setSessionDead(true); return; }
-        // A full table becomes a spectator, never a second player/host.
-        if (state?.ok && !state.youAreHost && (state.playerCount || 0) >= (state.maxPlayers || 2)) {
-          window.location.href = `./?spectate=${encodeURIComponent(join)}`;
-          return;
-        }
         const cfg = state?.config || {};
-        setRoomClock({ seconds: cfg.seconds || 300, inc: cfg.inc ?? 3 });
+        applyClock(cfg.seconds || 300, cfg.inc ?? 3);
         // Slot 1 is the host. With no lobby yet the opener becomes host.
         // Never decide by player count alone — that made the 2nd player a host.
         const isFirst = !state?.ok || state.youAreHost === true;
-        if (isFirst) { createRoom(join); setScreen('lobby'); }
-        else { joinRoom(join); setScreen('lobby'); }
+        if (isFirst) { createRoom(join); setScreen('lobby'); bump(); return; }
+
+        // Register this seat. The bot/Hub may already have registered it
+        // (`already`) — that is still a valid 2nd player, not a spectator.
+        const joined = await callServer('lobbyJoin', { code: join, game: 'chess' });
+        if (!alive) return;
+        if (joined?.expired) { setSessionDead(true); return; }
+        if (joined?.full && !joined.already) {
+          window.location.href = `./?spectate=${encodeURIComponent(join)}`;
+          return;
+        }
+        joinRoom(join);
+        setScreen('lobby');
+        bump(); // screen was already 'lobby' — force the guest view to render
         return;
       }
 
@@ -134,7 +150,7 @@ export default function ChessApp() {
   // Choose the default clock automatically; tapping a mode also moves to the board.
   useEffect(() => {
     if (screen !== 'lobby') return;
-    const t = setTimeout(() => showWaitingBoard(roomClock), 1800);
+    const t = setTimeout(() => showWaitingBoard(clockRef.current), 1800);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [screen]);
@@ -553,7 +569,7 @@ export default function ChessApp() {
     const o = onlineRef.current;
     if (!o || !o.isHost || waitingShownRef.current) return; // only the host waits at the board
     waitingShownRef.current = true;
-    const clock = spec || roomClock;
+    const clock = spec ? applyClock(spec.seconds, spec.inc) : clockRef.current;
     o.started = false;
     G.current = {
       ...freshState(), mode: 'online', orientation: 'w',
@@ -572,7 +588,7 @@ export default function ChessApp() {
     const o = onlineRef.current;
     if (!o || o.started) return;
     const names = o.players.map(p => p.name);
-    const { seconds, inc } = roomClock;
+    const { seconds, inc } = clockRef.current; // selected mode, even before React re-render
     o.started = true;
     try { o.conn?.send({ type: 'start', players: names.map(n => ({ name: n })), clockSeconds: seconds, inc }); } catch (e) { /* ignore */ }
     startMatch(o.players.map((p, i) => ({
@@ -769,8 +785,28 @@ export default function ChessApp() {
   }
   if (screen === 'lobby') {
     const code = joinCodeRef.current || new URLSearchParams(window.location.search).get('join') || '';
+    // The 2nd player must never see the host's clock controls — they are
+    // connecting to a game the host already configured.
+    if (onlineRef.current?.isHost === false) {
+      return (
+        <SetupShell title="Joining game" onBack={() => setScreen('menu')}>
+          <div className="text-[11px] tracking-[2px] text-[#a99e86]">INVITE CODE</div>
+          <div className="text-[38px] font-black tracking-[14px] text-[#ffd97a]">{code || '·····'}</div>
+          <div className="rounded-2xl bg-[#131a33] border border-white/10 px-5 py-6 text-center flex flex-col items-center gap-3">
+            <div className="w-8 h-8 rounded-full border-2 border-[#e3b75b] border-t-transparent animate-spin" />
+            <div className="text-[13px] text-[#f5e7c5] font-bold">Connecting to the host…</div>
+            <div className="text-[12px] text-[#a99e86]">The game starts automatically as soon as you are in.</div>
+          </div>
+          <button className="btn btn-dark w-full py-3 text-[12px]" onClick={() => {
+            try { onlineRef.current?.peer?.destroy(); } catch (e) { }
+            onlineRef.current = null;
+            joinRoom(code);
+          }}>↻ Reconnect</button>
+        </SetupShell>
+      );
+    }
     const setClock = (seconds, inc) => {
-      setRoomClock({ seconds, inc });
+      applyClock(seconds, inc);
       if (code) callServer('lobbyConfig', { code, seconds, inc });
       showWaitingBoard({ seconds, inc });
     };
@@ -818,8 +854,8 @@ export default function ChessApp() {
               const o2 = onlineRef.current;
               if ((await sessionState(o2.code)) === 'expired') { setSessionDead(true); setToast('Session expired — ask for a new invite.'); return; }
               const names = [tgName() || 'You', o2.conn?._name || 'Opponent'];
-              const clockSeconds = roomClock.seconds;
-              const inc = roomClock.inc;
+              const clockSeconds = clockRef.current.seconds;
+              const inc = clockRef.current.inc;
               o2.started = true;
               callServer('lobbyStart', { code: o2.code });
               try { o2.conn?.send({ type: 'start', players: names.map(n => ({ name: n })), clockSeconds, inc }); } catch (e) { }
@@ -836,7 +872,7 @@ export default function ChessApp() {
             {[[60, 0, '1+0'], [180, 0, '3+0'], [180, 2, '3+2'], [300, 3, '5+3'], [600, 0, '10+0'], [600, 5, '10+5']].map(([secs, inc, label]) => (
               <SegBtn key={`${label}`} dataV={String(secs)} inc={inc}
                 selected={roomClock.seconds === secs && roomClock.inc === inc}
-                onClick={() => setRoomClock({ seconds: secs, inc })}>{label}</SegBtn>
+                onClick={() => applyClock(secs, inc)}>{label}</SegBtn>
             ))}
           </div>
         </div>
