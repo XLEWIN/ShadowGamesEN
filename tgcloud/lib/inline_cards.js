@@ -5,7 +5,7 @@
 
 import { EID } from './emojis.js';
 import { btnUrl, buildKeyboard } from './keyboards.js';
-import { HUB_URL, LUDO_URL, CHESS_URL, BOT_USERNAME, previewUrl } from './texts.js';
+import { HUB_URL, LUDO_URL, CHESS_URL, BOT_USERNAME, previewUrl, hiddenLink } from './texts.js';
 
 export const ICONS = {
   hub: `${HUB_URL}assets/hub-icon.png`,
@@ -20,9 +20,9 @@ export function gameArticle(id, title, description, url, label, iconUrl, preview
     type: 'article', id, title, description,
     thumbnail_url: iconUrl,
     input_message_content: {
-      message_text: `<b>${title}</b>\n\nOpen the table and play with friends.`,
+      message_text: `<b>${title}</b>\n\nOpen the table and play with friends.` + (preview ? `\n${hiddenLink(preview)}` : ''),
       parse_mode: 'HTML',
-      ...(preview ? { link_preview_options: { is_disabled: false, url: preview } } : {}),
+      ...(preview ? { link_preview_options: { is_disabled: false } } : {}),
     },
     reply_markup: buildKeyboard([[{
       text: label,

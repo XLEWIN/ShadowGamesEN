@@ -41,6 +41,9 @@ export const challengeImage = (game) => `${WEBAPP_BASE}assets/challenge-${game =
 export const gameBoardUrl = (game) => game === 'ludo' ? LUDO_URL : CHESS_URL;
 // Used as the link-preview URL: crawlers see the board OG image, but a tap
 // redirects into the Telegram Mini App instead of opening a browser page.
+// A zero-width-space anchor creates a link entity (and link preview) while
+// keeping the URL itself completely invisible in the message text.
+export const hiddenLink = (url) => `<a href="${url}">&#8203;</a>`;
 export const previewUrl = (game, code = null) => {
   const g = game === 'ludo' ? 'ludo' : 'chess';
   const safe = /^[A-Z0-9]{5}$/.test(String(code || '').toUpperCase()) ? String(code).toUpperCase() : `${g.toUpperCase()}1`;

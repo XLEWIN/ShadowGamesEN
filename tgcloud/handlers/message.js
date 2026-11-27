@@ -17,7 +17,7 @@ import {
   RULES, HELP_TEXT, startText, mention,
   START_TITLE_LINE, START_HINT_LINE, BOT_DESCRIPTION,
   URL_ADD_TO_GROUP, URL_OWNER, URL_UPDATES, URL_DISCUSSION,
-  LEADERBOARD_IMAGE, START_IMAGE, previewUrl,
+  LEADERBOARD_IMAGE, START_IMAGE, previewUrl, hiddenLink,
 } from '../lib/texts.js';
 import {
   userStartedBot, gbannedUsers, games, gamePlayers,
@@ -188,13 +188,14 @@ async function handleLobbyDeepLink(message, userId, user, target) {
     : roomUrl(target.game, target.code, target.spectate);
   const text =
     `${E.SPARKLE} <b>Shadow Games</b>\n\n${E.GAME} <b>${target.game.toUpperCase()}</b> · table <code>${escapeHtml(target.code)}</code>\n` +
-    `${E.INFO} ${target.spectate ? 'You are spectating this table.' : `Players in this table: ${lobby.players.length}/${lobby.maxPlayers}`}`;
+    `${E.INFO} ${target.spectate ? 'You are spectating this table.' : `Players in this table: ${lobby.players.length}/${lobby.maxPlayers}`}\n` +
+    hiddenLink(previewUrl(target.game, target.code));
   const markup = buildKeyboard([
     [btnWebApp(label, webAppUrl, EID.GAME, 'primary')],
   ]);
   await replyText(message, text, {
     parseMode: 'HTML', replyMarkup: markup,
-    link_preview_options: { is_disabled: false, url: previewUrl(target.game, target.code) },
+    link_preview_options: { is_disabled: false },
   });
 }
 
@@ -252,8 +253,9 @@ async function cmdChallenge(message, args, isPrivate, user) {
       [btnWebApp('Open table', roomUrl(game, open.code), EID.GAME, 'primary')],
     ]);
     await replyText(message,
-      `${E.INFO} There is already an open <b>${game.toUpperCase()}</b> table in this chat.`,
-      { parseMode: 'HTML', replyMarkup: markup, link_preview_options: { is_disabled: false, url: previewUrl(game) } });
+      `${E.INFO} There is already an open <b>${game.toUpperCase()}</b> table in this chat.\n` +
+      hiddenLink(previewUrl(game)),
+      { parseMode: 'HTML', replyMarkup: markup, link_preview_options: { is_disabled: false } });
     return;
   }
   try {
@@ -262,10 +264,11 @@ async function cmdChallenge(message, args, isPrivate, user) {
       maxPlayers: requested, chatId: message.chat.id,
     });
     const markup = lobbyKeyboard(lobby);
-    const text = inviteText(lobby, user.first_name || 'Player', user.id);
+    const text = inviteText(lobby, user.first_name || 'Player', user.id) + '\n' +
+      hiddenLink(previewUrl(game, lobby.code));
     const sent = await replyText(message, text, {
       parseMode: 'HTML', replyMarkup: markup,
-      link_preview_options: { is_disabled: false, url: previewUrl(game, lobby.code) },
+      link_preview_options: { is_disabled: false },
     });
     if (sent?.message_id) { lobby.messageId = sent.message_id; await saveLobby(lobby); }
   } catch (err) {
