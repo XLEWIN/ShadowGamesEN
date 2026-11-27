@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Chess } from './vendor/chess.js';
 import { chooseAiMove, AI_INFO } from './ai.js';
-import { tg, tgReady, tgName, tgPhoto, haptic, backButton } from '../shared/telegram.js';
+import { tg, tgReady, tgName, tgFullName, tgPhoto, haptic, backButton } from '../shared/telegram.js';
 import { createSfx } from '../shared/audio.js';
 import { callServer, inviteFriends, spectateCode, botDeepLink, claimHost, sessionState } from '../shared/lobby.js';
 import { makeRoomCode, normalizeRoomCode } from '../shared/room.js';
@@ -64,6 +64,8 @@ export default function ChessApp() {
   const [aiSetup, setAiSetup] = useState({ seconds: 300, inc: 3, diff: 'tactician', color: 'w' });
   const [localClock, setLocalClock] = useState({ seconds: 300, inc: 3 });
   const [sessionDead, setSessionDead] = useState(false);
+  const [premove, setPremove] = useState(null);
+  const [confirmResign, setConfirmResign] = useState(false);
   const sfx = useRef(createSfx());
   const onlineRef = useRef(null);
   const joinFlowRef = useRef(false);
@@ -233,16 +235,30 @@ export default function ChessApp() {
   function timeoutLoser(loser) {
     const winner = loser === 'w' ? 'b' : 'w';
     G.current.over = true; G.current.result = 'timeout'; G.current.winner = winner;
-    premoveRef.current = null;
+    clearPre();
     stopClock();
     haptic('heavy');
+  }
+
+  function resign() {
+    const g = G.current;
+    if (g.over || spectate) return;
+    const loser = g.mode === 'local' ? g.game.turn() : (me()?.color || 'w');
+    g.over = true; g.result = 'resign'; g.winner = loser === 'w' ? 'b' : 'w';
+    clearPre(); stopClock(); haptic('heavy');
+    if (g.mode === 'online' && onlineRef.current) {
+      try { onlineRef.current.conn?.send({ type: 'resign', color: loser }); } catch (e) { /* ignore */ }
+      broadcastState();
+    }
+    setConfirmResign(false);
+    bump();
   }
 
   /* ── Move pipeline ─────────────────────────── */
   function afterMoveApplied(m) {
     addIncrement();
     checkGameOver();
-    if (G.current.over) { premoveRef.current = null; stopClock(); bump(); return; }
+    if (G.current.over) { clearPre(); stopClock(); bump(); return; }
     bump();
     if (G.current.mode === 'online' && onlineRef.current?.isHost) broadcastState();
   }
@@ -291,6 +307,9 @@ export default function ChessApp() {
   }
   const [promo, setPromo] = useState(null); // { from, to }
   const premoveRef = useRef(null);
+  // Keep a mirrored state so premove highlights render immediately and clear.
+  const setPre = (pre) => { premoveRef.current = pre; setPremove(pre); };
+  const clearPre = () => { premoveRef.current = null; setPremove(null); };
   const dragRef = useRef(null);
   const suppressClickRef = useRef(false);
   const [dragFrom, setDragFrom] = useState(null);
@@ -309,7 +328,7 @@ export default function ChessApp() {
     if (!pre || G.current.over) return;
     const me = G.current.players.find(p => p.isLocal);
     if (G.current.mode !== 'local' && (!me || me.color !== G.current.game.turn())) return;
-    premoveRef.current = null;
+    clearPre();
     attemptMove(pre.from, pre.to);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [G.current.game.fen(), G.current.over]);
@@ -349,7 +368,7 @@ export default function ChessApp() {
     const myTurn = G.current.mode === 'local' || (me && me.color === G.current.game.turn());
     if (myTurn) attemptMove(from, to);
     else {
-      premoveRef.current = { from, to };
+      setPre({ from, to });
       setToast('Premove set');
     }
   }
@@ -468,11 +487,19 @@ export default function ChessApp() {
     peer.on('error', () => setToast('Room error — try again.'));
     setScreen('room');
   }
-  function refreshLobby() {
+  async function refreshLobby() {
     const o = onlineRef.current;
     if (!o || !o.isHost) return;
-    const names = [tgName() || 'You', o.conn?._name || 'Opponent'];
-    const photos = [tgPhoto(), o.conn?._photo || null];
+    let names = [tgFullName() || 'You', o.conn?._name || 'Opponent'];
+    let photos = [tgPhoto(), o.conn?._photo || null];
+    // Prefer verified Telegram names from the lobby so the guest never shows
+    // up as "Opponent" or "You" on the host's board.
+    const st = await callServer('lobbyState', { code: o.code });
+    if (st?.ok && Array.isArray(st.players) && st.players.length >= 2) {
+      names = st.players.map(p => p.name || 'Player');
+      photos = st.players.map(p => p.photoUrl || null);
+    }
+    if (onlineRef.current !== o) return;
     // The host's own view must use the same roster it sends to the guest.
     o.players = names.map((name, i) => ({ name, photo: photos[i] || null, color: i === 0 ? 'w' : 'b' }));
     bump();
@@ -492,10 +519,20 @@ export default function ChessApp() {
     }
     if (data.type === 'hello' && !o.conn) {
       o.conn = conn;
-      conn._name = String(data.name || 'Opponent').slice(0, 24);
+      conn._name = String(data.name || 'Opponent').slice(0, 32);
       conn._photo = data.photo || null;
-      refreshLobby();
-      if (joinFlowRef.current) startJoinedGame(); // 2nd player joined — start now
+      (async () => {
+        await refreshLobby();
+        if (onlineRef.current === o && joinFlowRef.current) startJoinedGame(); // 2nd player joined — start now
+      })();
+      return;
+    }
+    if (data.type === 'resign') {
+      const loser = data.color === 'w' ? 'w' : 'b';
+      G.current.over = true;
+      G.current.result = 'resign';
+      G.current.winner = loser === 'w' ? 'b' : 'w';
+      clearPre(); stopClock(); haptic('heavy'); broadcastState(); bump();
       return;
     }
     if (data.type === 'move' && !G.current.over) {
@@ -531,7 +568,7 @@ export default function ChessApp() {
       const conn = peer.connect(PEER_PREFIX + code, { reliable: true });
       onlineRef.current.conn = conn;
       conn.on('open', () => {
-        conn.send({ type: 'hello', name: tgName() || 'You', photo: tgPhoto() });
+        conn.send({ type: 'hello', name: tgFullName() || 'You', photo: tgPhoto() });
         callServer('lobbyJoin', { code });
       });
       conn.on('data', d => {
@@ -548,6 +585,12 @@ export default function ChessApp() {
           startMatch(players, 'online', { seconds: d.clockSeconds || 300, inc: d.inc ?? 3 }, 'b');
         }
         else if (d.type === 'state') applyRemoteState(d);
+        else if (d.type === 'resign') {
+          const loser = d.color === 'w' ? 'w' : 'b';
+          G.current.over = true; G.current.result = 'resign';
+          G.current.winner = loser === 'w' ? 'b' : 'w';
+          clearPre(); stopClock(); haptic('heavy'); bump();
+        }
         else if (d.type === 'illegal') setToast('Illegal move');
       });
       conn.on('close', () => { setToast('Host disconnected.'); setScreen('menu'); });
@@ -574,7 +617,7 @@ export default function ChessApp() {
     G.current = {
       ...freshState(), mode: 'online', orientation: 'w',
       players: [{
-        name: o.players[0]?.name || tgName() || 'You',
+        name: o.players[0]?.name || tgFullName() || 'You',
         photo: o.players[0]?.photo || null, color: 'w',
         isBot: false, isLocal: true, isRemote: false, avatar: AVATARS.you,
       }],
@@ -595,6 +638,10 @@ export default function ChessApp() {
       name: p.name, photo: p.photo || null, color: i === 0 ? 'w' : 'b',
       isBot: false, isLocal: i === 0, isRemote: i !== 0, avatar: AVATARS.you,
     })), 'online', { seconds, inc }, 'w');
+    // Keep spectators (and the guest) in sync from the first moment.
+    broadcastState();
+    if (o.syncInterval) clearInterval(o.syncInterval);
+    o.syncInterval = setInterval(() => { if (G.current.over) { clearInterval(o.syncInterval); return; } broadcastState(); }, 2000);
     setScreen('game');
   }
 
@@ -610,7 +657,7 @@ export default function ChessApp() {
   }
 
   function startMatch(players, mode, clockSpec, orientation = 'w') {
-    premoveRef.current = null;
+    clearPre();
     const seconds = clockSpec?.seconds ?? 300, inc = clockSpec?.inc ?? 3;
     G.current = {
       mode, players, game: new Chess(), orientation,
@@ -883,7 +930,7 @@ export default function ChessApp() {
   if (spectate && !spectatorLive) {
     return (
       <div className="fixed inset-0 sg-bg">
-        <SpectateView code={spectate} game="chess" onJoin={() => { window.location.href = `./?room=${encodeURIComponent(spectate)}`; }} />
+        <SpectateView code={spectate} game="chess" onJoin={() => { window.location.href = `./?join=${encodeURIComponent(spectate)}`; }} />
       </div>
     );
   }
@@ -913,7 +960,12 @@ export default function ChessApp() {
             ))}
           </div>
         </div>
-        <button className="iconbtn w-12 h-12 rounded-2xl border border-[rgba(227,183,91,.22)] bg-[#131a33] text-[19px]" onClick={() => { sfx.current.toggle(); bump(); }} aria-label="Sound">{sfx.current.mutedRef.current ? '🔇' : '🔊'}</button>
+        <div className="flex items-center gap-1.5">
+          {!spectate && !g.over && (
+            <button className="iconbtn resign-btn w-12 h-12 rounded-2xl text-[19px]" onClick={() => setConfirmResign(true)} aria-label="Resign">🏳</button>
+          )}
+          <button className="iconbtn w-12 h-12 rounded-2xl border border-[rgba(227,183,91,.22)] bg-[#131a33] text-[19px]" onClick={() => { sfx.current.toggle(); bump(); }} aria-label="Sound">{sfx.current.mutedRef.current ? '🔇' : '🔊'}</button>
+        </div>
       </div>
 
       <div className="flex-1 flex items-center justify-center min-h-0 px-2 z-[1]">
@@ -927,7 +979,7 @@ export default function ChessApp() {
               <div key={cell.square + cell.ri}
                    data-square={cell.square}
                    onClick={() => tapSquare(cell.square)}
-                   className={`relative flex items-center justify-center ${cell.light ? 'sq-light' : 'sq-dark'} ${lastMove && (lastMove.from === cell.square || lastMove.to === cell.square) ? 'last-move-glow' : ''} ${checkSq === cell.square ? 'in-check-cell' : ''} ${g.selected === cell.square ? 'selected-cell' : ''}`}>
+                   className={`relative flex items-center justify-center ${cell.light ? 'sq-light' : 'sq-dark'} ${lastMove && (lastMove.from === cell.square || lastMove.to === cell.square) ? 'last-move-glow' : ''} ${premove && (premove.from === cell.square || premove.to === cell.square) ? 'premove-glow' : ''} ${checkSq === cell.square ? 'in-check-cell' : ''} ${g.selected === cell.square ? 'selected-cell' : ''}`}>
                 {g.selected && g.legalTargets.some(t => t.to === cell.square) && (
                   g.legalTargets.find(t => t.to === cell.square).capture
                     ? <div className="absolute inset-[6%] rounded-[4px] border-[3px] border-[rgba(255,240,170,.6)] pointer-events-none" />
@@ -970,20 +1022,28 @@ export default function ChessApp() {
         <div className="hud-panel flex flex-col rounded-2xl px-3 py-1.5 max-w-[300px] flex-1">
           <div className="text-[8px] tracking-[2px] text-[#a99e86] font-bold">MOVES</div>
           <div className="overflow-y-auto font-mono text-[12px] leading-relaxed max-h-16">
-            {movesHtml.map(([n, w, b]) => <div key={n}><b className="text-[#e3b75b]">{n}.</b> {w}{b ? ' ' + b : ''}</div>)}
+            {movesHtml.map(([n, w, b]) => {
+              const wi = (n - 1) * 2, bi = wi + 1;
+              return <div key={n}><b className="text-[#e3b75b]">{n}.</b>{' '}
+                <span className={wi === hist.length - 1 ? 'last-move-text' : ''}>{w}</span>
+                {b ? ' ' : ''}<span className={bi === hist.length - 1 ? 'last-move-text' : ''}>{b || ''}</span>
+              </div>;
+            })}
           </div>
         </div>
-        <div className="flex gap-1.5">
-          {g.players.map((p, i) => {
+        {/* One box holds both players: Telegram name + live clock on each row. */}
+        <div className="hud-panel flex flex-col gap-0.5 rounded-2xl px-2 py-1.5 min-w-[152px]">
+          {[...g.players].sort((a, b) => (a.isLocal ? 1 : 0) - (b.isLocal ? 1 : 0)).map((p) => {
             const active = g.game.turn() === p.color && !g.over;
             const clockSec = g.clock[p.color];
             const low = clockSec <= 10 && clockSec > 0;
+            const botKey = p.isBot ? p.name.split(' ')[0].toLowerCase() : 'you';
             return (
-              <div key={i} className={`player-card flex items-center gap-1.5 rounded-2xl px-2 py-1.5 ${active ? 'is-active' : ''}`}>
-                <img src={p.photo || AVATARS[p.isBot ? p.name.split(' ')[0].toLowerCase() : 'you'] || AVATARS.you} alt="" className="w-8 h-8 rounded-full object-cover border border-[#8a6b2f]" />
-                <span className="flex flex-col leading-tight">
-                  <span className="text-[11px] font-extrabold max-w-[84px] truncate">{p.name}</span>
-                  <span className="text-[8px] tracking-[2px] text-[#a99e86]">{p.color === 'w' ? 'WHITE' : 'BLACK'}</span>
+              <div key={p.color} className={`player-row ${active ? 'is-active' : ''}`}>
+                <img src={p.photo || AVATARS[botKey] || AVATARS.you} alt="" className="w-7 h-7 rounded-full object-cover border border-[#8a6b2f]" />
+                <span className="flex flex-col leading-tight min-w-0 flex-1">
+                  <span className="text-[11px] font-extrabold truncate">{p.name || 'Player'}</span>
+                  <span className="text-[8px] tracking-[2px] text-[#a99e86]">{p.color === 'w' ? 'WHITE' : 'BLACK'}{p.isLocal ? ' · YOU' : ''}</span>
                 </span>
                 <span className={`font-mono text-[12px] font-extrabold rounded-lg border px-1.5 py-1 min-w-[46px] text-center ${low ? 'border-[#ff5a4d] text-[#ff7a6b] animate-pulse' : 'border-white/10 text-[#f2ead9]'} ${active ? 'bg-[#e3b75b]/15' : ''}`}>{fmtClock(clockSec)}</span>
               </div>
@@ -1017,7 +1077,7 @@ export default function ChessApp() {
               {g.winner ? (g.winner === myColor ? 'VICTORY' : 'DEFEAT') : 'DRAW'}
             </div>
             <div className="game-title-word text-[30px] font-black">
-              {g.result === 'checkmate' ? 'Checkmate!' : g.result === 'timeout' ? 'Flag fall!' : 'Draw'}
+              {g.result === 'checkmate' ? 'Checkmate!' : g.result === 'timeout' ? 'Flag fall!' : g.result === 'resign' ? 'Resigned' : g.result === 'abandoned' ? 'Opponent left' : 'Draw'}
             </div>
             <div className="text-[#a99e86] text-[13px]">
               {g.winner
@@ -1033,13 +1093,26 @@ export default function ChessApp() {
         </div>
       )}
 
-      {toast && <div className="toast-surface fixed left-1/2 -translate-x-1/2 bottom-6 z-30 rounded-xl px-5 py-3 text-[13px]">{toast}</div>}
+      {/* Resign confirmation */}
+      {confirmResign && !g.over && (
+        <div className="modal-backdrop fixed inset-0 z-30 flex items-center justify-center">
+          <div className="modal-surface rounded-3xl px-6 py-6 text-center w-[min(360px,calc(100vw-40px))] flex flex-col items-center gap-4">
+            <div className="text-[10px] tracking-[5px] font-extrabold text-[#ff9d92]">RESIGN GAME</div>
+            <div className="text-[15px] text-[#f5e7c5]">Give up this game? Your opponent wins immediately.</div>
+            <div className="flex gap-2 w-full">
+              <button className="btn btn-dark flex-1 py-3 text-[13px]" onClick={() => setConfirmResign(false)}>CANCEL</button>
+              <button className="resign-btn rounded-2xl flex-1 py-3 text-[13px] font-extrabold" onClick={resign}>RESIGN</button>
+            </div>
+          </div>
+        </div>
+      )}
 
-      {/* lastMove / check CSS */}
+      {toast && <div className="toast-surface fixed left-1/2 -translate-x-1/2 bottom-6 z-40 rounded-xl px-5 py-3 text-[13px]">{toast}</div>}
+
+      {/* lastMove / check CSS — square highlights live in index.css */}
       <style>{`
         .chess-frame:after { content: ""; position: absolute; inset: 0; border: 1px solid rgba(255,240,200,.22); border-radius: 14px; pointer-events: none; }
         .selected-cell { box-shadow: inset 0 0 0 3px rgba(255,220,130,.95); background: rgba(236,199,91,.24) !important; }
-        .last-move-glow { background: rgba(255,254,241,.18) !important; }
         .in-check-cell { animation: check-pulse 1s ease-in-out infinite; }
         .chess-piece:active { filter: brightness(1.12) drop-shadow(0 3px 4px rgba(0,0,0,.6)); }
         @keyframes check-pulse { 0%,100% { box-shadow: inset 0 0 0 3px rgba(239,68,68,.5); } 50% { box-shadow: inset 0 0 22px 4px rgba(239,68,68,.75); } }

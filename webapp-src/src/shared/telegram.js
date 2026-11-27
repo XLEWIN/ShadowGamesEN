@@ -13,7 +13,19 @@ export function tgReady() {
 export function tgName() {
   try {
     const u = tg && tg.initDataUnsafe && tg.initDataUnsafe.user;
-    return u ? (u.first_name || 'You') : 'You';
+    if (!u) return 'You';
+    return u.first_name || u.username || [u.last_name].filter(Boolean).join(' ') || 'You';
+  } catch (e) {
+    return 'You';
+  }
+}
+
+// Verified display name used when sending the player's identity to peers.
+export function tgFullName() {
+  try {
+    const u = tg && tg.initDataUnsafe && tg.initDataUnsafe.user;
+    if (!u) return 'You';
+    return [u.first_name, u.last_name].filter(Boolean).join(' ') || u.username || 'You';
   } catch (e) {
     return 'You';
   }
