@@ -86,7 +86,10 @@ export default function ChessApp() {
   const me = () => G.current.players.find(p => p.isLocal);
   const localTurn = () => G.current.mode === 'local' || me()?.color === G.current.game.turn();
 
-  useEffect(() => { tgReady(); backButton(() => setScreen('menu'), screen !== 'menu'); }, [screen]);
+  useEffect(() => {
+    tgReady();
+    backButton(() => { if (screen === 'game') quitMatch(); else setScreen('menu'); }, screen !== 'menu');
+  }, [screen]);
 
   // Auto-enter from invite link: one atomic claim decides who hosts.
   useEffect(() => {
@@ -254,6 +257,30 @@ export default function ChessApp() {
     }
     setConfirmResign(false);
     bump();
+  }
+
+  // Leaving or closing the match ends it for both players.
+  function endByLeave(color) {
+    const loser = color === 'w' ? 'w' : 'b';
+    G.current.over = true;
+    G.current.result = 'abandoned';
+    G.current.winner = loser === 'w' ? 'b' : 'w';
+    clearPre(); stopClock(); haptic('heavy');
+    if (onlineRef.current?.isHost) broadcastState();
+    bump();
+  }
+
+  function quitMatch() {
+    const g = G.current;
+    const loser = me()?.color || g.game.turn();
+    if (!g.over) {
+      if (g.mode === 'online' && onlineRef.current?.conn) {
+        try { onlineRef.current.conn.send({ type: 'quit', color: loser }); } catch (e) { /* ignore */ }
+      }
+      endByLeave(loser);
+    }
+    setV4Modal('');
+    setScreen('menu');
   }
 
   /* ── Move pipeline ─────────────────────────── */
@@ -537,6 +564,7 @@ export default function ChessApp() {
       clearPre(); stopClock(); haptic('heavy'); broadcastState(); bump();
       return;
     }
+    if (data.type === 'quit') { endByLeave(data.color); setToast('Opponent left the match.'); return; }
     if (data.type === 'move' && !G.current.over) {
       const move = { from: data.from, to: data.to, promotion: data.promotion };
       let m;
@@ -559,7 +587,7 @@ export default function ChessApp() {
     G.current.over = true; G.current.result = 'abandoned'; G.current.winner = 'w';
     bump();
   }
-  function announceLeft() { setToast('Opponent disconnected.'); setScreen('menu'); }
+  function announceLeft() { endByLeave(me()?.color === 'w' ? 'b' : 'w'); setToast('Opponent disconnected — match ended.'); }
   function joinRoom(code, attempt = 0) {
     if (typeof Peer === 'undefined') { setToast('Online unavailable.'); return; }
     code = normalizeRoomCode(code);
@@ -593,9 +621,10 @@ export default function ChessApp() {
           G.current.winner = loser === 'w' ? 'b' : 'w';
           clearPre(); stopClock(); haptic('heavy'); bump();
         }
+        else if (d.type === 'quit') { endByLeave(d.color); setToast('Opponent left the match.'); }
         else if (d.type === 'illegal') setToast('Illegal move');
       });
-      conn.on('close', () => { setToast('Host disconnected.'); setScreen('menu'); });
+      conn.on('close', () => { endByLeave('w'); setToast('Host disconnected — match ended.'); });
       if (!joinFlowRef.current) setScreen('room');
     });
     peer.on('error', (err) => {
@@ -745,10 +774,13 @@ export default function ChessApp() {
     );
   }
   if (screen === 'menu') {
+    // Both 1v1 and Create Game open a real lobby with a room code that a
+    // friend can join — never a random local board.
+    const openRoom = () => { haptic(); window.location.href = `../?startapp=chess-${makeRoomCode()}`; };
     return <ChessLanding
       onAI={() => { haptic(); setScreen('setup-ai'); }}
-      on1v1={() => { haptic(); setScreen('setup-local'); }}
-      onCreate={() => { haptic(); window.location.href = `./?startapp=chess-${makeRoomCode()}`; }}
+      on1v1={openRoom}
+      onCreate={openRoom}
       onAllGames={() => { window.location.href = '../'; }}
       onBot={() => { window.location.href = 'https://t.me/ShadowGameEnBot'; }}
     />;
@@ -922,12 +954,20 @@ export default function ChessApp() {
       history={hist} moves={hist} captured={captured}
       flipped={g.orientation === 'b'} level={aiSetup.diff}
       onMove={(from, to, promotion) => attemptMove(from, to, promotion)}
-      onBack={() => setScreen('menu')}
-      onResign={(confirmed) => { if (confirmed) resign(); else setV4Modal('resign'); }}
+      onBack={() => quitMatch()}
+      onResign={() => setV4Modal('resign')}
+      onConfirm={(m) => {
+        if (m === 'resign') resign();
+        else if (m === 'leave') quitMatch();
+        else if (m === 'invite' && !inviteFriends('chess', onlineRef.current?.code || '')) setToast('Open Telegram to invite a friend.');
+      }}
       onSound={() => { sfx.current.toggle(); bump(); }}
+      onRematch={() => { if (g.mode === 'ai') startAiGame(); else if (g.mode === 'local') startLocalGame(); else resetOnlineMatch(); }}
+      onMainMenu={() => quitMatch()}
       onReset={() => { if (g.mode === 'ai') startAiGame(); else if (g.mode === 'local') startLocalGame(); else resetOnlineMatch(); }}
       onInvite={() => { if (!inviteFriends('chess', onlineRef.current?.code || '')) setToast('Open Telegram to invite a friend.'); }}
       onMenu={() => setV4Modal('menu')}
+      result={g.result} winner={g.winner}
       modal={v4Modal} setModal={setV4Modal} toast={toast}
     />;
   }

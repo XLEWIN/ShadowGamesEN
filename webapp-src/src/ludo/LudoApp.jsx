@@ -77,7 +77,10 @@ export default function LudoApp() {
   const currentColor = () => currentPlayer()?.color;
 
   /* ── Telegram back button ──────────────────────── */
-  useEffect(() => { tgReady(); backButton(() => setScreen('menu'), screen !== 'menu'); }, [screen]);
+  useEffect(() => {
+    tgReady();
+    backButton(() => { if (screen === 'game') quitMatch(); else setScreen('menu'); }, screen !== 'menu');
+  }, [screen]);
 
   // Auto-join via invite link (?room=CODE)
   useEffect(() => {
@@ -382,6 +385,11 @@ export default function LudoApp() {
       if (p && G.current.players[G.current.turnIdx] === G.current.players[seat]) doMove(data.token | 0);
       return;
     }
+    if (data.type === 'quit') {
+      const seat = (o.conns || []).indexOf(conn) + 1;
+      endByLeave(ORDER[seat % ORDER.length] || 'red');
+      return;
+    }
   }
 
   function refreshRoomLobby() {
@@ -423,16 +431,37 @@ export default function LudoApp() {
     bump();
   }
 
+  function endByLeave(color) {
+    if (G.current.over) return;
+    G.current.over = true;
+    G.current.winner = ORDER.find(c => c !== color) || 'red';
+    G.current.awaitingMove = false;
+    G.current.busy = false;
+    announce('Match ended — a player left.');
+    bump();
+  }
+
+  function quitMatch() {
+    const color = onlineRef.current?.myColor || G.current.myColor || currentColor() || 'red';
+    const o = onlineRef.current;
+    if (!G.current.over) {
+      if (o?.isHost) {
+        for (const c of (o.conns || [])) { try { c.send({ type: 'quit', color }); } catch (e) { /* ignore */ } }
+      } else if (o?.conn) {
+        try { o.conn.send({ type: 'quit', color }); } catch (e) { /* ignore */ }
+      }
+      endByLeave(color);
+    }
+    setScreen('menu');
+  }
+
   function hostOnLeave(conn) {
     const o = onlineRef.current;
     if (!o) return;
+    const seat = (o.conns || []).indexOf(conn) + 1;
     o.conns = (o.conns || []).filter(c => c !== conn);
     if (!o.started) { refreshRoomLobby(); return; }
-    announce('A player left — a bot takes over.');
-    const idx = (o.players || []).findIndex(p => p.name === conn._name);
-    if (idx >= 0) G.current.players[idx] = { ...G.current.players[idx], isBot: true, isRemote: false, name: 'Shadow Bot' };
-    bump();
-    scheduleBotIfNeeded();
+    endByLeave(ORDER[seat % ORDER.length] || 'red');
   }
 
   function joinRoom(code, attempt = 0) {
@@ -463,8 +492,9 @@ export default function LudoApp() {
           startGame(players, 'online');
         }
         else if (d.type === 'state') clientState(d);
+        else if (d.type === 'quit') endByLeave(d.color || 'red');
       });
-      conn.on('close', () => { announce('Disconnected from room.'); setScreen('menu'); });
+      conn.on('close', () => { endByLeave('red'); announce('Disconnected from room — match ended.'); });
       setScreen('room');
       bump();
     });
@@ -654,10 +684,12 @@ export default function LudoApp() {
       legal={legal}
       onPawn={(c, idx) => { if (c !== color) { announce('That pawn belongs to another player.'); return; } doMove(idx); }}
       onRoll={() => rollDice()}
-      onBack={() => setScreen('menu')}
+      onBack={() => quitMatch()}
       onSound={() => sfx.move()}
-      onLeave={() => setScreen('menu')}
+      onLeave={() => quitMatch()}
       onModal={() => announce(legal.length ? 'Tap one of your glowing pawns to move.' : 'Roll the dice to take your turn.')}
+      onRematch={() => startGame(g.players, g.mode)}
+      onMainMenu={() => quitMatch()}
       toast={toast} over={g.over} winner={g.winner}
     />;
   }

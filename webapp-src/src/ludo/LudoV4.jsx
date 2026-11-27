@@ -151,7 +151,7 @@ export function LudoBoardV4({ tokens, selectedColor, legal = [], onPawn }) {
   </div><div className="board-glint" /></div>;
 }
 
-export function LudoRoomV4({ tokens, players, currentColor, myColor: chosenColor, dice, diceN, hasRolled, legal, onPawn, onRoll, onBack, onSound, onLeave, onModal, toast, over, winner }) {
+export function LudoRoomV4({ tokens, players, currentColor, myColor: chosenColor, dice, diceN, hasRolled, legal, onPawn, onRoll, onBack, onSound, onLeave, onModal, onRematch, onMainMenu, toast, over, winner }) {
   const current = currentColor || 'red';
   const myColor = chosenColor || current;
   return <div className="app-shell">
@@ -164,6 +164,7 @@ export function LudoRoomV4({ tokens, players, currentColor, myColor: chosenColor
       <div className="status-line"><i /> {over ? (winner ? `${winner.toUpperCase()} WINS` : 'GAME OVER') : hasRolled || dice !== null ? `Dice shows ${diceN} · tap a pawn to move` : 'Roll the dice to take your turn'}</div>
     </motion.main>
     <footer className="telegram-footer"><small>@ShadowGameEnBot</small></footer>
+    <AnimatePresence>{over && <motion.div className="modal-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}><motion.div className="modal" initial={{ y: 12, opacity: 0 }} animate={{ y: 0, opacity: 1 }}><div className="eyebrow">GAME FINISHED</div><h3>{winner ? (winner === myColor ? 'You win' : `${winner.toUpperCase()} wins`) : 'Game over'}</h3><p>The match ended. Play again or return to the lobby.</p><button className="btn gold" onClick={() => onRematch?.()}>PLAY AGAIN</button><button className="btn navy" onClick={() => onMainMenu?.()}>MAIN MENU</button></motion.div></motion.div>}</AnimatePresence>
     <AnimatePresence>{toast && <motion.div className="toast" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 5 }}><Sparkles size={14} />{toast}</motion.div>}</AnimatePresence>
   </div>;
 }
