@@ -4,7 +4,7 @@
 import { api } from 'sdk';
 import { db, eq, and, desc, sql } from 'sdk/db';
 import { configurePipeline, reportHandlerError, isRetryUpdate } from '../lib/pipeline.js';
-import { replyText, sendText, sendPhoto, deleteMessage, escapeHtml } from '../lib/msg.js';
+import { replyText, replyPhoto, sendText, sendPhoto, deleteMessage, escapeHtml } from '../lib/msg.js';
 import { getState, setState, deleteState } from '../lib/db.js';
 import { parseCommand } from '../lib/commands.js';
 import { E, EID, plain } from '../lib/emojis.js';
@@ -17,7 +17,7 @@ import {
   RULES, HELP_TEXT, startText, mention,
   START_TITLE_LINE, START_HINT_LINE, BOT_DESCRIPTION,
   URL_ADD_TO_GROUP, URL_OWNER, URL_UPDATES, URL_DISCUSSION,
-  LEADERBOARD_IMAGE, START_IMAGE,
+  LEADERBOARD_IMAGE, START_IMAGE, challengeImage, gameBoardUrl,
 } from '../lib/texts.js';
 import {
   userStartedBot, gbannedUsers, games, gamePlayers,
@@ -186,13 +186,17 @@ async function handleLobbyDeepLink(message, userId, user, target) {
   const webAppUrl = target.game === 'chess' && !target.spectate
     ? gameJoinUrl(target.game, target.code)
     : roomUrl(target.game, target.code, target.spectate);
-  await replyText(message,
+  const caption =
     `${E.SPARKLE} <b>Shadow Games</b>\n\n${E.GAME} <b>${target.game.toUpperCase()}</b> · table <code>${escapeHtml(target.code)}</code>\n` +
-    `${E.INFO} ${target.spectate ? 'You are spectating this table.' : `Players in this table: ${lobby.players.length}/${lobby.maxPlayers}`}`,
-    {
-      parseMode: 'HTML',
-      replyMarkup: buildKeyboard([[btnWebApp(label, webAppUrl, EID.GAME, 'primary')]]),
-    });
+    `${E.INFO} ${target.spectate ? 'You are spectating this table.' : `Players in this table: ${lobby.players.length}/${lobby.maxPlayers}`}`;
+  const markup = buildKeyboard([
+    [btnWebApp(label, webAppUrl, EID.GAME, 'primary')],
+    [{ text: `Open ${target.game.toUpperCase()} board`, url: gameBoardUrl(target.game), style: 'primary' }],
+  ]);
+  const sent = await replyPhoto(message, challengeImage(target.game), caption, {
+    parseMode: 'HTML', replyMarkup: markup,
+  });
+  if (!sent) await replyText(message, caption, { parseMode: 'HTML', replyMarkup: markup });
 }
 
 async function cmdSettings(message, isPrivate) {
@@ -245,10 +249,14 @@ async function cmdChallenge(message, args, isPrivate, user) {
   const requested = parts[1] || (game === 'ludo' ? '4' : '2');
   const open = await getOpenLobby(message.chat.id, game);
   if (open && !parts.includes('new')) {
-    await replyText(message, `${E.INFO} There is already an open <b>${game.toUpperCase()}</b> table in this chat.`, {
-      parseMode: 'HTML',
-      replyMarkup: buildKeyboard([[btnWebApp('Open table', roomUrl(game, open.code), EID.GAME, 'primary')]]),
-    });
+    const markup = buildKeyboard([
+      [btnWebApp('Open table', roomUrl(game, open.code), EID.GAME, 'primary')],
+      [{ text: `Open ${game.toUpperCase()} board`, url: gameBoardUrl(game), style: 'primary' }],
+    ]);
+    const sent = await replyPhoto(message, challengeImage(game),
+      `${E.INFO} There is already an open <b>${game.toUpperCase()}</b> table in this chat.`,
+      { parseMode: 'HTML', replyMarkup: markup });
+    if (!sent) await replyText(message, `${E.INFO} There is already an open <b>${game.toUpperCase()}</b> table in this chat.`, { parseMode: 'HTML', replyMarkup: markup });
     return;
   }
   try {
@@ -256,11 +264,13 @@ async function cmdChallenge(message, args, isPrivate, user) {
       game, creatorId: user.id, creatorName: user.first_name || user.username || 'Player',
       maxPlayers: requested, chatId: message.chat.id,
     });
-    const sent = await replyText(message, inviteText(lobby, user.first_name || 'Player', user.id), {
-      parseMode: 'HTML',
-      replyMarkup: lobbyKeyboard(lobby),
+    const markup = lobbyKeyboard(lobby);
+    const caption = inviteText(lobby, user.first_name || 'Player', user.id);
+    const sent = await replyPhoto(message, challengeImage(game), caption, {
+      parseMode: 'HTML', replyMarkup: markup,
     });
-    if (sent?.message_id) { lobby.messageId = sent.message_id; await saveLobby(lobby); }
+    const final = sent || await replyText(message, caption, { parseMode: 'HTML', replyMarkup: markup });
+    if (final?.message_id) { lobby.messageId = final.message_id; await saveLobby(lobby); }
   } catch (err) {
     await reportHandlerError(err, { where: 'cmdChallenge' });
     await replyText(message, `${E.ERROR} Could not open the table. Please try again.`, { parseMode: 'HTML' });

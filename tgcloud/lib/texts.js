@@ -36,6 +36,9 @@ export const START_IMAGE = `${WEBAPP_BASE}assets/gaming-hub.jpg`;
 export const HUB_URL = WEBAPP_BASE;
 export const LUDO_URL = `${WEBAPP_BASE}ludo/`;
 export const CHESS_URL = `${WEBAPP_BASE}chess/`;
+// Stable, real board captures used on every challenge card (not build-hashed).
+export const challengeImage = (game) => `${WEBAPP_BASE}assets/challenge-${game === 'ludo' ? 'ludo' : 'chess'}.png`;
+export const gameBoardUrl = (game) => game === 'ludo' ? LUDO_URL : CHESS_URL;
 
 export const RULES = `${E.INFO} <b>Game Rules</b>\n${E.BULLET}\n\n` +
   `<b>Word Guess</b> — one player explains the secret word, the others guess it.\n` +

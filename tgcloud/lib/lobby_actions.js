@@ -1,6 +1,6 @@
 // Callback actions for webapp lobby invites (join / spectate / open).
 import { api } from 'sdk';
-import { sendText, editText, escapeHtml } from './msg.js';
+import { sendText, editText, editCaption, escapeHtml } from './msg.js';
 import { E, plain } from './emojis.js';
 import { btnUrl, buildKeyboard } from './keyboards.js';
 import {
@@ -110,7 +110,8 @@ async function joinAndNotify(query, lobby, user, chat) {
   // Update the posted invite so everyone sees the live roster.
   if (chat && lobby.messageId) {
     try {
-      await editText(chat.id, lobby.messageId, inviteText(lobby, lobby.players[0]?.name || 'Player', lobby.players[0]?.userId || 0), {
+      // Invites are posted as board photos now — edit the caption, not text.
+      await editCaption(chat.id, lobby.messageId, inviteText(lobby, lobby.players[0]?.name || 'Player', lobby.players[0]?.userId || 0), {
         parseMode: 'HTML', replyMarkup: lobbyKeyboard(lobby),
       });
     } catch (e) { /* message may be gone */ }
