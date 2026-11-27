@@ -20,10 +20,13 @@ async function answer(query, text, alert = false) {
 }
 
 function openKeyboard(lobby, spectate = false) {
-  return buildKeyboard([[btnUrl(
-    spectate ? 'Watch the table' : 'Open table',
-    startAppLink(lobby.game, lobby.code, spectate), undefined, 'primary',
-  )]]);
+  return buildKeyboard([
+    [btnUrl(
+      spectate ? 'Watch the table' : 'Open table',
+      startAppLink(lobby.game, lobby.code, spectate), undefined, 'primary',
+    )],
+    [btnUrl(`Open ${lobby.game.toUpperCase()} board`, gameBoardUrl(lobby.game), undefined, 'primary')],
+  ]);
 }
 
 export async function handleLobbyCallback(query) {

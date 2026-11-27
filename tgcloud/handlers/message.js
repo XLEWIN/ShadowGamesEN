@@ -192,6 +192,7 @@ async function handleLobbyDeepLink(message, userId, user, target) {
     `<a href="${gameBoardUrl(target.game)}">Open ${target.game.toUpperCase()} board</a>`;
   const markup = buildKeyboard([
     [btnWebApp(label, webAppUrl, EID.GAME, 'primary')],
+    [{ text: `Open ${target.game.toUpperCase()} board`, url: gameBoardUrl(target.game), style: 'primary' }],
   ]);
   const sent = await replyPhoto(message, challengeImage(target.game), caption, {
     parseMode: 'HTML', replyMarkup: markup,
@@ -251,6 +252,7 @@ async function cmdChallenge(message, args, isPrivate, user) {
   if (open && !parts.includes('new')) {
     const markup = buildKeyboard([
       [btnWebApp('Open table', roomUrl(game, open.code), EID.GAME, 'primary')],
+      [{ text: `Open ${game.toUpperCase()} board`, url: gameBoardUrl(game), style: 'primary' }],
     ]);
     const sent = await replyPhoto(message, challengeImage(game),
       `${E.INFO} There is already an open <b>${game.toUpperCase()}</b> table in this chat.\n` +

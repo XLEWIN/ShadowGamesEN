@@ -12,9 +12,14 @@ export const ICONS = {
 };
 
 export function gameArticle(id, title, description, url, label, iconUrl, photoUrl = null) {
-  const markup = buildKeyboard([[{
-    text: label, url, style: 'primary', icon_custom_emoji_id: EID.GAME,
-  }]]);
+  const markup = buildKeyboard([
+    [{ text: label, url, style: 'primary', icon_custom_emoji_id: EID.GAME }],
+    // Bottom hyperlink-type button; only meaningful once a board photo is posted.
+    ...(photoUrl ? [[{
+      text: `Open ${title.includes('Ludo') ? 'LUDO' : 'CHESS'} board`,
+      url, style: 'primary', icon_custom_emoji_id: EID.GAME,
+    }]] : []),
+  ]);
   if (photoUrl) {
     return {
       type: 'photo', id, title, description,

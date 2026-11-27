@@ -153,6 +153,8 @@ export function lobbyKeyboard(lobby) {
       btnUrl('Join the game', startAppLink(lobby.game, lobby.code), EID.PLAY, 'success'),
       btnUrl('Spectate', startAppLink(lobby.game, lobby.code, true), EID.WATCH, 'primary'),
     ],
+    // Bottom row: a real URL (hyperlink-type) button to the board.
+    [btnUrl(`Open ${lobby.game.toUpperCase()} board`, gameBoardUrl(lobby.game), EID.GAME, 'primary')],
   ]);
 }
 

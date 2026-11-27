@@ -32,12 +32,17 @@ export function inviteArticle(game, user, code = null, full = false) {
     caption,
     parse_mode: 'HTML',
     reply_markup: full
-      ? buildKeyboard([[btnUrl('Watch live', joinUrl, undefined, 'primary')]])
+      ? buildKeyboard([
+          [btnUrl('Watch live', joinUrl, undefined, 'primary')],
+          [btnUrl(`Open ${game.toUpperCase()} board`, gameBoardUrl(game), undefined, 'primary')],
+        ])
       : buildKeyboard([
           [
             btnUrl(joinLabel, joinUrl, undefined, 'success'),
             btnUrl('Spectate', startAppLink(game, code, true), undefined, 'primary'),
           ],
+          // Bottom row — URL/hyperlink-type button under the board image.
+          [btnUrl(`Open ${game.toUpperCase()} board`, gameBoardUrl(game), undefined, 'primary')],
         ]),
   };
 }
