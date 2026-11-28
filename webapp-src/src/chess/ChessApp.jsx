@@ -85,6 +85,8 @@ export default function ChessApp() {
   const cur = () => G.current.players[G.current.game.turn() === 'w' ? 0 : 1] || G.current.players[0];
   const me = () => G.current.players.find(p => p.isLocal);
   const localTurn = () => G.current.mode === 'local' || me()?.color === G.current.game.turn();
+  const waitingForOpponent = () => G.current.mode === 'online' && G.current.players.length < 2;
+  const waitToast = () => { setToast('Wait for your opponent to join'); haptic('light'); };
 
   useEffect(() => {
     tgReady();
@@ -159,6 +161,20 @@ export default function ChessApp() {
     if (screen !== 'lobby') return;
     const t = setTimeout(() => showWaitingBoard(clockRef.current), 1800);
     return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [screen]);
+
+  // Keep the waiting table alive so a friend can join a minute (or more) later.
+  useEffect(() => {
+    if (screen !== 'game') return;
+    const ping = () => {
+      const o = onlineRef.current;
+      if (!o?.isHost || o.started || waitingForOpponent() === false) return;
+      callServer('lobbyPing', { code: o.code });
+    };
+    ping();
+    const id = setInterval(ping, 30000);
+    return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [screen]);
 
@@ -248,6 +264,7 @@ export default function ChessApp() {
   function resign() {
     const g = G.current;
     if (g.over || spectate) return;
+    if (waitingForOpponent()) { waitToast(); return; }
     const loser = g.mode === 'local' ? g.game.turn() : (me()?.color || 'w');
     g.over = true; g.result = 'resign'; g.winner = loser === 'w' ? 'b' : 'w';
     clearPre(); stopClock(); haptic('heavy');
@@ -413,6 +430,7 @@ export default function ChessApp() {
   }
 
   function attemptMove(from, to, promotion) {
+    if (waitingForOpponent()) { waitToast(); return; }
     if (!promotion && needsPromotionChoice(from, to)) { setPromo({ from, to }); return; }
     const meP = G.current.players.find(p => p.isLocal);
     if (G.current.mode === 'online' && onlineRef.current && !onlineRef.current.isHost) {
@@ -513,7 +531,11 @@ export default function ChessApp() {
         });
       });
     });
-    peer.on('error', () => setToast('Room error — try again.'));
+    peer.on('disconnected', () => { try { peer.reconnect(); } catch (e) { /* ignore */ } });
+    peer.on('error', (err) => {
+      try { if (err?.type === 'network' || err?.type === 'server-error') peer.reconnect(); } catch (e) { /* ignore */ }
+      setToast('Room connection interrupted — reconnecting…');
+    });
     setScreen('room');
   }
   async function refreshLobby() {
@@ -627,14 +649,16 @@ export default function ChessApp() {
       conn.on('close', () => { endByLeave('w'); setToast('Host disconnected — match ended.'); });
       if (!joinFlowRef.current) setScreen('room');
     });
+    peer.on('disconnected', () => { try { peer.reconnect(); } catch (e) { /* ignore */ } });
     peer.on('error', (err) => {
-      if (err?.type === 'peer-unavailable') {
-        try { peer.destroy(); } catch (e) { /* ignore */ }
-        if (attempt < 10) setTimeout(() => joinRoom(code, attempt + 1), 1200);
-        else setToast('Host is not online yet — please try again shortly.');
+      const transient = ['peer-unavailable', 'network', 'server-error', 'socket-error', 'webrtc'].includes(err?.type) || !err?.type;
+      try { peer.destroy(); } catch (e) { /* ignore */ }
+      const stillHere = onlineRef.current && !onlineRef.current.isHost && onlineRef.current.code === code;
+      if (transient && stillHere && attempt < 20) {
+        setTimeout(() => joinRoom(code, attempt + 1), 1000);
         return;
       }
-      setToast('Connection failed — is the code right?');
+      setToast('Room connection failed — please try again.');
     });
   }
 
@@ -664,6 +688,7 @@ export default function ChessApp() {
     const names = o.players.map(p => p.name);
     const { seconds, inc } = clockRef.current; // selected mode, even before React re-render
     o.started = true;
+    callServer('lobbyStart', { code: o.code }); // match is live — expiry no longer applies
     try { o.conn?.send({ type: 'start', players: names.map(n => ({ name: n })), clockSeconds: seconds, inc }); } catch (e) { /* ignore */ }
     startMatch(o.players.map((p, i) => ({
       name: p.name, photo: p.photo || null, color: i === 0 ? 'w' : 'b',
@@ -946,7 +971,8 @@ export default function ChessApp() {
       ? (g.result === 'checkmate' ? (g.winner === myColor ? 'Checkmate · you win' : 'Checkmate · you lose')
         : g.result === 'timeout' ? 'Flag fall' : g.result === 'resign' ? 'Resigned'
           : g.result === 'abandoned' ? 'Opponent left' : 'Draw')
-      : g.game.inCheck() ? `${turnText} IS IN CHECK` : `${turnText} TO MOVE`;
+      : waitingForOpponent() ? 'WAITING FOR OPPONENT TO JOIN'
+        : g.game.inCheck() ? `${turnText} IS IN CHECK` : `${turnText} TO MOVE`;
     return <ChessRoomV4
       game={g.game} players={g.players}
       clocks={{ w: fmtClock(g.clock.w), b: fmtClock(g.clock.b) }}
@@ -955,6 +981,7 @@ export default function ChessApp() {
       flipped={g.orientation === 'b'} level={aiSetup.diff}
       selfName={tgFullName() || 'Player'}
       onMove={(from, to, promotion) => attemptMove(from, to, promotion)}
+      onWait={waitToast}
       onBack={() => quitMatch()}
       onResign={() => setV4Modal('resign')}
       onConfirm={(m) => {
@@ -965,7 +992,6 @@ export default function ChessApp() {
       onSound={() => { sfx.current.toggle(); bump(); }}
       onRematch={() => { if (g.mode === 'ai') startAiGame(); else if (g.mode === 'local') startLocalGame(); else resetOnlineMatch(); }}
       onMainMenu={() => quitMatch()}
-      onReset={() => { if (g.mode === 'ai') startAiGame(); else if (g.mode === 'local') startLocalGame(); else resetOnlineMatch(); }}
       onInvite={() => { if (!inviteFriends('chess', onlineRef.current?.code || '')) setToast('Open Telegram to invite a friend.'); }}
       onMenu={() => setV4Modal('menu')}
       result={g.result} winner={g.winner}

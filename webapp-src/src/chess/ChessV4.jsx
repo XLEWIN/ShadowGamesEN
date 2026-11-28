@@ -2,7 +2,7 @@
 // All game state stays in the real ChessApp; this file is presentation only.
 import React, { useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { ArrowLeft, ArrowRight, Bot, Clock3, Flag, MoreHorizontal, RotateCcw, Shield, Users, Volume2, X, CircleHelp, Sparkles } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Bot, Clock3, Flag, MoreHorizontal, Shield, Users, Volume2, X, CircleHelp, Sparkles } from 'lucide-react';
 import './ChessV4.css';
 
 const times = ['1+0', '3+0', '3+2', '5+3', '10+0', '10+5'];
@@ -55,7 +55,7 @@ export function AiSetupV4({ clock, setClock, level, setLevel, side, setSide, onS
   </motion.main>;
 }
 
-export function ChessBoardV4({ game, onMove, flipped = false, disabled = false }) {
+export function ChessBoardV4({ game, onMove, onWait, waiting = false, flipped = false, disabled = false }) {
   const [selected, setSelected] = useState(null);
   const [notice, setNotice] = useState('Select a piece to view legal moves');
   const ranks = flipped ? [1, 2, 3, 4, 5, 6, 7, 8] : [8, 7, 6, 5, 4, 3, 2, 1];
@@ -66,6 +66,7 @@ export function ChessBoardV4({ game, onMove, flipped = false, disabled = false }
   const last = hist.length ? [hist[hist.length - 1].from, hist[hist.length - 1].to] : [];
   const checkSq = game.inCheck() ? (game.board().flat().find(p => p && p.type === 'k' && p.color === game.turn()) || {}).square : null;
   function click(sq) {
+    if (waiting) { onWait?.(); return; }
     if (disabled) return;
     const p = game.get(sq);
     if (selected && targets.includes(sq)) {
@@ -89,11 +90,12 @@ export function ChessBoardV4({ game, onMove, flipped = false, disabled = false }
         {p && <span className={`piece ${p.color === 'w' ? 'white-piece' : 'black-piece'}`}><img src={pieceAssets[p.color + p.type]} alt="" draggable="false" /></span>}
       </button>;
     })}
-  </div></div><div className="board-caption"><span><i /> LEGAL-MOVE BOARD</span><span>{notice}</span></div></div>;
+  </div></div><div className="board-caption"><span><i /> LEGAL-MOVE BOARD</span><span>{waiting ? 'Wait for your opponent to join' : notice}</span></div></div>;
 }
 
-export function ChessRoomV4({ game, players, clocks, turn, over, status, history, moves, captured, flipped, selfName, onBack, onResign, onSound, onReset, onMove, onInvite, onMenu, onConfirm, onRematch, onMainMenu, result, winner, modal, setModal, toast, level }) {
+export function ChessRoomV4({ game, players, clocks, turn, over, status, history, moves, captured, flipped, selfName, onBack, onResign, onSound, onMove, onWait, onInvite, onMenu, onConfirm, onRematch, onMainMenu, result, winner, modal, setModal, toast, level }) {
   const done = over || game.isGameOver();
+  const waiting = !done && players.length < 2;
   const turnText = turn === 'b' ? 'BLACK' : 'WHITE';
   const myColor = flipped ? 'b' : 'w';
   // An empty name means the second player has not joined yet.
@@ -101,12 +103,12 @@ export function ChessRoomV4({ game, players, clocks, turn, over, status, history
   return <div className="app-shell">
     <header className="topbar"><button aria-label="Back" onClick={() => onBack?.()}><ArrowLeft /></button><div className="telegram-title">Shadow Games <span>EN 🇮🇳</span></div><button aria-label="More options" onClick={onMenu}><MoreHorizontal /></button><button aria-label="Close" onClick={() => onConfirm?.('leave')}><X /></button></header>
     <motion.main className="screen board-screen" {...transition}>
-      <div className="board-toolbar"><button className="round" onClick={onBack} aria-label="Return to lobby"><ArrowLeft /></button><div className="turn-chip"><i className={turn === 'b' ? 'black' : ''} />{done ? 'GAME FINISHED' : `${turnText} TO MOVE`}</div><button className="round danger" aria-label="Resign" onClick={() => onResign?.()}><Flag /></button><button className="round" aria-label="Sound effects" onClick={onSound}><Volume2 /></button></div>
+      <div className="board-toolbar"><button className="round" onClick={onBack} aria-label="Return to lobby"><ArrowLeft /></button><div className="turn-chip"><i className={turn === 'b' ? 'black' : ''} />{done ? 'GAME FINISHED' : waiting ? 'WAITING FOR OPPONENT' : `${turnText} TO MOVE`}</div><button className="round danger" aria-label="Resign" onClick={() => waiting ? onWait?.() : onResign?.()}><Flag /></button><button className="round" aria-label="Sound effects" onClick={onSound}><Volume2 /></button></div>
       <div className="clocks"><span>● <b>{clocks.w}</b></span><span>○ <b>{clocks.b}</b></span></div>
       <div className="player"><div className="avatar black-avatar">♟</div><div className="player-copy"><b>{opp.name}</b><small>{flipped ? 'WHITE' : 'BLACK'} · {level?.toUpperCase() || 'TACTICIAN'}</small></div><strong className="player-clock">{clocks[flipped ? 'w' : 'b']}</strong></div>
-      <ChessBoardV4 game={game} onMove={onMove} flipped={flipped} disabled={done} />
+      <ChessBoardV4 game={game} onMove={onMove} onWait={onWait} waiting={waiting} flipped={flipped} disabled={done} />
       <div className="player"><div className="avatar white-avatar">♟</div><div className="player-copy"><b>{selfName || ''}</b><small>{myColor.toUpperCase()} · {players.length > 1 ? 'ONLINE' : 'LOCAL PREVIEW'}</small></div><strong className="player-clock">{clocks[myColor]}</strong></div>
-      <div className="board-bottom"><div className="bottom-box"><small>CAPTURED</small><div>{(captured || []).map((m, i) => <span key={i}>{capturedGlyph[m] || m}</span>)}</div></div><div className="bottom-box move-box"><small>MOVES</small><div>{moves?.length ? moves.map((m, i) => <span key={i}>{i % 2 === 0 && <b>{Math.floor(i / 2) + 1}. </b>}{m.san || m} </span>) : '—'}</div></div><button className="reset" onClick={onReset}><RotateCcw /> RESET</button></div>
+      <div className="board-bottom"><div className="bottom-box"><small>CAPTURED</small><div>{(captured || []).map((m, i) => <span key={i}>{capturedGlyph[m] || m}</span>)}</div></div><div className="bottom-box move-box"><small>MOVES</small><div>{moves?.length ? moves.map((m, i) => <span key={i}>{i % 2 === 0 && <b>{Math.floor(i / 2) + 1}. </b>}{m.san || m} </span>) : '—'}</div></div></div>
       <div className="status-line"><i /> {status}</div>
     </motion.main>
     <footer className="telegram-footer"><span>✦ CODE COUNCIL · SHADOW GAMES ✦</span><small>@ShadowGameEnBot</small></footer>

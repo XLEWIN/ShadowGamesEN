@@ -34,14 +34,15 @@ export function maxPlayersFor(game, requested) {
   return 2;
 }
 
-export function isStale(createdAt) {
-  const t = Date.parse(createdAt);
+export function isStale(updatedAt) {
+  const t = Date.parse(updatedAt);
   return Number.isFinite(t) && Date.now() - t > SESSION_MS;
 }
 
-// Lazy expiry: any read of an old unstarted lobby marks it expired.
+// Lazy expiry: any read of a lobby idle for 2 minutes marks it expired.
+// The host heartbeats while waiting, so an active table never expires.
 export async function expireIfStale(lobby) {
-  if (!lobby || lobby.status !== 'open' || !isStale(lobby.createdAt)) return lobby;
+  if (!lobby || lobby.status !== 'open' || !isStale(lobby.updatedAt || lobby.createdAt)) return lobby;
   await db.update(webappLobbies)
     .set({ status: 'expired', updatedAt: new Date().toISOString() })
     .where(eq(webappLobbies.code, lobby.code)).run();
